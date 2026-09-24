@@ -1,0 +1,23 @@
+import type { ReactNode } from 'react';
+import { cn } from '../../lib/cn';
+
+type Tone = 'neutral' | 'live' | 'success' | 'warning' | 'danger' | 'info' | 'violet';
+
+const tones: Record<Tone, string> = {
+  neutral: 'bg-white/5 text-slate-300 ring-white/10',
+  live: 'bg-red-500/15 text-red-300 ring-red-500/30',
+  success: 'bg-emerald-500/15 text-emerald-300 ring-emerald-500/30',
+  warning: 'bg-amber-500/15 text-amber-300 ring-amber-500/30',
+  danger: 'bg-red-500/15 text-red-300 ring-red-500/30',
+  info: 'bg-sky-500/15 text-sky-300 ring-sky-500/30',
+  violet: 'bg-violet-500/15 text-violet-300 ring-violet-500/30',
+};
+
+export function Badge({ tone = 'neutral', children, className, dot }: { tone?: Tone; children: ReactNode; className?: string; dot?: boolean }) {
+  return (
+    <span className={cn('inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold tracking-wide uppercase ring-1 ring-inset', tones[tone], className)}>
+      {dot && <span className={cn('h-1.5 w-1.5 rounded-full bg-current', tone === 'live' && 'animate-pulse-soft')} />}
+      {children}
+    </span>
+  );
+}

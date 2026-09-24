@@ -1,0 +1,32 @@
+{
+  "name": "event-control",
+  "version": "1.0.0",
+  "private": true,
+  "description": "EventControl — event presentation & projector control system",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "postinstall": "prisma generate",
+    "db:push": "prisma db push --skip-generate",
+    "db:reset": "prisma db push --force-reset --skip-generate",
+    "dev": "npm run db:push && concurrently -k -n server,client -c blue,magenta \"npm run dev -w server\" \"npm run dev -w client\"",
+    "build": "npm run build -w server && npm run build -w client",
+    "start": "npm run db:push && npm run start -w server",
+    "typecheck": "npm run typecheck -w server && npm run typecheck -w client",
+    "test": "npm run test -w server",
+    "e2e": "node scripts/e2e-flow.mjs"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "playwright-core": "1.56",
+    "prisma": "6.19.3"
+  },
+  "dependencies": {
+    "@prisma/client": "6.19.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

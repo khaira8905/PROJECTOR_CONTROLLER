@@ -1,0 +1,116 @@
+// EventControl database schema (SQLite via Prisma).
+// The database file lives next to this schema: prisma/eventcontrol.db
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./eventcontrol.db"
+}
+
+model Event {
+  id             String   @id @default(cuid())
+  name           String
+  date           DateTime
+  description    String   @default("")
+  venue          String   @default("")
+  waitingMessage String   @default("Please wait…")
+  // Media shown by the "SHOW EVENT LOGO" emergency control (optional).
+  logoMediaId    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  media         Media[]
+  queueItems    QueueItem[]
+  scheduleItems ScheduleItem[]
+  timerState    TimerState?
+  displayState  DisplayState?
+}
+
+model Media {
+  id           String   @id @default(cuid())
+  eventId      String
+  // Human-friendly, renamable name ("Welcome.pptx").
+  name         String
+  originalName String
+  // Path relative to the uploads root. Never sent to clients.
+  storagePath  String
+  // image | video | pdf | presentation
+  kind         String
+  mimeType     String
+  size         Int
+  // sha256 of the file contents, used to avoid duplicate uploads.
+  hash         String
+  createdAt    DateTime @default(now())
+
+  event      Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  queueItems QueueItem[]
+
+  @@unique([eventId, hash])
+  @@index([eventId])
+}
+
+model QueueItem {
+  id              String   @id @default(cuid())
+  eventId         String
+  mediaId         String
+  position        Int
+  // Optional label, e.g. "Director Speech". Falls back to the media name.
+  title           String?
+  durationSeconds Int?
+  // Operator-only speaker notes. Never sent to display clients.
+  notes           String   @default("")
+  createdAt       DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  media Media @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, position])
+}
+
+model ScheduleItem {
+  id              String   @id @default(cuid())
+  eventId         String
+  // Local wall-clock time "HH:MM".
+  time            String
+  title           String
+  description     String   @default("")
+  durationMinutes Int?
+  createdAt       DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, time])
+}
+
+model TimerState {
+  eventId       String    @id
+  durationMs    Int       @default(600000)
+  warningMs     Int       @default(120000)
+  // idle | running | paused | finished
+  status        String    @default("idle")
+  // Remaining time at the moment `startedAt` was recorded (or now, if not running).
+  remainingMs   Int       @default(600000)
+  startedAt     DateTime?
+  showOnDisplay Boolean   @default(false)
+  updatedAt     DateTime  @updatedAt
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+}
+
+model DisplayState {
+  eventId      String   @id
+  // media | black | waiting | logo
+  mode         String   @default("waiting")
+  // The queue cursor ("current item").
+  queueItemId  String?
+  // Media shown directly from the library, overriding the queue cursor.
+  adHocMediaId String?
+  // 1-based page for PDF content, controlled by the operator.
+  page         Int      @default(1)
+  updatedAt    DateTime @updatedAt
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+}
