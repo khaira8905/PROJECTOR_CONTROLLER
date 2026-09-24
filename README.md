@@ -9,6 +9,18 @@
 
 ![Operator dashboard](docs/screenshots/dashboard.png)
 
+## ⚡ Quick start (no commands needed)
+
+1. Install **Node.js LTS** from https://nodejs.org (one time), then restart your computer.
+2. On this GitHub page click the green **`<> Code`** button → **Download ZIP**.
+3. Right-click the downloaded ZIP → **Extract All…** → **Extract**.
+4. Open the extracted folder and double-click:
+   - **Windows:** `START-EventControl.bat`. If Windows shows "Windows protected your PC", click **More info → Run anyway**.
+   - **macOS:** `START-EventControl-mac.command`. The first time, right-click it → **Open** → **Open**.
+5. The first run installs packages (1–3 minutes). Then your browser opens **http://localhost:5173**.
+
+Keep the black window open while you use EventControl, and close it to stop the app.
+
 ---
 
 ## 1. What is EventControl?

@@ -1,0 +1,3 @@
+# Keep Windows line endings inside the repo so the ZIP download works as-is.
+*.bat -text
+*.command text eol=lf
