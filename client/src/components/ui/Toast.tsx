@@ -67,8 +67,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             key={t.id}
             role={t.tone === 'error' ? 'alert' : 'status'}
             className={cn(
-              'pointer-events-auto relative flex items-start gap-3 overflow-hidden rounded-xl border bg-console-800/95 px-4 py-3 text-sm text-slate-100 shadow-xl backdrop-blur',
-              t.tone === 'error' ? 'border-red-500/30' : t.tone === 'warning' ? 'border-amber-500/30' : 'border-white/10',
+              'ec-card ec-card-raised pointer-events-auto relative flex items-start gap-3 overflow-hidden rounded-xl px-4 py-3 text-sm text-slate-100 shadow-xl',
+              t.tone === 'error' ? 'ring-1 ring-red-500/30' : t.tone === 'warning' ? 'ring-1 ring-amber-500/30' : '',
               t.leaving ? 'ec-toast-out' : 'ec-toast-in',
             )}
           >
@@ -79,7 +79,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             </button>
             {/* How long until it goes away. */}
             <span
-              className={cn('ec-toast-bar absolute bottom-0 left-0 h-0.5 w-full', t.tone === 'error' ? 'bg-red-400/60' : t.tone === 'warning' ? 'bg-amber-400/60' : 'bg-white/20')}
+              className={cn('ec-toast-bar absolute bottom-0 left-0 h-0.5 w-full', t.tone === 'error' ? 'bg-red-400/60' : t.tone === 'warning' ? 'bg-amber-400/60' : 'bg-[linear-gradient(90deg,var(--accent-400),var(--accent-2))] opacity-70')}
               style={{ animationDuration: `${t.ttl}ms` }}
             />
           </div>

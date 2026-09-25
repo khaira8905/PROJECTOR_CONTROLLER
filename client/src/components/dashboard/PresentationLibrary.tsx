@@ -1,23 +1,5 @@
 import { useMemo, useRef, useState, type DragEvent, type FormEvent } from 'react';
-import {
-  AlertTriangle,
-  Cloud,
-  CloudOff,
-  Download,
-  Eye,
-  ExternalLink,
-  FolderInput,
-  FolderOpen,
-  Loader2,
-  MoreHorizontal,
-  Pencil,
-  Play,
-  Plus,
-  RefreshCw,
-  Star,
-  Trash2,
-  UploadCloud,
-} from 'lucide-react';
+import { AlertTriangle, Cloud, CloudOff, Download, ExternalLink, Eye, Folder, FolderInput, FolderOpen, Loader2, MoreHorizontal, Pencil, Play, Plus, RefreshCw, Star, Trash2, UploadCloud } from 'lucide-react';
 import { Panel } from '../ui/Panel';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
@@ -152,7 +134,7 @@ export function PresentationLibrary(props: Props) {
       >
         {uploadProgress !== null && (
           <div className="mb-3 h-1 overflow-hidden rounded-full bg-white/5">
-            <div className="h-full bg-sky-400 transition-[width]" style={{ width: `${uploadProgress * 100}%` }} />
+            <div className="h-full bg-[linear-gradient(90deg,var(--accent-400),var(--accent-2))] transition-[width]" style={{ width: `${uploadProgress * 100}%` }} />
           </div>
         )}
         {sorted.length === 0 ? (
@@ -165,7 +147,7 @@ export function PresentationLibrary(props: Props) {
             <span className="mt-1 text-xs text-slate-600">PPT, PPTX, PDF, PNG, JPG, WEBP, MP4, WEBM, MOV</span>
           </button>
         ) : (
-          <ul className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 min-[1700px]:grid-cols-3">
+          <ul className="ec-stagger grid grid-cols-1 gap-3 sm:grid-cols-2 min-[1700px]:grid-cols-3">
             {sorted.map((m) => (
               <PresentationCard key={m.id} {...props} item={m} onStartRename={() => setRenaming(m)} onStartMove={() => setMoving(m)} />
             ))}
@@ -191,7 +173,7 @@ function FolderTab({ label, count, active, onClick }: { label: string; count: nu
       onClick={onClick}
       className={cn(
         'flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
-        active ? 'bg-sky-500/15 text-sky-200 ring-1 ring-sky-500/30' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200',
+        active ? 'bg-sky-500/20 text-white ring-1 ring-sky-400/35 ring-inset' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200',
       )}
     >
       {label}
@@ -241,8 +223,9 @@ function PresentationCard({
   else if (media.kind === 'presentation' && media.conversionStatus === 'pending') detail = 'Converting slides…';
 
   return (
-    <li className="group flex flex-col overflow-hidden rounded-xl border border-white/[0.06] bg-console-850 transition-[border-color,transform,box-shadow] duration-300 ease-out hover:-translate-y-0.5 hover:border-white/15 hover:shadow-xl hover:shadow-black/30">
-      <button onClick={() => onPreview(media)} className="relative flex aspect-video items-center justify-center overflow-hidden bg-black/40" title="Preview">
+    <li className="ec-card ec-card-raised ec-spot group flex flex-col overflow-hidden rounded-xl transition-[translate,box-shadow] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1 hover:shadow-[0_24px_40px_-20px_rgba(0,0,0,0.8)]">
+      <button onClick={() => onPreview(media)} className="relative flex aspect-video items-center justify-center overflow-hidden bg-black/50" title="Preview">
+        <span className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-1/3 bg-gradient-to-t from-black/50 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" aria-hidden />
         <span className="flex h-full w-full items-center justify-center transition-transform duration-500 ease-out group-hover:scale-[1.04]">
           <Thumbnail media={media} />
         </span>
@@ -266,7 +249,11 @@ function PresentationCard({
         {media.kind === 'presentation' && (media.conversionStatus === 'failed' || media.conversionStatus === 'unavailable') && (
           <p className="mt-1 rounded-md bg-amber-500/10 px-2 py-1 text-[11px] leading-snug text-amber-200">{media.conversionError}</p>
         )}
-        {media.folder && <p className="text-[11px] text-slate-600">📁 {media.folder}</p>}
+        {media.folder && (
+          <p className="flex items-center gap-1 text-[11px] text-slate-500">
+            <Folder size={11} /> {media.folder}
+          </p>
+        )}
         <div className="mt-auto flex items-center gap-0.5 pt-2">
           <Button size="icon-sm" variant="ghost" onClick={() => onPreview(media)} title="Preview" aria-label={`Preview ${media.name}`}>
             <Eye size={15} />
@@ -284,7 +271,7 @@ function PresentationCard({
             {menuOpen && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-                <div className="absolute right-0 bottom-full z-20 mb-1 w-52 overflow-hidden rounded-lg border border-white/10 bg-console-800 py-1 text-sm shadow-xl" onClick={() => setMenuOpen(false)}>
+                <div className="ec-card ec-card-raised ec-pop-in absolute right-0 bottom-full z-20 mb-1 w-52 origin-bottom-right overflow-hidden rounded-xl py-1 text-sm" onClick={() => setMenuOpen(false)}>
                   <MenuItem icon={<ExternalLink size={14} />} onClick={() => onOpen(media)}>
                     {media.kind === 'presentation' ? 'Open in PowerPoint' : 'Open in new tab'}
                   </MenuItem>

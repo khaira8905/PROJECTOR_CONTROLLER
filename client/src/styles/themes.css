@@ -1,0 +1,131 @@
+/*
+ * Operator console themes. Tailwind's `sky-*` (accent), `slate-*` (text) and `console-*`
+ * (surfaces) resolve to these variables, so switching `data-theme` on <html> recolours the
+ * whole console instantly. The audience display uses its own colours and is unaffected.
+ *
+ *   aurora  deep ink-violet with a lilac → orchid accent (default)
+ *   ember   warm graphite with a copper → gold accent
+ *   ocean   the original midnight blue with a sky → violet accent
+ */
+
+:root,
+:root[data-theme='aurora'] {
+  --accent-50: #f6f3ff;
+  --accent-100: #ece6ff;
+  --accent-200: #dcd1ff;
+  --accent-300: #c3b1ff;
+  --accent-400: #a88bff;
+  --accent-500: #8f67fb;
+  --accent-600: #7a4bef;
+  --accent-700: #6637d4;
+  --accent-800: #522cab;
+  --accent-900: #3f2583;
+  --accent-950: #26154f;
+  --accent-2: #e07bf5;
+  --on-accent: #ffffff;
+
+  --ink-50: #f8f7fc;
+  --ink-100: #efedf7;
+  --ink-200: #dfdcec;
+  --ink-300: #c3bfd6;
+  --ink-400: #9d98b4;
+  --ink-500: #777290;
+  --ink-600: #58536f;
+  --ink-700: #403c53;
+  --ink-800: #2a2739;
+  --ink-900: #1a1725;
+  --ink-950: #0e0c15;
+
+  --surface-950: #0a0810;
+  --surface-900: #110e19;
+  --surface-850: #15121f;
+  --surface-800: #1a1627;
+  --surface-700: #241f35;
+  --surface-600: #322b48;
+  --surface-500: #463d62;
+
+  --backdrop-a: rgba(143, 103, 251, 0.2);
+  --backdrop-b: rgba(224, 123, 245, 0.11);
+  --backdrop-c: rgba(56, 189, 248, 0.07);
+  color-scheme: dark;
+}
+
+:root[data-theme='ember'] {
+  --accent-50: #fff6ed;
+  --accent-100: #ffead3;
+  --accent-200: #ffd2a6;
+  --accent-300: #ffb06d;
+  --accent-400: #ff9142;
+  --accent-500: #f97a1f;
+  --accent-600: #e0620f;
+  --accent-700: #b94b0e;
+  --accent-800: #933c13;
+  --accent-900: #773413;
+  --accent-950: #401806;
+  --accent-2: #fcd34d;
+  --on-accent: #1d0f04;
+
+  --ink-50: #faf8f5;
+  --ink-100: #f3efea;
+  --ink-200: #e6e0d8;
+  --ink-300: #cdc5ba;
+  --ink-400: #a79e92;
+  --ink-500: #80776c;
+  --ink-600: #5f574e;
+  --ink-700: #463f38;
+  --ink-800: #2e2925;
+  --ink-900: #1d1a17;
+  --ink-950: #100e0c;
+
+  --surface-950: #0c0a08;
+  --surface-900: #13100d;
+  --surface-850: #181411;
+  --surface-800: #1e1915;
+  --surface-700: #29221d;
+  --surface-600: #382f28;
+  --surface-500: #4d4138;
+
+  --backdrop-a: rgba(249, 122, 31, 0.16);
+  --backdrop-b: rgba(252, 211, 77, 0.08);
+  --backdrop-c: rgba(239, 68, 68, 0.06);
+}
+
+:root[data-theme='ocean'] {
+  --accent-50: #f0f9ff;
+  --accent-100: #e0f2fe;
+  --accent-200: #bae6fd;
+  --accent-300: #7dd3fc;
+  --accent-400: #38bdf8;
+  --accent-500: #0ea5e9;
+  --accent-600: #0284c7;
+  --accent-700: #0369a1;
+  --accent-800: #075985;
+  --accent-900: #0c4a6e;
+  --accent-950: #082f49;
+  --accent-2: #8b5cf6;
+  --on-accent: #04111c;
+
+  --ink-50: #f8fafc;
+  --ink-100: #f1f5f9;
+  --ink-200: #e2e8f0;
+  --ink-300: #cbd5e1;
+  --ink-400: #94a3b8;
+  --ink-500: #64748b;
+  --ink-600: #475569;
+  --ink-700: #334155;
+  --ink-800: #1e293b;
+  --ink-900: #0f172a;
+  --ink-950: #020617;
+
+  --surface-950: #07090e;
+  --surface-900: #0b0f17;
+  --surface-850: #0f141e;
+  --surface-800: #141a26;
+  --surface-700: #1c2433;
+  --surface-600: #283246;
+  --surface-500: #3a4660;
+
+  --backdrop-a: rgba(14, 165, 233, 0.15);
+  --backdrop-b: rgba(139, 92, 246, 0.1);
+  --backdrop-c: rgba(16, 185, 129, 0.05);
+}

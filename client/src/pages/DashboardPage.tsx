@@ -5,6 +5,8 @@ import { BrandMark } from '../components/BrandMark';
 import { EventFormModal } from '../components/EventFormModal';
 import { useAuth } from '../components/AuthGate';
 import { Button } from '../components/ui/Button';
+import { Segmented } from '../components/ui/Segmented';
+import { ThemeSwitcher } from '../components/ThemeSwitcher';
 import { Panel } from '../components/ui/Panel';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { useToast } from '../components/ui/Toast';
@@ -223,7 +225,7 @@ export default function DashboardPage() {
 
   if (data.error || joinError) {
     return (
-      <div className="flex min-h-full flex-col items-center justify-center gap-4 p-8 text-center">
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-4 p-8 text-center">
         <h1 className="text-xl font-semibold text-white">Unable to open event</h1>
         <p className="text-slate-400">{data.error ?? joinError}</p>
         <Link to="/" className="text-sky-400 hover:underline">
@@ -234,17 +236,17 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="flex min-h-dvh flex-col">
       {/* ── Status bar ─────────────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-30 border-b border-white/[0.06] bg-console-950/90 backdrop-blur">
+      <header className="sticky top-0 z-30 bg-console-950/75 backdrop-blur-xl">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5">
           <Link to="/" className="flex items-center gap-2 rounded-lg p-1 text-slate-400 hover:text-white" aria-label="Back to events">
             <ArrowLeft size={18} />
             <BrandMark compact />
           </Link>
           <div className="min-w-0 flex-1 sm:flex-none">
-            <p className="text-[10px] font-bold tracking-[0.25em] text-slate-500 uppercase">Event control</p>
-            <h1 className="truncate text-base leading-tight font-semibold text-white">{event?.name ?? 'Loading…'}</h1>
+            <p className="font-mono text-[10px] font-medium tracking-[0.25em] text-slate-500 uppercase">Event control</p>
+            <h1 className="truncate font-display text-[17px] leading-tight font-semibold tracking-[-0.01em] text-white">{event?.name ?? 'Loading…'}</h1>
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
             <StatusPill ok={isLive} label={isLive ? `Display connected${presence!.displays > 1 ? ` (${presence!.displays})` : ''}` : 'Display offline'} icon={<MonitorPlay size={12} />} />
@@ -261,6 +263,7 @@ export default function DashboardPage() {
             {uploadProgress !== null && <StatusPill ok neutral label={`Uploading ${Math.round(uploadProgress * 100)}%`} icon={<UploadCloud size={12} />} />}
           </div>
           <div className="ml-auto flex items-center gap-1.5">
+            <ThemeSwitcher />
             <Button variant="ghost" size="sm" icon={<Keyboard size={15} />} onClick={() => setHelpOpen(true)} className="max-md:hidden">
               Shortcuts
             </Button>
@@ -275,6 +278,7 @@ export default function DashboardPage() {
             </Button>
           </div>
         </div>
+        <div className={cn('ec-hairline', onAir && isLive && 'ec-hairline-live')} />
         {!connected && !data.loading && (
           <div className="border-t border-amber-500/20 bg-amber-500/10 px-4 py-1.5 text-center text-xs text-amber-200">
             Connection to the EventControl server lost — reconnecting automatically. The display keeps showing the last content.
@@ -287,6 +291,7 @@ export default function DashboardPage() {
         <div className="flex flex-col gap-4 lg:col-span-8">
           <Panel bodyClassName="flex flex-col gap-4">
             <ProgramMonitor
+              live={isLive}
               display={display}
               timer={timer}
               timerRemaining={remaining}
@@ -402,17 +407,11 @@ export default function DashboardPage() {
           className="lg:col-span-6 xl:col-span-3 xl:max-h-[46rem]"
           bodyClassName="scroll-thin overflow-y-auto"
           title={
-            <span className="flex gap-1">
-              {(['screens', 'branding', 'schedule'] as SideTab[]).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setSideTab(t)}
-                  className={cn('rounded-md px-2 py-1 tracking-[0.12em] uppercase', sideTab === t ? 'bg-white/10 text-white' : 'text-slate-500 hover:text-slate-300')}
-                >
-                  {t}
-                </button>
-              ))}
-            </span>
+            <Segmented
+              value={sideTab}
+              onChange={setSideTab}
+              options={(['screens', 'branding', 'schedule'] as SideTab[]).map((t) => ({ value: t, label: t }))}
+            />
           }
         >
           {sideTab === 'screens' && (

@@ -27,13 +27,15 @@ export function ScreensPanel({ screens, display, media, onShow, onAddToFlow, onS
 
   return (
     <div className="flex flex-col gap-2">
-      <ul className="grid grid-cols-1 gap-1.5">
+      <ul className="ec-stagger grid grid-cols-1 gap-1.5">
         {screens.map((s) => (
           <li
             key={s.id}
             className={cn(
-              'group flex items-center gap-2 rounded-lg border px-2.5 py-2',
-              liveId === s.id ? 'border-red-500/40 bg-red-500/[0.08]' : 'border-white/[0.06] bg-console-850 hover:border-white/15',
+              'group flex items-center gap-2 rounded-lg border px-2.5 py-2 transition-[border-color,background-color,translate] duration-300 ease-out',
+              liveId === s.id
+                ? 'border-red-500/40 bg-gradient-to-r from-red-500/[0.14] to-red-500/[0.03]'
+                : 'border-white/[0.06] bg-white/[0.025] hover:translate-x-0.5 hover:border-white/15 hover:bg-white/[0.045]',
             )}
           >
             <ScreenDot style={s.style} />

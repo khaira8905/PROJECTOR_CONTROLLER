@@ -68,7 +68,7 @@ export function ShowFlowPanel({ flow, screens, currentId, nextId, onAir, onReord
             {menuOpen && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-                <div className="absolute right-0 z-20 mt-1 max-h-72 w-60 overflow-y-auto rounded-lg border border-white/10 bg-console-800 py-1 shadow-xl">
+                <div className="ec-card ec-card-raised ec-pop-in absolute right-0 z-20 mt-1 max-h-72 w-60 origin-top-right overflow-y-auto rounded-xl py-1">
                   <p className="px-3 py-1.5 text-[10px] font-semibold tracking-widest text-slate-500 uppercase">Add a screen to the flow</p>
                   {screens.map((s) => (
                     <button
@@ -91,7 +91,7 @@ export function ShowFlowPanel({ flow, screens, currentId, nextId, onAir, onReord
     >
       {flow.length === 0 ? (
         <div className="flex h-full min-h-40 flex-col items-center justify-center px-4 text-center text-sm text-slate-500">
-          <ListVideo size={28} className="mb-2 text-slate-600" />
+          <ListVideo size={30} className="ec-bob mb-3 text-sky-400/60" />
           <p>Build the running order of your event.</p>
           <p>
             Use <b className="text-slate-300">+ Flow</b> on a presentation, or <b className="text-slate-300">+ Screen</b> above.
@@ -164,12 +164,18 @@ function FlowRow({
       data-flow-id={item.id}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
-        'group flex items-center gap-2 rounded-lg border px-2 py-2 transition-[background-color,border-color,box-shadow] duration-300',
-        isCurrent ? (onAir ? 'border-red-500/40 bg-red-500/[0.08]' : 'border-sky-500/40 bg-sky-500/[0.07]') : 'border-transparent hover:bg-white/[0.03]',
+        'group relative flex items-center gap-2 overflow-hidden rounded-lg border px-2 py-2 transition-[background-color,border-color,box-shadow] duration-300',
+        isCurrent
+          ? onAir
+            ? 'border-red-500/40 bg-gradient-to-r from-red-500/[0.14] to-red-500/[0.03] shadow-[0_0_24px_-10px_rgba(239,68,68,0.6)]'
+            : 'border-sky-500/40 bg-gradient-to-r from-sky-500/[0.14] to-sky-500/[0.03]'
+          : 'border-transparent hover:border-white/[0.06] hover:bg-white/[0.035]',
         isDragging && 'z-10 border-sky-400/50 bg-console-700 shadow-xl',
       )}
       onDoubleClick={onShow}
     >
+      {/* A bar on the left edge marks the item on the display. */}
+      {isCurrent && <span className={cn('ec-rise-in absolute inset-y-1.5 left-0 w-[3px] rounded-full', onAir ? 'bg-red-400' : 'bg-sky-400')} aria-hidden />}
       <button
         ref={setActivatorNodeRef}
         {...attributes}

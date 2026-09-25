@@ -8,6 +8,7 @@ import { TextInput } from '../ui/Field';
 import { formatClock, parseClock } from '../../lib/format';
 import { RollingClock } from '../display/motion';
 import { timerTone } from '../../lib/timer';
+import { Switch } from '../ui/Switch';
 import { cn } from '../../lib/cn';
 import type { ControlCommand, TimerSnapshot } from '../../types';
 
@@ -75,7 +76,7 @@ export function TimerPanel({ timer, remaining, send, className }: TimerPanelProp
       <div
         className={cn(
           'rounded-xl py-3 text-center font-mono text-6xl font-bold tracking-tight tabular-nums transition-colors',
-          tone === 'finished' ? 'animate-pulse-soft bg-red-500/10 text-red-400' : tone === 'warning' ? 'bg-amber-400/10 text-amber-300' : tone === 'idle' ? 'text-slate-300' : 'text-white',
+          tone === 'finished' ? 'animate-pulse-soft bg-red-500/10 text-red-400' : tone === 'warning' ? 'bg-amber-400/10 text-amber-300' : tone === 'idle' ? 'text-slate-300' : 'text-white [text-shadow:0_0_28px_color-mix(in_oklab,var(--accent-400)_45%,transparent)]',
         )}
         aria-live="off"
       >
@@ -83,7 +84,7 @@ export function TimerPanel({ timer, remaining, send, className }: TimerPanelProp
       </div>
       <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/5">
         <div
-          className={cn('h-full rounded-full transition-[width,background-color] duration-300 ease-linear', tone === 'warning' ? 'bg-amber-400' : tone === 'finished' ? 'bg-red-500' : 'bg-sky-400')}
+          className={cn('h-full rounded-full transition-[width,background-color] duration-300 ease-linear', tone === 'warning' ? 'bg-amber-400' : tone === 'finished' ? 'bg-red-500' : 'bg-[linear-gradient(90deg,var(--accent-400),var(--accent-2))]')}
           style={{ width: `${progress * 100}%` }}
         />
       </div>
@@ -113,18 +114,10 @@ export function TimerPanel({ timer, remaining, send, className }: TimerPanelProp
         </Button>
       </div>
 
-      <label className="mt-3 flex cursor-pointer items-center justify-between rounded-lg bg-console-850 px-3 py-2 text-sm">
-        <span className="text-slate-300">Show timer on display</span>
-        <input
-          type="checkbox"
-          className="h-4 w-4 accent-sky-400"
-          checked={timer.showOnDisplay}
-          onChange={(e) => send({ type: 'timer-configure', showOnDisplay: e.target.checked })}
-        />
-      </label>
+      <Switch className="mt-3" label="Show timer on display" checked={timer.showOnDisplay} onChange={(v) => send({ type: 'timer-configure', showOnDisplay: v })} />
 
       {editing && (
-        <form onSubmit={save} className="mt-3 space-y-3 rounded-lg border border-white/[0.06] bg-console-850 p-3">
+        <form onSubmit={save} className="ec-rise-in mt-3 space-y-3 rounded-lg bg-white/[0.03] p-3 ring-1 ring-white/[0.06] ring-inset">
           <div className="grid grid-cols-2 gap-2">
             <label className="text-xs text-slate-400">
               Duration

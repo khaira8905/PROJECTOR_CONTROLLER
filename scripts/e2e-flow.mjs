@@ -55,7 +55,7 @@ try {
 
   console.log(`Event ${event.id}`);
   await op.goto(`${BASE}/events/${event.id}`);
-  await op.getByText('Current output').waitFor();
+  await op.getByText('Program output').waitFor();
   ok('1-2. dashboard opened');
 
   await op.locator('input[type=file]').setInputFiles([path.join(assets, 'Welcome.png'), path.join(assets, 'Speaker Presentation.pdf')]);

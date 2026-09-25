@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CalendarDays, Film, ListVideo, MapPin, MonitorPlay, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ArrowRight, Film, ListVideo, MapPin, MonitorPlay, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react';
 import { BrandMark } from '../components/BrandMark';
+import { ThemeSwitcher } from '../components/ThemeSwitcher';
 import { EventFormModal } from '../components/EventFormModal';
 import { Button } from '../components/ui/Button';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { Badge } from '../components/ui/Badge';
 import { useToast } from '../components/ui/Toast';
 import { api } from '../services/api';
-import { formatEventDate, todayIso } from '../lib/format';
+import { todayIso } from '../lib/format';
 import type { EventInput, EventSummary } from '../types';
 
 export default function EventsPage() {
@@ -52,9 +53,11 @@ export default function EventsPage() {
 
   return (
     <div className="min-h-full">
-      <header className="sticky top-0 z-10 border-b border-white/[0.06] bg-console-950/85 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
+      <header className="sticky top-0 z-20 bg-console-950/70 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
           <BrandMark />
+          <div className="flex items-center gap-1.5">
+          <ThemeSwitcher />
           <Button
             variant="primary"
             icon={<Plus size={16} />}
@@ -65,13 +68,28 @@ export default function EventsPage() {
           >
             Create Event
           </Button>
+          </div>
         </div>
+        <div className="ec-hairline" />
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-        <div className="ec-panel-in mb-8">
-          <h1 className="font-display text-4xl font-bold tracking-tight text-white">Events</h1>
-          <p className="mt-1.5 text-slate-400">Open an event to run its presentations, projector display and timer.</p>
+        <div className="ec-panel-in mb-10">
+          <span className="inline-flex items-center gap-2 rounded-full bg-white/[0.04] px-3 py-1 font-mono text-[11px] tracking-[0.2em] text-slate-400 uppercase ring-1 ring-white/[0.08] ring-inset">
+            <span className="ec-dot-live h-1.5 w-1.5 rounded-full bg-emerald-400 text-emerald-400/60" />
+            Control room
+          </span>
+          <h1 className="mt-4 font-display text-5xl leading-[1.02] font-bold tracking-[-0.03em] text-white sm:text-6xl">
+            Your <span className="ec-gradient-text">events</span>
+          </h1>
+          <p className="mt-3 max-w-xl text-[15px] text-slate-400">Open an event to run its presentations, projector display and timer — everything the audience sees, from one console.</p>
+          {events && events.length > 0 && (
+            <div className="mt-6 flex flex-wrap gap-2">
+              <Stat value={upcoming.length} label="upcoming" />
+              <Stat value={past.length} label="past" />
+              <Stat value={events.reduce((n, e) => n + (e.counts?.media ?? 0), 0)} label="files" />
+            </div>
+          )}
         </div>
 
         {loadError && (
@@ -86,15 +104,18 @@ export default function EventsPage() {
         {events === null && !loadError && (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {[0, 1, 2].map((i) => (
-              <div key={i} className="h-48 animate-pulse rounded-2xl bg-console-900" />
+              <div key={i} className="ec-card h-52 animate-pulse rounded-2xl" style={{ animationDelay: `${i * 150}ms` }} />
             ))}
           </div>
         )}
 
         {events && events.length === 0 && (
-          <div className="flex flex-col items-center rounded-2xl border border-dashed border-white/10 px-6 py-20 text-center">
-            <MonitorPlay size={40} className="text-slate-600" />
-            <h2 className="mt-4 text-lg font-semibold text-white">No events yet</h2>
+          <div className="ec-card ec-panel-in flex flex-col items-center rounded-3xl px-6 py-20 text-center">
+            <span className="ec-bob relative flex h-20 w-20 items-center justify-center rounded-2xl bg-sky-500/10 text-sky-300 ring-1 ring-sky-400/25 ring-inset">
+              <span className="absolute inset-0 rounded-2xl bg-sky-500/20 blur-2xl" />
+              <MonitorPlay size={36} className="relative" />
+            </span>
+            <h2 className="mt-6 font-display text-2xl font-semibold text-white">No events yet</h2>
             <p className="mt-1 max-w-sm text-sm text-slate-400">Create your first event, upload slides and videos, and control the projector from one place.</p>
             <Button variant="primary" className="mt-6" icon={<Plus size={16} />} onClick={() => setFormOpen(true)}>
               Create Event
@@ -144,8 +165,12 @@ function EventGrid({
 }) {
   return (
     <section className="mb-10">
-      <h2 className="mb-3 text-xs font-semibold tracking-[0.14em] text-slate-500 uppercase">{title}</h2>
-      <div className="ec-stagger grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <h2 className="mb-4 flex items-center gap-3 font-mono text-[11px] font-medium tracking-[0.22em] text-slate-500 uppercase">
+        {title}
+        <span className="text-slate-600">{String(events.length).padStart(2, '0')}</span>
+        <span className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />
+      </h2>
+      <div className="ec-stagger grid gap-5 md:grid-cols-2 lg:grid-cols-3">
         {events.map((event) => (
           <EventCard key={event.id} event={event} onEdit={() => onEdit(event)} onDelete={() => onDelete(event)} />
         ))}
@@ -159,26 +184,47 @@ function EventCard({ event, onEdit, onDelete }: { event: EventSummary; onEdit: (
   const [menuOpen, setMenuOpen] = useState(false);
   const isToday = event.date === todayIso();
 
+  const date = new Date(`${event.date}T00:00:00`);
+  const month = date.toLocaleDateString(undefined, { month: 'short' });
+  const weekday = date.toLocaleDateString(undefined, { weekday: 'long' });
+  const open = () => navigate(`/events/${event.id}`);
+
   return (
-    <article className="group relative flex flex-col rounded-2xl border border-white/[0.06] bg-console-900 p-5 transition-[border-color,transform,box-shadow] duration-300 ease-out hover:-translate-y-1 hover:border-sky-500/30 hover:shadow-2xl hover:shadow-sky-950/40">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2 text-sm text-slate-400">
-          <CalendarDays size={15} />
-          {formatEventDate(event.date)}
-          {isToday && (
-            <Badge tone="live" dot>
-              Today
-            </Badge>
+    <article
+      onClick={(e) => {
+        if (!(e.target as HTMLElement).closest('button, a')) open();
+      }}
+      className="ec-card ec-spot group flex cursor-pointer flex-col rounded-2xl p-5 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1.5"
+    >
+      <div className="flex items-start gap-4">
+        <div className="flex h-16 w-14 shrink-0 flex-col items-center justify-center rounded-xl bg-white/[0.04] ring-1 ring-white/[0.08] ring-inset transition-colors duration-300 group-hover:bg-sky-500/15 group-hover:ring-sky-400/30">
+          <span className="font-mono text-[10px] font-semibold tracking-[0.18em] text-sky-300 uppercase">{month}</span>
+          <span className="font-display text-2xl leading-none font-bold text-white">{date.getDate()}</span>
+        </div>
+        <div className="min-w-0 flex-1 pt-0.5">
+          <div className="flex items-center gap-2 text-xs text-slate-500">
+            {weekday}
+            {isToday && (
+              <Badge tone="live" dot>
+                Today
+              </Badge>
+            )}
+          </div>
+          <h3 className="mt-1 font-display text-xl leading-snug font-semibold tracking-[-0.01em] text-white">{event.name}</h3>
+          {event.venue && (
+            <p className="mt-1 flex items-center gap-1.5 text-sm text-slate-400">
+              <MapPin size={13} className="shrink-0" /> <span className="truncate">{event.venue}</span>
+            </p>
           )}
         </div>
-        <div className="relative">
+        <div className="relative -mt-1 -mr-1">
           <Button variant="ghost" size="icon-sm" aria-label="Event actions" onClick={() => setMenuOpen((o) => !o)}>
             <MoreHorizontal size={16} />
           </Button>
           {menuOpen && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-              <div className="absolute right-0 z-20 mt-1 w-36 overflow-hidden rounded-lg border border-white/10 bg-console-800 py-1 shadow-xl">
+              <div className="ec-card ec-card-raised ec-pop-in absolute right-0 z-20 mt-1 w-36 origin-top-right overflow-hidden rounded-xl py-1">
                 <button className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-white/5" onClick={() => (setMenuOpen(false), onEdit())}>
                   <Pencil size={14} /> Edit
                 </button>
@@ -190,26 +236,30 @@ function EventCard({ event, onEdit, onDelete }: { event: EventSummary; onEdit: (
           )}
         </div>
       </div>
-      <h3 className="mt-3 text-lg font-semibold text-white">{event.name}</h3>
-      {event.venue && (
-        <p className="mt-1 flex items-center gap-1.5 text-sm text-slate-400">
-          <MapPin size={14} /> {event.venue}
-        </p>
-      )}
-      <p className="mt-2 line-clamp-2 min-h-10 text-sm text-slate-500">{event.description || 'No description.'}</p>
-      <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/[0.06] pt-4">
+      <p className="mt-4 line-clamp-2 min-h-10 text-sm leading-relaxed text-slate-400">{event.description || 'No description.'}</p>
+      <div className="mt-5 flex items-center justify-between gap-3 border-t border-white/[0.06] pt-4">
         <div className="flex gap-3 text-xs text-slate-500">
           <span className="flex items-center gap-1">
-            <Film size={13} /> {event.counts?.media ?? 0} media
+            <Film size={13} /> {event.counts?.media ?? 0} files
           </span>
           <span className="flex items-center gap-1">
-            <ListVideo size={13} /> {event.counts?.queueItems ?? 0} in queue
+            <ListVideo size={13} /> {event.counts?.queueItems ?? 0} in flow
           </span>
         </div>
-        <Button variant="primary" size="sm" onClick={() => navigate(`/events/${event.id}`)}>
-          Open Event
+        <Button variant="primary" size="sm" onClick={open} className="pr-2.5">
+          Open
+          <ArrowRight size={15} className="transition-transform duration-300 group-hover:translate-x-0.5 group-hover/btn:translate-x-1" />
         </Button>
       </div>
     </article>
+  );
+}
+
+function Stat({ value, label }: { value: number; label: string }) {
+  return (
+    <span className="inline-flex items-baseline gap-1.5 rounded-lg bg-white/[0.03] px-3 py-1.5 ring-1 ring-white/[0.06] ring-inset">
+      <span className="font-display text-lg font-semibold text-white tabular-nums">{value}</span>
+      <span className="text-xs text-slate-500">{label}</span>
+    </span>
   );
 }

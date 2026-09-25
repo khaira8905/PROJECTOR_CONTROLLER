@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import './styles/themes.css';
 
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -9,13 +10,37 @@
   --font-display: 'Bricolage Grotesque Variable', 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
   --font-serif: 'Instrument Serif', Georgia, 'Times New Roman', serif;
 
-  --color-console-950: #07090e;
-  --color-console-900: #0b0f17;
-  --color-console-850: #0f141e;
-  --color-console-800: #141a26;
-  --color-console-700: #1c2433;
-  --color-console-600: #283246;
-  --color-console-500: #3a4660;
+  /* Operator console colours come from the active theme (see styles/themes.css):
+     'sky' is the accent, 'slate' the text neutrals, 'console' the surfaces. */
+  --color-sky-50: var(--accent-50);
+  --color-sky-100: var(--accent-100);
+  --color-sky-200: var(--accent-200);
+  --color-sky-300: var(--accent-300);
+  --color-sky-400: var(--accent-400);
+  --color-sky-500: var(--accent-500);
+  --color-sky-600: var(--accent-600);
+  --color-sky-700: var(--accent-700);
+  --color-sky-800: var(--accent-800);
+  --color-sky-900: var(--accent-900);
+  --color-sky-950: var(--accent-950);
+  --color-slate-50: var(--ink-50);
+  --color-slate-100: var(--ink-100);
+  --color-slate-200: var(--ink-200);
+  --color-slate-300: var(--ink-300);
+  --color-slate-400: var(--ink-400);
+  --color-slate-500: var(--ink-500);
+  --color-slate-600: var(--ink-600);
+  --color-slate-700: var(--ink-700);
+  --color-slate-800: var(--ink-800);
+  --color-slate-900: var(--ink-900);
+  --color-slate-950: var(--ink-950);
+  --color-console-950: var(--surface-950);
+  --color-console-900: var(--surface-900);
+  --color-console-850: var(--surface-850);
+  --color-console-800: var(--surface-800);
+  --color-console-700: var(--surface-700);
+  --color-console-600: var(--surface-600);
+  --color-console-500: var(--surface-500);
 }
 
 html,

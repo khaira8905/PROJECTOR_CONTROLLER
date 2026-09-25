@@ -83,11 +83,24 @@ export function QuickActions({ display, disabled, onResume, onPleaseWait, onTech
   );
 }
 
+// Idle: a tinted glass tile. Live: lit from within, like a key on a broadcast desk.
 const tones = {
-  green: { idle: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/20', on: 'border-emerald-300 bg-emerald-500 text-emerald-950' },
-  yellow: { idle: 'border-yellow-400/30 bg-yellow-400/10 text-yellow-100 hover:bg-yellow-400/20', on: 'border-yellow-200 bg-yellow-400 text-yellow-950' },
-  orange: { idle: 'border-orange-500/30 bg-orange-500/10 text-orange-200 hover:bg-orange-500/20', on: 'border-orange-300 bg-orange-500 text-orange-950' },
-  red: { idle: 'border-red-500/40 bg-red-600/15 text-red-200 hover:bg-red-600/25', on: 'border-red-400 bg-red-600 text-white shadow-lg shadow-red-900/40' },
+  green: {
+    idle: 'border-emerald-500/25 bg-gradient-to-b from-emerald-500/15 to-emerald-500/[0.04] text-emerald-200 hover:border-emerald-400/45',
+    on: 'border-emerald-200/70 bg-[linear-gradient(160deg,#4ade80,#059669)] text-emerald-950 shadow-[0_10px_28px_-10px_rgba(16,185,129,0.8),inset_0_1px_0_rgba(255,255,255,0.35)]',
+  },
+  yellow: {
+    idle: 'border-yellow-400/25 bg-gradient-to-b from-yellow-400/15 to-yellow-400/[0.04] text-yellow-100 hover:border-yellow-300/45',
+    on: 'border-yellow-100/70 bg-[linear-gradient(160deg,#fde047,#eab308)] text-yellow-950 shadow-[0_10px_28px_-10px_rgba(234,179,8,0.8),inset_0_1px_0_rgba(255,255,255,0.4)]',
+  },
+  orange: {
+    idle: 'border-orange-500/25 bg-gradient-to-b from-orange-500/15 to-orange-500/[0.04] text-orange-200 hover:border-orange-400/45',
+    on: 'border-orange-200/70 bg-[linear-gradient(160deg,#fb923c,#ea580c)] text-orange-950 shadow-[0_10px_28px_-10px_rgba(234,88,12,0.8),inset_0_1px_0_rgba(255,255,255,0.35)]',
+  },
+  red: {
+    idle: 'border-red-500/30 bg-gradient-to-b from-red-600/20 to-red-600/[0.05] text-red-200 hover:border-red-400/50',
+    on: 'border-red-300/70 bg-[linear-gradient(160deg,#f87171,#b91c1c)] text-white shadow-[0_10px_28px_-10px_rgba(220,38,38,0.85),inset_0_1px_0_rgba(255,255,255,0.3)]',
+  },
 };
 
 function Action({
@@ -115,7 +128,7 @@ function Action({
       disabled={disabled}
       aria-pressed={active}
       className={cn(
-        'relative flex h-20 flex-col items-center justify-center gap-1.5 rounded-xl border px-2 text-center text-[12px] leading-tight font-bold tracking-wide uppercase transition-[background-color,border-color,color,box-shadow,transform] duration-200 ease-out active:scale-[0.97] disabled:opacity-40',
+        'relative flex h-20 flex-col items-center justify-center gap-1.5 rounded-xl border px-2 text-center text-[12px] leading-tight font-bold tracking-wide uppercase transition-[border-color,color,box-shadow,transform,translate] duration-200 ease-out hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.97] disabled:opacity-40',
         active ? tones[tone].on : tones[tone].idle,
         armed && 'ec-armed border-red-400 bg-red-600/40 text-white shadow-[0_0_0_3px_rgba(239,68,68,0.25)]',
       )}
@@ -125,6 +138,7 @@ function Action({
         {icon}
       </span>
       <span>{label}</span>
+      {active && <span className="ec-dot-live absolute top-2.5 left-2.5 h-1.5 w-1.5 rounded-full bg-current" aria-hidden />}
       <Kbd className="absolute top-1.5 right-1.5 border-current/30 bg-black/10 text-current opacity-70">{hint}</Kbd>
     </button>
   );

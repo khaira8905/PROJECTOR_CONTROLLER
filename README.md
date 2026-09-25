@@ -39,7 +39,8 @@ Keep the black window open while you use EventControl, and close it to stop the 
 | **Timer** | A server-authoritative countdown (start/pause/reset, ±1 min, warning threshold, show/hide on display). It is shown large on special screens and as a corner badge over slides, and stays in sync on every screen. |
 | **Status bar** | Display connected / offline, server, cloud storage (synced / syncing / offline), upload progress. |
 | **Schedule** | A time-based run sheet (NOW / NEXT) as an operator reference. |
-| **Motion** | Everything on the projector cross-fades: no flash of black between items, slides turn with a soft directional drift, and the logo overlay and corner timer fade in and out. Headlines rise word by word and underlines draw themselves in. The console has small touches too: toasts that count down, a shaking Black button when it's armed, and a LIVE equaliser. People who turn on "reduce motion" in their OS get a calm, static version. |
+| **Themes** | Three console colour themes: **Aurora** (ink violet, the default), **Ember** (warm graphite and copper) and **Ocean** (the original midnight blue). Pick one with the **Theme** button in the top bar; the choice is remembered in that browser. The theme only changes the operator console, never what the audience sees. |
+| **Motion** | Everything on the projector cross-fades: no flash of black between items, slides turn with a soft directional drift, and the logo overlay and corner timer fade in and out. Headlines rise word by word and underlines draw themselves in. The console has touches of its own: a soft light that follows the pointer across cards, a red on-air frame around the program monitor while the projector is live, sliding tabs, pages that fade in, toasts that count down, a shaking Black button when it's armed, and a LIVE equaliser. People who turn on "reduce motion" in their OS get a calm, static version. |
 | **Reliability** | The display keeps the last content if the network drops, reconnects on its own and restores the exact state (slide, screen, overlay, timer). State survives server restarts. Files are always served from a local copy, so everything works offline. |
 
 ### Keyboard shortcuts
@@ -88,6 +89,7 @@ event-control/
 │   │   │                ScreenScene (special screens + their motifs), motion (crossfades, rolling digits), Confetti
 │   │   └── AuthGate     first-run password / sign-in
 │   ├── styles/motion.css  every animation, eased by hand, with a reduced-motion fallback
+│   ├── styles/themes.css  console colour themes (Aurora, Ember, Ocean); console.css: glass cards, spotlight, tally
 │   ├── hooks/           useEventSocket (realtime state), useTimerRemaining, useKeyboardShortcuts, useSystemStatus
 │   └── lib/             pdf.js loader & thumbnails, flow helpers, formatting
 ├── server/src/

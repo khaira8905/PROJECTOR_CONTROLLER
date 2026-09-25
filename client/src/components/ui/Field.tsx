@@ -2,7 +2,7 @@ import type { InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from 'rea
 import { cn } from '../../lib/cn';
 
 export const inputClass =
-  'w-full rounded-lg border border-white/10 bg-console-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/20';
+  'w-full rounded-lg border border-white/10 bg-console-950/80 px-3 py-2 text-sm text-slate-100 transition-[border-color,box-shadow] duration-200 placeholder:text-slate-500 hover:border-white/20 focus:border-sky-400 focus:outline-none focus:ring-4 focus:ring-sky-400/15';
 
 export function Field({ label, hint, children, className }: { label: string; hint?: ReactNode; children: ReactNode; className?: string }) {
   return (

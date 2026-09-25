@@ -8,7 +8,7 @@ import { ScreenDot } from './ShowFlowPanel';
 export function UpNextCard({ current, next, onEditNotes }: { current: QueueItem | null; next: QueueItem | null; onEditNotes: (item: QueueItem) => void }) {
   return (
     <div className="grid gap-3 md:grid-cols-2">
-      <div className="rounded-xl border border-white/[0.06] bg-console-850 p-4">
+      <div className="group rounded-xl bg-gradient-to-br from-sky-500/[0.09] to-transparent p-4 ring-1 ring-sky-400/15 ring-inset">
         <p className="text-[11px] font-semibold tracking-[0.14em] text-sky-400 uppercase">Up next</p>
         {next ? (
           <div key={next.id} className="ec-fade-up mt-2 flex items-center gap-3" style={{ animationDuration: '450ms' }}>
@@ -17,14 +17,14 @@ export function UpNextCard({ current, next, onEditNotes }: { current: QueueItem 
               <p className="truncate font-semibold text-white">{itemLabel(next)}</p>
               <p className="truncate text-xs text-slate-500">{itemDetail(next)}</p>
             </div>
-            <ArrowRight size={16} className="ml-auto shrink-0 text-slate-600" />
+            <ArrowRight size={16} className="ec-chevron ml-auto shrink-0 text-sky-400/70" />
           </div>
         ) : (
           <p className="mt-2 text-sm text-slate-500">{current ? 'End of the show flow' : 'Show flow is empty'}</p>
         )}
       </div>
 
-      <div className="rounded-xl border border-amber-500/15 bg-amber-500/[0.04] p-4">
+      <div className="rounded-xl bg-gradient-to-br from-amber-500/[0.09] to-transparent p-4 ring-1 ring-amber-400/15 ring-inset">
         <div className="flex items-center justify-between">
           <p className="flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.14em] text-amber-300 uppercase">
             <StickyNote size={12} /> Speaker notes

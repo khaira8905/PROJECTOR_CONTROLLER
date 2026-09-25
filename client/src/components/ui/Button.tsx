@@ -5,8 +5,8 @@ type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'success' | 'warni
 type Size = 'sm' | 'md' | 'lg' | 'icon' | 'icon-sm';
 
 const variants: Record<Variant, string> = {
-  primary: 'bg-sky-500 text-slate-950 hover:bg-sky-400 active:bg-sky-600 font-semibold',
-  secondary: 'bg-console-700 text-slate-100 hover:bg-console-600 active:bg-console-500 border border-white/5',
+  primary: 'ec-btn-primary font-semibold',
+  secondary: 'bg-console-700/80 text-slate-100 hover:bg-console-600 active:bg-console-500 border border-white/[0.07] shadow-[inset_0_1px_0_rgb(255_255_255/0.04)]',
   ghost: 'text-slate-300 hover:bg-white/5 hover:text-white active:bg-white/10',
   danger: 'bg-red-600 text-white hover:bg-red-500 active:bg-red-700 font-semibold',
   success: 'bg-emerald-500 text-emerald-950 hover:bg-emerald-400 active:bg-emerald-600 font-semibold',
@@ -38,7 +38,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       className={cn(
         'group/btn inline-flex shrink-0 items-center justify-center whitespace-nowrap select-none',
         // A small, quick press: feels physical without slowing anything down.
-        'transition-[background-color,color,border-color,box-shadow,transform] duration-150 ease-out active:scale-[0.97]',
+        'transition-[background-color,color,border-color,box-shadow,transform,filter] duration-150 ease-out active:scale-[0.97]',
         'disabled:pointer-events-none disabled:opacity-40',
         variants[variant],
         sizes[size],

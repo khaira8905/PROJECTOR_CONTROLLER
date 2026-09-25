@@ -12,6 +12,8 @@ import { revealWithin } from '../../lib/scroll';
 import type { DisplaySnapshot, TimerSnapshot } from '../../types';
 
 interface ProgramMonitorProps {
+  /** A display is connected, so whatever is programmed is in front of the audience. */
+  live?: boolean;
   display: DisplaySnapshot | null;
   timer: TimerSnapshot | null;
   timerRemaining: number;
@@ -36,7 +38,7 @@ const modeBadge = {
 const pad = (n: number) => String(n).padStart(2, '0');
 
 /** A live, scaled copy of exactly what the projector is showing, plus content controls. */
-export function ProgramMonitor({ display, timer, timerRemaining, videoCommand, jumpRef, onVideo, onGoToPage, onOpenExternally }: ProgramMonitorProps) {
+export function ProgramMonitor({ live, display, timer, timerRemaining, videoCommand, jumpRef, onVideo, onGoToPage, onOpenExternally }: ProgramMonitorProps) {
   const media = display?.media ?? null;
   const paged = !!media?.pdfUrl && !!media.pageCount;
   const word = pageWord(media);
@@ -50,13 +52,17 @@ export function ProgramMonitor({ display, timer, timerRemaining, videoCommand, j
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2">
-        <span className="text-xs font-semibold tracking-[0.14em] text-slate-400 uppercase">Current output</span>
+        <span className="flex items-center gap-2 font-display text-[13px] font-semibold tracking-[0.06em] text-slate-200 uppercase">
+          <span className={cn('h-2 w-2 rounded-full', live && display?.mode !== 'black' ? 'ec-dot-live bg-red-500 text-red-500/60' : 'bg-slate-600')} aria-hidden />
+          Program output
+        </span>
         {display && modeBadge[display.mode]}
         {display?.adHocMediaId && display.mode === 'media' && <Badge tone="warning">From library</Badge>}
         {display?.overlay?.visible && <Badge tone="violet">Logo overlay</Badge>}
       </div>
 
-      <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-black ring-1 ring-white/10">
+      <div className={cn('relative aspect-video w-full rounded-xl bg-black ring-1 ring-white/10', live && display && display.mode !== 'black' && 'ec-onair')}>
+        <div className="absolute inset-0 overflow-hidden rounded-xl">
         {display ? (
           <DisplayStage display={display} timer={timer} timerRemaining={timerRemaining} variant="preview" videoCommand={videoCommand} />
         ) : (
@@ -67,10 +73,15 @@ export function ProgramMonitor({ display, timer, timerRemaining, videoCommand, j
             <span className="rounded-md border border-white/10 px-3 py-1 font-mono text-xs tracking-widest text-slate-500">BLACK</span>
           </div>
         )}
+        </div>
+        {/* Viewfinder corners: frame the picture like a broadcast monitor. */}
+        {(['top-2 left-2 border-t border-l', 'top-2 right-2 border-t border-r', 'bottom-2 left-2 border-b border-l', 'bottom-2 right-2 border-b border-r'] as const).map((c) => (
+          <span key={c} className={cn('pointer-events-none absolute h-4 w-4 border-white/35', c)} aria-hidden />
+        ))}
       </div>
 
       {/* "Speaker 1 — Slide 07 / 24" and content-specific controls. */}
-      <div className="flex min-h-12 flex-wrap items-center justify-between gap-3 rounded-xl bg-console-850 px-3 py-2">
+      <div className="flex min-h-12 flex-wrap items-center justify-between gap-3 rounded-xl bg-white/[0.03] px-3 py-2 ring-1 ring-white/[0.05] ring-inset">
         <div className="flex min-w-0 items-center gap-3">
           {media && display?.mode === 'media' && <MediaIcon kind={media.kind} size={15} />}
           <p className="min-w-0 truncate text-base font-semibold text-white">

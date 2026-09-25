@@ -40,19 +40,19 @@ export function Modal({ open, onClose, title, children, footer, size = 'md' }: M
   if (!open) return null;
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="ec-backdrop-in absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="ec-backdrop-in absolute inset-0 bg-console-950/70 backdrop-blur-sm" onClick={onClose} />
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         tabIndex={-1}
         className={cn(
-          'ec-modal-in relative flex max-h-[90vh] w-full flex-col rounded-2xl border border-white/10 bg-console-850 shadow-2xl outline-none',
+          'ec-card ec-card-raised ec-modal-in relative flex max-h-[90vh] w-full flex-col rounded-2xl shadow-2xl outline-none',
           size === 'sm' ? 'max-w-md' : size === 'lg' ? 'max-w-3xl' : 'max-w-xl',
         )}
       >
         <header className="flex items-center justify-between border-b border-white/[0.06] px-5 py-4">
-          <h2 className="text-base font-semibold text-white">{title}</h2>
+          <h2 className="font-display text-lg font-semibold tracking-[-0.01em] text-white">{title}</h2>
           <button onClick={onClose} className="rounded-md p-1 text-slate-400 hover:bg-white/5 hover:text-white" aria-label="Close">
             <X size={18} />
           </button>

@@ -63,7 +63,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
 }
 
 function Centered({ children }: { children: ReactNode }) {
-  return <div className="flex min-h-full flex-col items-center justify-center p-6 text-center">{children}</div>;
+  return <div className="flex min-h-dvh flex-col items-center justify-center p-6 text-center">{children}</div>;
 }
 
 function SignIn({ status, onDone }: { status: AuthStatus; onDone: () => Promise<void> }) {
@@ -100,7 +100,7 @@ function SignIn({ status, onDone }: { status: AuthStatus; onDone: () => Promise<
 
   return (
     <Centered>
-      <form onSubmit={submit} className="ec-modal-in w-full max-w-sm rounded-2xl border border-white/[0.06] bg-console-900 p-6 text-left shadow-2xl">
+      <form onSubmit={submit} className="ec-card ec-modal-in w-full max-w-sm rounded-2xl p-6 text-left">
         <div className="mb-5 flex items-center justify-between">
           <BrandMark />
           <KeyRound size={18} className="text-slate-500" />
