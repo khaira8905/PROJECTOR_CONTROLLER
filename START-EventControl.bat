@@ -28,9 +28,13 @@ if errorlevel 1 (
   exit /b 1
 )
 
-if not exist "node_modules\" (
+REM Install packages on first run, and again whenever an update changed them.
+set NEED_INSTALL=0
+if not exist "node_modules\.ec-installed-lock" set NEED_INSTALL=1
+if "%NEED_INSTALL%"=="0" fc /b "package-lock.json" "node_modules\.ec-installed-lock" >nul 2>nul || set NEED_INSTALL=1
+if "%NEED_INSTALL%"=="1" (
   echo.
-  echo  Installing packages - first time only, this takes 1-3 minutes...
+  echo  Installing packages - this takes 1-3 minutes the first time...
   echo.
   call npm install
   if errorlevel 1 (
@@ -39,6 +43,7 @@ if not exist "node_modules\" (
     pause
     exit /b 1
   )
+  copy /y "package-lock.json" "node_modules\.ec-installed-lock" >nul
 )
 
 echo.

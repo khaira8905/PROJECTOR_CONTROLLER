@@ -8,11 +8,13 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "reset-password": "tsx src/scripts/resetPassword.ts"
   },
   "dependencies": {
     "express": "^5.2.1",
     "multer": "^2.4.0",
+    "pdf-lib": "^1.17.1",
     "socket.io": "^4.8.3",
     "zod": "^4.6.5"
   },

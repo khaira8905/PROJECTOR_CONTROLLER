@@ -1,20 +1,23 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Keyboard, MonitorPlay, Pencil, Radio, WifiOff } from 'lucide-react';
+import { ArrowLeft, Cloud, CloudOff, Keyboard, LogOut, MonitorPlay, Pencil, Radio, Server, UploadCloud } from 'lucide-react';
 import { BrandMark } from '../components/BrandMark';
 import { EventFormModal } from '../components/EventFormModal';
+import { useAuth } from '../components/AuthGate';
 import { Button } from '../components/ui/Button';
-import { Badge } from '../components/ui/Badge';
 import { Panel } from '../components/ui/Panel';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { useToast } from '../components/ui/Toast';
 import { ProgramMonitor, TransportControls } from '../components/dashboard/ProgramMonitor';
-import { UpNextCard, itemLabel } from '../components/dashboard/UpNextCard';
-import { QueuePanel } from '../components/dashboard/QueuePanel';
-import { QueueItemModal } from '../components/dashboard/QueueItemModal';
-import { MediaLibrary } from '../components/dashboard/MediaLibrary';
+import { UpNextCard } from '../components/dashboard/UpNextCard';
+import { ShowFlowPanel } from '../components/dashboard/ShowFlowPanel';
+import { FlowItemModal } from '../components/dashboard/FlowItemModal';
+import { PresentationLibrary } from '../components/dashboard/PresentationLibrary';
+import { PreviewModal } from '../components/dashboard/PreviewModal';
+import { QuickActions } from '../components/dashboard/QuickActions';
 import { TimerPanel } from '../components/dashboard/TimerPanel';
-import { DisplayControls } from '../components/dashboard/DisplayControls';
+import { ScreensPanel } from '../components/dashboard/ScreensPanel';
+import { BrandingPanel } from '../components/dashboard/BrandingPanel';
 import { SchedulePanel } from '../components/dashboard/SchedulePanel';
 import { ShortcutsHelp } from '../components/dashboard/ShortcutsHelp';
 import type { VideoCommand } from '../components/display/DisplayStage';
@@ -22,34 +25,43 @@ import { useEventData } from '../hooks/useEventData';
 import { useEventSocket } from '../hooks/useEventSocket';
 import { useTimerRemaining } from '../hooks/useTimerRemaining';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
+import { useSystemStatus } from '../hooks/useSystemStatus';
 import { api } from '../services/api';
-import { formatEventDate } from '../lib/format';
+import { cn } from '../lib/cn';
+import { itemLabel } from '../lib/flow';
 import type { ControlCommand, Media, QueueItem } from '../types';
 
 const errorMessage = (err: unknown, fallback: string) => (err instanceof Error ? err.message : fallback);
+
+type SideTab = 'screens' | 'branding' | 'schedule';
 
 export default function DashboardPage() {
   const { eventId } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
+  const { status: auth, signOut } = useAuth();
   const data = useEventData(eventId);
-  const { event, media, queue, schedule, setQueue } = data;
+  const { event, media, queue: flow, schedule, screens, setQueue } = data;
+  const { status: system, reachable } = useSystemStatus();
 
   const [videoCommand, setVideoCommand] = useState<VideoCommand | null>(null);
-  const [pdfPageCount, setPdfPageCount] = useState<number | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [editingItem, setEditingItem] = useState<QueueItem | null>(null);
+  const [previewing, setPreviewing] = useState<Media | null>(null);
   const [deletingMedia, setDeletingMedia] = useState<Media | null>(null);
   const [editEventOpen, setEditEventOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [sideTab, setSideTab] = useState<SideTab>('screens');
   const videoNonce = useRef(0);
+  const jumpRef = useRef<HTMLInputElement>(null);
 
   const quiet = useCallback(<T,>(p: Promise<T>) => p.catch(() => undefined), []);
 
   const { connected, joined, joinError, display, timer, presence, clockOffset, send } = useEventSocket(eventId, 'operator', {
     onQueueChanged: () => void quiet(data.reloadQueue()),
-    onMediaChanged: () => void quiet(data.reloadMedia()),
+    onMediaChanged: () => void quiet(Promise.all([data.reloadMedia(), data.reloadQueue()])),
     onScheduleChanged: () => void quiet(data.reloadSchedule()),
+    onScreensChanged: () => void quiet(Promise.all([data.reloadScreens(), data.reloadQueue()])),
     onEventChanged: () => void quiet(data.reloadEvent()),
     onEventDeleted: () => {
       toast.warning('This event was deleted.');
@@ -70,10 +82,6 @@ export default function DashboardPage() {
     [send, toast],
   );
 
-  // Reset the PDF page count when the programmed media changes.
-  const mediaId = display?.media?.id;
-  useEffect(() => setPdfPageCount(null), [mediaId]);
-
   useEffect(() => {
     if (event) document.title = `${event.name} · EventControl`;
   }, [event]);
@@ -88,26 +96,20 @@ export default function DashboardPage() {
     previousDisplays.current = presence.displays;
   }, [presence, toast]);
 
-  // Current / next are derived from the server's queue cursor.
-  const currentIndex = display?.queueItemId ? queue.findIndex((q) => q.id === display.queueItemId) : -1;
-  const currentItem = currentIndex >= 0 ? queue[currentIndex] : null;
-  const nextItem = currentIndex === -1 ? (queue[0] ?? null) : (queue[currentIndex + 1] ?? null);
-  const onAir = display?.mode === 'media' && !display.adHocMediaId;
-  const canNext = queue.length > 0 && (currentIndex === -1 || currentIndex < queue.length - 1);
-  const canPrevious = queue.length > 0 && (currentIndex !== 0 || !!display?.adHocMediaId);
-  const queuedMediaIds = useMemo(() => new Set(queue.map((q) => q.mediaId)), [queue]);
+  // Current / next are derived from the server's Show Flow cursor.
+  const currentIndex = display?.queueItemId ? flow.findIndex((q) => q.id === display.queueItemId) : -1;
+  const currentItem = currentIndex >= 0 ? flow[currentIndex] : null;
+  const nextItem = currentIndex === -1 ? (flow[0] ?? null) : (flow[currentIndex + 1] ?? null);
+  const onAir = (display?.mode === 'media' || display?.mode === 'screen') && !display.adHocMediaId && !!currentItem;
+  const flowMediaIds = useMemo(() => new Set(flow.map((q) => q.mediaId).filter((id): id is string => !!id)), [flow]);
+  const images = useMemo(() => media.filter((m) => m.kind === 'image'), [media]);
   const isLive = (presence?.displays ?? 0) > 0;
+  const cloudEnabled = !!system && system.storage.provider !== 'local';
+  const atEnd = !!currentItem && currentIndex === flow.length - 1 && (!display?.range || display.page >= display.range.end) && !display?.adHocMediaId;
 
   const videoAction = (action: VideoCommand['action']) => {
     setVideoCommand({ action, nonce: ++videoNonce.current });
     void run({ type: 'video', action });
-  };
-
-  const changePage = (delta: number) => {
-    if (!display || display.media?.kind !== 'pdf' || display.mode !== 'media') return;
-    const target = display.page + delta;
-    if (target < 1 || (pdfPageCount !== null && target > pdfPageCount)) return;
-    void run({ type: 'page', delta });
   };
 
   const openDisplayWindow = () => {
@@ -116,32 +118,42 @@ export default function DashboardPage() {
     if (!win) toast.warning('The browser blocked the pop-up. Allow pop-ups or open the display link manually.');
   };
 
+  const toggleOverlay = () => {
+    if (!event?.overlay.mediaId) return toast.info('Choose a logo in the Branding tab first.');
+    void run({ type: 'overlay', visible: !event.overlay.visible });
+  };
+
   useKeyboardShortcuts(
     {
       ArrowRight: () => void run({ type: 'next' }),
+      ' ': () => void run({ type: 'next' }),
       ArrowLeft: () => void run({ type: 'previous' }),
-      ' ': () => void run({ type: 'timer-toggle' }),
+      PageDown: () => void run({ type: 'next' }),
+      PageUp: () => void run({ type: 'previous' }),
       b: () => void run({ type: 'black' }),
-      w: () => void run({ type: 'waiting' }),
+      w: () => void run({ type: 'show-screen', key: 'please-wait' }),
+      t: () => void run({ type: 'show-screen', key: 'technical' }),
+      Escape: () => void run({ type: 'show-current' }),
       l: () => void run({ type: 'logo' }),
-      s: () => void run({ type: 'show-current' }),
+      o: toggleOverlay,
       f: () => void run({ type: 'fullscreen' }),
+      g: () => jumpRef.current?.focus(),
+      p: () => void run({ type: 'timer-toggle' }),
       r: () => void run({ type: 'timer-reset' }),
-      PageDown: () => changePage(1),
-      PageUp: () => changePage(-1),
       '?': () => setHelpOpen(true),
     },
     !!eventId,
   );
 
-  // ---- Media / queue actions -------------------------------------------------
+  // ---- Library / flow actions ----------------------------------------------------------
 
-  const upload = async (files: File[]) => {
+  const upload = async (files: File[], folder: string) => {
     if (!eventId) return;
     setUploadProgress(0);
     try {
-      const result = await api.uploadMedia(eventId, files, setUploadProgress);
+      const result = await api.uploadMedia(eventId, files, setUploadProgress, folder);
       if (result.uploaded.length) toast.success(result.uploaded.length === 1 ? `Uploaded "${result.uploaded[0].name}".` : `Uploaded ${result.uploaded.length} files.`);
+      if (result.uploaded.some((m) => m.kind === 'presentation')) toast.info('Converting PowerPoint slides in the background…');
       if (result.duplicates.length) toast.info(`${result.duplicates.map((d) => `"${d.name}"`).join(', ')} already in the library — skipped.`);
       result.rejected.forEach((r) => toast.error(`${r.name}: ${r.error}`));
       await data.reloadMedia();
@@ -152,14 +164,14 @@ export default function DashboardPage() {
     }
   };
 
-  const addToQueue = async (m: Media) => {
+  const addToFlow = async (m: Media, startPage: number | null = null, endPage: number | null = null) => {
     if (!eventId) return;
     try {
-      await api.addToQueue(eventId, m.id);
+      await api.addToQueue(eventId, m.id, { startPage, endPage });
       await data.reloadQueue();
-      toast.success(`Added "${m.name}" to the queue.`);
+      toast.success(`Added "${m.name}" to the show flow.`);
     } catch (err) {
-      toast.error(errorMessage(err, 'Unable to add to queue.'));
+      toast.error(errorMessage(err, 'Unable to add to the show flow.'));
     }
   };
 
@@ -169,16 +181,16 @@ export default function DashboardPage() {
     try {
       setQueue(await api.reorderQueue(eventId, next.map((q) => q.id)));
     } catch (err) {
-      toast.error(errorMessage(err, 'Unable to reorder the queue.'));
+      toast.error(errorMessage(err, 'Unable to reorder the show flow.'));
       await quiet(data.reloadQueue());
     }
   };
 
-  const removeFromQueue = async (item: QueueItem) => {
+  const removeFromFlow = async (item: QueueItem) => {
     try {
       await api.deleteQueueItem(item.id);
       await data.reloadQueue();
-      toast.info(`Removed "${itemLabel(item)}" from the queue.`);
+      toast.info(`Removed "${itemLabel(item)}" from the show flow.`);
     } catch (err) {
       toast.error(errorMessage(err, 'Unable to remove item.'));
     }
@@ -194,14 +206,19 @@ export default function DashboardPage() {
       toast.success(`Opening "${m.name}" in PowerPoint on the server machine…`);
     } catch (err) {
       toast.error(errorMessage(err, 'Unable to start presentation.'));
-      // Fall back to downloading, which lets the operator's OS open it.
       window.open(`${m.url}?download=1`, '_blank', 'noopener');
     }
   };
 
-  const openMediaById = (id: string) => {
-    const m = media.find((x) => x.id === id);
-    if (m) void openMedia(m);
+  const setEventField = async (patch: Parameters<typeof api.updateEvent>[1], message: string) => {
+    if (!eventId) return;
+    try {
+      await api.updateEvent(eventId, patch);
+      await data.reloadEvent();
+      toast.success(message);
+    } catch (err) {
+      toast.error(errorMessage(err, 'Unable to update the event.'));
+    }
   };
 
   if (data.error || joinError) {
@@ -218,40 +235,41 @@ export default function DashboardPage() {
 
   return (
     <div className="flex min-h-full flex-col">
+      {/* ── Status bar ─────────────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-30 border-b border-white/[0.06] bg-console-950/90 backdrop-blur">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5">
           <Link to="/" className="flex items-center gap-2 rounded-lg p-1 text-slate-400 hover:text-white" aria-label="Back to events">
             <ArrowLeft size={18} />
             <BrandMark compact />
           </Link>
           <div className="min-w-0 flex-1 sm:flex-none">
-            <h1 className="truncate text-lg leading-tight font-semibold text-white">{event?.name ?? 'Loading…'}</h1>
-            <p className="text-xs text-slate-500">
-              {event ? formatEventDate(event.date) : ''}
-              {event?.venue ? ` · ${event.venue}` : ''}
-            </p>
+            <p className="text-[10px] font-bold tracking-[0.25em] text-slate-500 uppercase">Event control</p>
+            <h1 className="truncate text-base leading-tight font-semibold text-white">{event?.name ?? 'Loading…'}</h1>
           </div>
-          <div className="flex items-center gap-2">
-            {isLive ? (
-              <Badge tone="live" dot>
-                Live · {presence?.displays} display{presence?.displays === 1 ? '' : 's'}
-              </Badge>
-            ) : (
-              <Badge tone="neutral">Offline</Badge>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <StatusPill ok={isLive} label={isLive ? `Display connected${presence!.displays > 1 ? ` (${presence!.displays})` : ''}` : 'Display offline'} icon={<MonitorPlay size={12} />} />
+            <StatusPill ok={connected && reachable} label={connected && reachable ? 'Server' : 'Server disconnected'} icon={<Server size={12} />} />
+            {system && (
+              <StatusPill
+                ok={system.storage.ok}
+                neutral={!cloudEnabled}
+                label={cloudEnabled ? (system.storage.ok ? (system.storage.pending ? `Cloud · ${system.storage.pending} syncing` : 'Cloud synced') : 'Cloud offline') : 'Local storage'}
+                title={system.storage.message}
+                icon={system.storage.ok ? <Cloud size={12} /> : <CloudOff size={12} />}
+              />
             )}
-            {!connected && (
-              <Badge tone="warning" className="animate-pulse-soft">
-                <WifiOff size={11} /> Server disconnected
-              </Badge>
-            )}
+            {uploadProgress !== null && <StatusPill ok neutral label={`Uploading ${Math.round(uploadProgress * 100)}%`} icon={<UploadCloud size={12} />} />}
           </div>
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-1.5">
             <Button variant="ghost" size="sm" icon={<Keyboard size={15} />} onClick={() => setHelpOpen(true)} className="max-md:hidden">
               Shortcuts
             </Button>
             <Button variant="ghost" size="sm" icon={<Pencil size={14} />} onClick={() => setEditEventOpen(true)} disabled={!event} aria-label="Edit event">
               <span className="hidden sm:inline">Edit</span>
             </Button>
+            {auth?.enabled && (
+              <Button variant="ghost" size="sm" icon={<LogOut size={14} />} onClick={signOut} aria-label="Sign out" title="Sign out" />
+            )}
             <Button variant="primary" size="sm" icon={<MonitorPlay size={15} />} onClick={openDisplayWindow}>
               Open Display
             </Button>
@@ -259,99 +277,68 @@ export default function DashboardPage() {
         </div>
         {!connected && !data.loading && (
           <div className="border-t border-amber-500/20 bg-amber-500/10 px-4 py-1.5 text-center text-xs text-amber-200">
-            Connection to the EventControl server lost — reconnecting automatically. Controls are paused until it's back.
+            Connection to the EventControl server lost — reconnecting automatically. The display keeps showing the last content.
           </div>
         )}
       </header>
 
       <main className="grid flex-1 grid-cols-1 gap-4 p-3 sm:p-4 lg:grid-cols-12 [&>*]:min-w-0">
-        {/* Left: queue */}
-        <QueuePanel
-          className="lg:col-span-4 lg:max-h-[calc(100vh-6rem)] xl:col-span-3"
-          queue={queue}
-          currentId={display?.queueItemId ?? null}
-          nextId={nextItem?.id ?? null}
-          onAir={onAir}
-          onReorder={reorder}
-          onShow={(item) => void run({ type: 'show-item', queueItemId: item.id })}
-          onEdit={setEditingItem}
-          onRemove={removeFromQueue}
-        />
-
-        {/* Centre: program output and transport */}
-        <div className="flex flex-col gap-4 lg:col-span-8 xl:col-span-6">
+        {/* ── Program output ─────────────────────────────────────────────────────── */}
+        <div className="flex flex-col gap-4 lg:col-span-8">
           <Panel bodyClassName="flex flex-col gap-4">
             <ProgramMonitor
               display={display}
               timer={timer}
               timerRemaining={remaining}
-              currentItem={currentItem}
               videoCommand={videoCommand}
-              pdfPageCount={pdfPageCount}
-              onPdfPageCount={setPdfPageCount}
-              onOpenExternally={openMediaById}
-              onCommand={(cmd) => {
-                if (cmd === 'video-play') videoAction('play');
-                else if (cmd === 'video-pause') videoAction('pause');
-                else if (cmd === 'video-restart') videoAction('restart');
-                else if (cmd === 'page-next') changePage(1);
-                else changePage(-1);
+              jumpRef={jumpRef}
+              onVideo={videoAction}
+              onGoToPage={(page) => void run({ type: 'page', page })}
+              onOpenExternally={(id) => {
+                const m = media.find((x) => x.id === id);
+                if (m) void openMedia(m);
               }}
             />
             <TransportControls
-              canNext={canNext && joined}
-              canPrevious={canPrevious && joined}
+              canNext={flow.length > 0 && joined && !atEnd}
+              canPrevious={flow.length > 0 && joined}
               onNext={() => void run({ type: 'next' })}
               onPrevious={() => void run({ type: 'previous' })}
             />
             <UpNextCard current={currentItem} next={nextItem} onEditNotes={setEditingItem} />
           </Panel>
+        </div>
 
-          <Panel title="Display controls" icon={<Radio size={14} />}>
-            <DisplayControls
-              mode={display?.mode ?? null}
+        {/* ── Quick actions & timer ──────────────────────────────────────────────── */}
+        <div className="flex flex-col gap-4 lg:col-span-4">
+          <Panel title="Quick actions" icon={<Radio size={14} />}>
+            <QuickActions
+              display={display}
               disabled={!joined}
+              onResume={() => void run({ type: 'show-current' })}
+              onPleaseWait={() => void run({ type: 'show-screen', key: 'please-wait' })}
+              onTechnical={() => void run({ type: 'show-screen', key: 'technical' })}
               onBlack={() => void run({ type: 'black' })}
-              onWaiting={() => void run({ type: 'waiting' })}
               onLogo={() => void run({ type: 'logo' })}
-              onShowCurrent={() => void run({ type: 'show-current' })}
               onFullscreen={() => void run({ type: 'fullscreen' })}
               onOpenDisplay={openDisplayWindow}
             />
           </Panel>
-        </div>
-
-        {/* Right: timer and schedule */}
-        <div className="grid gap-4 lg:col-span-12 lg:grid-cols-2 xl:col-span-3 xl:grid-cols-1 xl:content-start">
           <TimerPanel timer={timer} remaining={remaining} send={(cmd) => void run(cmd)} />
-          <SchedulePanel
-            className="xl:max-h-[28rem]"
-            schedule={schedule}
-            onAdd={async (item) => {
-              if (!eventId) return;
-              await api.addScheduleItem(eventId, { ...item, description: '', durationMinutes: null });
-              await data.reloadSchedule();
-            }}
-            onDelete={async (item) => {
-              try {
-                await api.deleteScheduleItem(item.id);
-                await data.reloadSchedule();
-              } catch (err) {
-                toast.error(errorMessage(err, 'Unable to delete schedule item.'));
-              }
-            }}
-          />
         </div>
 
-        {/* Bottom: media library */}
-        <MediaLibrary
-          className="lg:col-span-12"
+        {/* ── Presentations | Show flow | Screens/Branding/Schedule ─────────────── */}
+        <PresentationLibrary
+          className="lg:col-span-12 xl:col-span-5 xl:max-h-[46rem]"
           media={media}
           logoMediaId={event?.logoMediaId ?? null}
-          queuedMediaIds={queuedMediaIds}
+          overlayMediaId={event?.overlay.mediaId ?? null}
+          flowMediaIds={flowMediaIds}
+          cloudEnabled={cloudEnabled}
           uploadProgress={uploadProgress}
           onUpload={upload}
-          onAddToQueue={addToQueue}
+          onPreview={setPreviewing}
+          onAddToFlow={(m) => void addToFlow(m)}
           onShowNow={(m) => void run({ type: 'show-media', mediaId: m.id })}
           onOpen={openMedia}
           onRename={async (m, name) => {
@@ -362,33 +349,143 @@ export default function DashboardPage() {
               toast.error(errorMessage(err, 'Unable to rename file.'));
             }
           }}
-          onSetLogo={async (m) => {
-            if (!eventId) return;
+          onMove={async (m, folder) => {
             try {
-              await api.updateEvent(eventId, { logoMediaId: m?.id ?? null });
-              await data.reloadEvent();
-              toast.success(m ? `"${m.name}" is now the event logo.` : 'Event logo removed.');
+              await api.moveMedia(m.id, folder);
+              await data.reloadMedia();
+              toast.success(folder ? `Moved "${m.name}" to ${folder}.` : `"${m.name}" is now unfiled.`);
             } catch (err) {
-              toast.error(errorMessage(err, 'Unable to set logo.'));
+              toast.error(errorMessage(err, 'Unable to move file.'));
+            }
+          }}
+          onSetLogo={(m) => void setEventField({ logoMediaId: m?.id ?? null }, m ? `"${m.name}" is now the full-screen logo.` : 'Full-screen logo removed.')}
+          onSetOverlay={(m) => {
+            void run({ type: 'overlay', mediaId: m.id });
+            setSideTab('branding');
+            toast.success(`"${m.name}" is the overlay logo. Use "Show logo overlay" (or O) to display it.`);
+          }}
+          onReconvert={async (m) => {
+            try {
+              await api.reconvertMedia(m.id);
+              toast.info(`Converting "${m.name}"…`);
+            } catch (err) {
+              toast.error(errorMessage(err, 'Unable to convert.'));
             }
           }}
           onDelete={setDeletingMedia}
         />
+
+        <ShowFlowPanel
+          className="lg:col-span-6 xl:col-span-4 xl:max-h-[46rem]"
+          flow={flow}
+          screens={screens}
+          currentId={display?.queueItemId ?? null}
+          nextId={nextItem?.id ?? null}
+          onAir={onAir}
+          onReorder={reorder}
+          onShow={(item) => void run({ type: 'show-item', queueItemId: item.id })}
+          onEdit={setEditingItem}
+          onRemove={removeFromFlow}
+          onAddScreen={async (s) => {
+            if (!eventId) return;
+            try {
+              await api.addScreenToFlow(eventId, s.id);
+              await data.reloadQueue();
+              toast.success(`Added "${s.title}" to the show flow.`);
+            } catch (err) {
+              toast.error(errorMessage(err, 'Unable to add the screen.'));
+            }
+          }}
+        />
+
+        <Panel
+          className="lg:col-span-6 xl:col-span-3 xl:max-h-[46rem]"
+          bodyClassName="scroll-thin overflow-y-auto"
+          title={
+            <span className="flex gap-1">
+              {(['screens', 'branding', 'schedule'] as SideTab[]).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setSideTab(t)}
+                  className={cn('rounded-md px-2 py-1 tracking-[0.12em] uppercase', sideTab === t ? 'bg-white/10 text-white' : 'text-slate-500 hover:text-slate-300')}
+                >
+                  {t}
+                </button>
+              ))}
+            </span>
+          }
+        >
+          {sideTab === 'screens' && (
+            <ScreensPanel
+              screens={screens}
+              display={display}
+              media={media}
+              onShow={(s, timerMs) => void run({ type: 'show-screen', screenId: s.id, timerMs })}
+              onAddToFlow={async (s) => {
+                if (!eventId) return;
+                await quiet(api.addScreenToFlow(eventId, s.id));
+                await data.reloadQueue();
+                toast.success(`Added "${s.title}" to the show flow.`);
+              }}
+              onSave={async (s, input) => {
+                if (!eventId) return;
+                if (s) await api.updateScreen(s.id, input);
+                else await api.createScreen(eventId, input);
+                await data.reloadScreens();
+                toast.success('Screen saved.');
+              }}
+              onDelete={async (s) => {
+                try {
+                  await api.deleteScreen(s.id);
+                  await Promise.all([data.reloadScreens(), data.reloadQueue()]);
+                } catch (err) {
+                  toast.error(errorMessage(err, 'Unable to delete the screen.'));
+                }
+              }}
+            />
+          )}
+          {sideTab === 'branding' && <BrandingPanel event={event} images={images} onChange={(patch) => void run({ type: 'overlay', ...patch })} />}
+          {sideTab === 'schedule' && (
+            <SchedulePanel
+              embedded
+              schedule={schedule}
+              onAdd={async (item) => {
+                if (!eventId) return;
+                await api.addScheduleItem(eventId, { ...item, description: '', durationMinutes: null });
+                await data.reloadSchedule();
+              }}
+              onDelete={async (item) => {
+                try {
+                  await api.deleteScheduleItem(item.id);
+                  await data.reloadSchedule();
+                } catch (err) {
+                  toast.error(errorMessage(err, 'Unable to delete schedule item.'));
+                }
+              }}
+            />
+          )}
+        </Panel>
       </main>
 
-      <QueueItemModal
+      <FlowItemModal
         item={editingItem}
         onClose={() => setEditingItem(null)}
         onSave={async (id, patch) => {
           await api.updateQueueItem(id, patch);
           await data.reloadQueue();
-          toast.success('Queue item updated.');
+          toast.success('Show flow item updated.');
         }}
+      />
+      <PreviewModal
+        media={previewing}
+        onClose={() => setPreviewing(null)}
+        onShowPage={(m, page) => void run({ type: 'show-media', mediaId: m.id, page: m.pdfUrl ? page : undefined })}
+        onAddToFlow={(m, start, end) => void addToFlow(m, start, end)}
       />
       <EventFormModal
         open={editEventOpen}
         event={event}
-        logoOptions={media.filter((m) => m.kind === 'image')}
+        logoOptions={images}
         onClose={() => setEditEventOpen(false)}
         onSubmit={async (input) => {
           if (!eventId) return;
@@ -399,11 +496,11 @@ export default function DashboardPage() {
       />
       <ConfirmDialog
         open={!!deletingMedia}
-        title="Delete media?"
+        title="Delete file?"
         message={
           <>
-            <b className="text-white">{deletingMedia?.name}</b> will be deleted from disk
-            {deletingMedia && queuedMediaIds.has(deletingMedia.id) ? ' and removed from the queue' : ''}. This cannot be undone.
+            <b className="text-white">{deletingMedia?.name}</b> will be deleted{cloudEnabled ? ' from this computer and the cloud' : ''}
+            {deletingMedia && flowMediaIds.has(deletingMedia.id) ? ' and removed from the show flow' : ''}. This cannot be undone.
           </>
         }
         onClose={() => setDeletingMedia(null)}
@@ -411,14 +508,30 @@ export default function DashboardPage() {
           if (!deletingMedia) return;
           try {
             await api.deleteMedia(deletingMedia.id);
-            await Promise.all([data.reloadMedia(), data.reloadQueue()]);
-            toast.success('Media deleted.');
+            await Promise.all([data.reloadMedia(), data.reloadQueue(), data.reloadEvent()]);
+            toast.success('File deleted.');
           } catch (err) {
-            toast.error(errorMessage(err, 'Unable to delete media.'));
+            toast.error(errorMessage(err, 'Unable to delete file.'));
           }
         }}
       />
       <ShortcutsHelp open={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
+  );
+}
+
+function StatusPill({ ok, neutral, label, icon, title }: { ok: boolean; neutral?: boolean; label: string; icon: ReactNode; title?: string }) {
+  return (
+    <span
+      title={title}
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-wide uppercase ring-1 ring-inset',
+        neutral ? 'bg-white/5 text-slate-300 ring-white/10' : ok ? 'bg-emerald-500/10 text-emerald-300 ring-emerald-500/30' : 'bg-red-500/15 text-red-300 ring-red-500/30',
+      )}
+    >
+      <span className={cn('h-1.5 w-1.5 rounded-full', neutral ? 'bg-slate-400' : ok ? 'bg-emerald-400' : 'animate-pulse-soft bg-red-400')} />
+      {icon}
+      {label}
+    </span>
   );
 }

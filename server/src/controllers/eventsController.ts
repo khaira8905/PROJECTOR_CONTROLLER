@@ -9,6 +9,8 @@ import { removeEventUploads } from '../services/mediaStorage';
 import * as display from '../services/displayService';
 import * as timer from '../services/timerService';
 import { emitToEvent } from '../socket/bus';
+import { OVERLAY_POSITIONS } from '../services/controlService';
+import { ensureBuiltinScreens, forgetScreens } from '../services/screenService';
 
 const createSchema = z.object({
   name: trimmed(120).min(1, 'Event name is required'),
@@ -25,6 +27,11 @@ const updateSchema = z.object({
   venue: trimmed(200).optional(),
   waitingMessage: trimmed(200).min(1).optional(),
   logoMediaId: idParam.nullable().optional(),
+  overlayMediaId: idParam.nullable().optional(),
+  overlayPosition: z.enum(OVERLAY_POSITIONS).optional(),
+  overlaySize: z.number().int().min(2).max(60).optional(),
+  overlayOpacity: z.number().int().min(0).max(100).optional(),
+  overlayVisible: z.boolean().optional(),
 });
 
 const withCounts = { _count: { select: { media: true, queueItems: true, scheduleItems: true } } } as const;
@@ -57,6 +64,7 @@ export async function createEvent(req: Request, res: Response) {
     },
     include: withCounts,
   });
+  await ensureBuiltinScreens(event.id);
   logger.info(`Created event "${event.name}" (${event.id})`);
   res.status(201).json(toEventDto(event));
 }
@@ -68,6 +76,10 @@ export async function updateEvent(req: Request<{ id: string }>, res: Response) {
     const media = await prisma.media.findFirst({ where: { id: body.logoMediaId, eventId: existing.id } });
     if (!media) throw badRequest('Logo must be one of this event’s media files.');
     if (media.kind !== 'image') throw badRequest('The event logo must be an image.');
+  }
+  if (body.overlayMediaId) {
+    const media = await prisma.media.findFirst({ where: { id: body.overlayMediaId, eventId: existing.id } });
+    if (!media || media.kind !== 'image') throw badRequest('The overlay logo must be an image from this event.');
   }
   const event = await prisma.event.update({ where: { id: existing.id }, data: body, include: withCounts });
   const dto = toEventDto(event);
@@ -81,6 +93,7 @@ export async function deleteEvent(req: Request<{ id: string }>, res: Response) {
   await prisma.event.delete({ where: { id: event.id } });
   timer.forget(event.id);
   display.forget(event.id);
+  forgetScreens(event.id);
   emitToEvent(event.id, 'event:deleted', { eventId: event.id });
   try {
     await removeEventUploads(event.id);

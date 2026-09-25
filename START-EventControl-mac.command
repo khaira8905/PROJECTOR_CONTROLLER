@@ -7,9 +7,11 @@ if ! command -v node >/dev/null 2>&1; then
   read -r -p "Press Enter to close..."
   exit 1
 fi
-if [ ! -d node_modules ]; then
-  echo "Installing packages - first time only, this takes 1-3 minutes..."
+# Install packages on first run, and again whenever an update changed them.
+if ! cmp -s package-lock.json node_modules/.ec-installed-lock; then
+  echo "Installing packages - this takes 1-3 minutes the first time..."
   npm install || { echo "npm install failed."; read -r -p "Press Enter to close..."; exit 1; }
+  cp package-lock.json node_modules/.ec-installed-lock
 fi
 echo "Starting EventControl... your browser will open http://localhost:5173 shortly."
 (sleep 15 && open http://localhost:5173) &

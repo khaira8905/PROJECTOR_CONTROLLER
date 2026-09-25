@@ -9,6 +9,8 @@ import { createSocketServer } from './socket';
 import { seedDemoIfEmpty } from './services/demoSeed';
 import { restoreRunningTimers } from './services/timerService';
 import { tmpUploadDir } from './services/mediaStorage';
+import { resumeProcessing } from './services/processingService';
+import { resumePendingUploads } from './services/cloudSync';
 
 function lanAddresses(): string[] {
   return Object.values(os.networkInterfaces())
@@ -24,6 +26,9 @@ async function main() {
 
   if (config.seedDemo) await seedDemoIfEmpty();
   await restoreRunningTimers();
+  // Background work interrupted by a restart: PowerPoint conversions and cloud uploads.
+  void resumeProcessing().catch((err) => logger.error('Resuming file processing failed:', err));
+  void resumePendingUploads().catch((err) => logger.error('Resuming cloud uploads failed:', err));
 
   const app = createApp();
   const server = http.createServer(app);
@@ -32,6 +37,7 @@ async function main() {
   server.listen(config.port, config.host, () => {
     logger.info(`EventControl server listening on http://localhost:${config.port}`);
     for (const ip of lanAddresses()) logger.info(`  on your network: http://${ip}:${config.port}`);
+    logger.info(`Sign-in: ${config.auth.provider} · Cloud storage: ${config.supabase.url ? `Supabase (${config.supabase.bucket})` : 'off (local files only)'}`);
   });
 
   const shutdown = async () => {

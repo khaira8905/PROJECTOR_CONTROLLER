@@ -21,7 +21,8 @@ export function Modal({ open, onClose, title, children, footer, size = 'md' }: M
     if (!open) return;
     const previouslyFocused = document.activeElement as HTMLElement | null;
     // Focus the first form field, or the dialog itself.
-    const first = panelRef.current?.querySelector<HTMLElement>('input, textarea, select, button[data-autofocus]');
+    const first =
+      panelRef.current?.querySelector<HTMLElement>('[data-autofocus]') ?? panelRef.current?.querySelector<HTMLElement>('input, textarea, select');
     (first ?? panelRef.current)?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {

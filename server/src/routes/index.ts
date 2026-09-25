@@ -10,6 +10,10 @@ import * as media from '../controllers/mediaController';
 import * as queue from '../controllers/queueController';
 import * as schedule from '../controllers/scheduleController';
 import * as control from '../controllers/controlController';
+import * as auth from '../controllers/authController';
+import * as screens from '../controllers/screensController';
+import * as status from '../controllers/statusController';
+import { requireAuth } from '../middleware/requireAuth';
 
 const upload = multer({
   storage: multer.diskStorage({
@@ -36,9 +40,19 @@ const upload = multer({
 
 export const apiRouter = Router();
 
+apiRouter.use(requireAuth);
+
 apiRouter.get('/health', (_req, res) => {
   res.json({ ok: true, time: Date.now() });
 });
+
+apiRouter.get('/auth/status', auth.status);
+apiRouter.post('/auth/setup', auth.setup);
+apiRouter.post('/auth/login', auth.login);
+apiRouter.post('/auth/logout', auth.logout);
+apiRouter.post('/auth/change-password', auth.changePassword);
+
+apiRouter.get('/status', status.getStatus);
 
 apiRouter.get('/events', events.listEvents);
 apiRouter.post('/events', events.createEvent);
@@ -51,6 +65,8 @@ apiRouter.post('/events/:id/media', upload.array('files', config.maxFilesPerUplo
 apiRouter.patch('/media/:mediaId', media.renameMedia);
 apiRouter.delete('/media/:mediaId', media.deleteMedia);
 apiRouter.get('/media/:mediaId/file', media.serveMediaFile);
+apiRouter.get('/media/:mediaId/render', media.serveRenderedFile);
+apiRouter.post('/media/:mediaId/convert', media.reconvertMedia);
 apiRouter.post('/media/:mediaId/open', media.openMediaExternally);
 
 apiRouter.get('/events/:id/queue', queue.getQueue);
@@ -63,6 +79,11 @@ apiRouter.get('/events/:id/schedule', schedule.getSchedule);
 apiRouter.post('/events/:id/schedule', schedule.addScheduleItem);
 apiRouter.patch('/schedule/:itemId', schedule.updateScheduleItem);
 apiRouter.delete('/schedule/:itemId', schedule.deleteScheduleItem);
+
+apiRouter.get('/events/:id/screens', screens.listScreens);
+apiRouter.post('/events/:id/screens', screens.createScreen);
+apiRouter.patch('/screens/:screenId', screens.updateScreen);
+apiRouter.delete('/screens/:screenId', screens.deleteScreen);
 
 apiRouter.get('/events/:id/state', control.getState);
 apiRouter.post('/events/:id/control', control.control);

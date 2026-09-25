@@ -13,10 +13,12 @@ interface SchedulePanelProps {
   onAdd: (item: { time: string; title: string }) => Promise<void>;
   onDelete: (item: ScheduleItem) => void;
   className?: string;
+  /** Render without its own card (e.g. inside a tabbed panel). */
+  embedded?: boolean;
 }
 
 /** Operator reference: which session is on now, which is next, and what's coming. */
-export function SchedulePanel({ schedule, onAdd, onDelete, className }: SchedulePanelProps) {
+export function SchedulePanel({ schedule, onAdd, onDelete, className, embedded }: SchedulePanelProps) {
   const now = useNow(15_000);
   const status = scheduleStatus(schedule, now);
   const [adding, setAdding] = useState(false);
@@ -37,21 +39,16 @@ export function SchedulePanel({ schedule, onAdd, onDelete, className }: Schedule
     }
   };
 
-  return (
-    <Panel
-      title="Schedule"
-      icon={<CalendarClock size={14} />}
-      className={className}
-      bodyClassName="scroll-thin overflow-y-auto"
-      actions={
+  const actions = (
         <>
           <span className="font-mono text-xs text-slate-400 tabular-nums">{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
           <Button size="icon-sm" variant="ghost" aria-label="Add schedule item" onClick={() => setAdding((a) => !a)}>
             <Plus size={15} />
           </Button>
         </>
-      }
-    >
+  );
+  const content = (
+    <>
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded-xl bg-emerald-500/[0.07] p-3 ring-1 ring-emerald-500/20">
           <p className="text-[10px] font-semibold tracking-[0.14em] text-emerald-300 uppercase">Now</p>
@@ -104,6 +101,19 @@ export function SchedulePanel({ schedule, onAdd, onDelete, className }: Schedule
           })}
         </ol>
       )}
+    </>
+  );
+  if (embedded) {
+    return (
+      <div className="flex flex-col">
+        <div className="mb-2 flex items-center justify-end gap-2">{actions}</div>
+        {content}
+      </div>
+    );
+  }
+  return (
+    <Panel title="Schedule" icon={<CalendarClock size={14} />} className={className} bodyClassName="scroll-thin overflow-y-auto" actions={actions}>
+      {content}
     </Panel>
   );
 }

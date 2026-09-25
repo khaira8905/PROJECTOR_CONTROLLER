@@ -12,6 +12,7 @@ export type TimerTone = 'normal' | 'warning' | 'finished' | 'idle';
 export function timerTone(timer: TimerSnapshot, remaining: number): TimerTone {
   if (timer.status === 'finished' || (timer.status === 'running' && remaining <= 0)) return 'finished';
   if (timer.status === 'idle') return 'idle';
-  if (remaining <= timer.warningMs) return 'warning';
+  // Countdowns shorter than the warning threshold would otherwise start in "warning".
+  if (remaining <= timer.warningMs && timer.durationMs > timer.warningMs) return 'warning';
   return 'normal';
 }

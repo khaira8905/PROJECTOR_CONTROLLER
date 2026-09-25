@@ -7,6 +7,7 @@ export interface EventSocketHandlers {
   onQueueChanged?: () => void;
   onMediaChanged?: () => void;
   onScheduleChanged?: () => void;
+  onScreensChanged?: () => void;
   onEventChanged?: () => void;
   onEventDeleted?: () => void;
   onVideo?: (action: 'play' | 'pause' | 'restart') => void;
@@ -88,6 +89,7 @@ export function useEventSocket(eventId: string | undefined, role: 'operator' | '
     socket.on('queue:changed', () => handlersRef.current.onQueueChanged?.());
     socket.on('media:changed', () => handlersRef.current.onMediaChanged?.());
     socket.on('schedule:changed', () => handlersRef.current.onScheduleChanged?.());
+    socket.on('screens:changed', () => handlersRef.current.onScreensChanged?.());
     socket.on('event:changed', () => handlersRef.current.onEventChanged?.());
     socket.on('event:deleted', () => handlersRef.current.onEventDeleted?.());
     socket.on('display:video', (p: { action: 'play' | 'pause' | 'restart' }) => handlersRef.current.onVideo?.(p.action));

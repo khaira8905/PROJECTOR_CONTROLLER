@@ -19,12 +19,22 @@ model Event {
   waitingMessage String   @default("Please wait…")
   // Media shown by the "SHOW EVENT LOGO" emergency control (optional).
   logoMediaId    String?
+  // Branding overlay: a logo drawn on top of the display output.
+  overlayMediaId String?
+  // top-left | top-right | bottom-left | bottom-right | center
+  overlayPosition String  @default("top-right")
+  // Width as a percentage of the screen width.
+  overlaySize    Int      @default(12)
+  // 0-100
+  overlayOpacity Int      @default(90)
+  overlayVisible Boolean  @default(false)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   media         Media[]
   queueItems    QueueItem[]
   scheduleItems ScheduleItem[]
+  screens       Screen[]
   timerState    TimerState?
   displayState  DisplayState?
 }
@@ -43,6 +53,18 @@ model Media {
   size         Int
   // sha256 of the file contents, used to avoid duplicate uploads.
   hash         String
+  // Library folder, e.g. "Speakers", "Sponsors", "Logos". Empty = unfiled.
+  folder       String   @default("")
+  // Pages (PDF) or slides (converted PPT/PPTX). Null when unknown.
+  pageCount    Int?
+  // Browser-renderable PDF generated from a PPT/PPTX (relative storage path).
+  renderPath   String?
+  // none | pending | ready | failed | unavailable
+  conversionStatus String @default("none")
+  conversionError  String?
+  // local | pending | synced | error  (cloud storage copy)
+  cloudStatus  String   @default("local")
+  cloudError   String?
   createdAt    DateTime @default(now())
 
   event      Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
@@ -55,7 +77,13 @@ model Media {
 model QueueItem {
   id              String   @id @default(cuid())
   eventId         String
-  mediaId         String
+  // media | screen
+  kind            String   @default("media")
+  mediaId         String?
+  screenId        String?
+  // Optional page/slide range for PDF and converted presentations (1-based, inclusive).
+  startPage       Int?
+  endPage         Int?
   position        Int
   // Optional label, e.g. "Director Speech". Falls back to the media name.
   title           String?
@@ -64,10 +92,40 @@ model QueueItem {
   notes           String   @default("")
   createdAt       DateTime @default(now())
 
-  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  media Media @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  event  Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  media  Media?  @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  screen Screen? @relation(fields: [screenId], references: [id], onDelete: Cascade)
 
   @@index([eventId, position])
+}
+
+/// A full-screen message: "Please Wait", "Technical Difficulty", custom announcements...
+model Screen {
+  id                 String   @id @default(cuid())
+  eventId            String
+  // Built-in screens have a stable key (please-wait, technical, break, starting, coming-up, thanks).
+  key                String?
+  title              String
+  subtitle           String   @default("")
+  // Visual style / accent: please-wait | technical | break | starting | coming-up | thanks | custom
+  style              String   @default("custom")
+  backgroundMediaId  String?
+  showTimer          Boolean  @default(false)
+  position           Int      @default(0)
+  createdAt          DateTime @default(now())
+
+  event      Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  queueItems QueueItem[]
+
+  @@unique([eventId, key])
+  @@index([eventId])
+}
+
+/// Key/value application settings (e.g. operator password hash, session secret).
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
 }
 
 model ScheduleItem {
@@ -102,8 +160,10 @@ model TimerState {
 
 model DisplayState {
   eventId      String   @id
-  // media | black | waiting | logo
-  mode         String   @default("waiting")
+  // media | screen | black | logo
+  mode         String   @default("screen")
+  // Special screen shown in "screen" mode (null = the Please Wait screen).
+  screenId     String?
   // The queue cursor ("current item").
   queueItemId  String?
   // Media shown directly from the library, overriding the queue cursor.

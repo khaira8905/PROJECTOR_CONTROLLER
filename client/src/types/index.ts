@@ -1,5 +1,7 @@
 export type MediaKind = 'image' | 'video' | 'pdf' | 'presentation';
-export type DisplayMode = 'media' | 'black' | 'waiting' | 'logo';
+export type DisplayMode = 'media' | 'screen' | 'black' | 'logo';
+export type OverlayPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'center';
+export type ScreenStyle = 'please-wait' | 'technical' | 'break' | 'starting' | 'coming-up' | 'thanks' | 'custom';
 export type TimerStatus = 'idle' | 'running' | 'paused' | 'finished';
 
 export interface EventSummary {
@@ -11,6 +13,7 @@ export interface EventSummary {
   venue: string;
   waitingMessage: string;
   logoMediaId: string | null;
+  overlay: { mediaId: string | null; position: OverlayPosition; size: number; opacity: number; visible: boolean };
   createdAt: string;
   updatedAt: string;
   counts?: { media: number; queueItems: number; scheduleItems: number };
@@ -25,6 +28,9 @@ export interface EventInput {
   logoMediaId?: string | null;
 }
 
+export type ConversionStatus = 'none' | 'pending' | 'ready' | 'failed' | 'unavailable';
+export type CloudStatus = 'local' | 'pending' | 'synced' | 'error';
+
 export interface Media {
   id: string;
   eventId: string;
@@ -33,22 +39,49 @@ export interface Media {
   kind: MediaKind;
   mimeType: string;
   size: number;
+  folder: string;
+  pageCount: number | null;
+  conversionStatus: ConversionStatus;
+  conversionError: string | null;
+  cloudStatus: CloudStatus;
+  cloudError: string | null;
   createdAt: string;
   url: string;
+  /** Browser-renderable PDF (PDFs, and PPT/PPTX once converted). */
+  pdfUrl: string | null;
   missing: boolean;
 }
 
-export type PublicMedia = Pick<Media, 'id' | 'name' | 'kind' | 'mimeType' | 'url' | 'missing'>;
+export type PublicMedia = Pick<Media, 'id' | 'name' | 'kind' | 'mimeType' | 'url' | 'pdfUrl' | 'pageCount' | 'missing'>;
 
+export interface Screen {
+  id: string;
+  eventId: string;
+  key: string | null;
+  title: string;
+  subtitle: string;
+  style: ScreenStyle;
+  showTimer: boolean;
+  backgroundMediaId: string | null;
+  background: PublicMedia | null;
+  builtin: boolean;
+}
+
+/** A Show Flow item: a presentation/media (optionally a slide range) or a special screen. */
 export interface QueueItem {
   id: string;
   eventId: string;
-  mediaId: string;
+  kind: 'media' | 'screen';
+  mediaId: string | null;
+  screenId: string | null;
   position: number;
   title: string | null;
+  startPage: number | null;
+  endPage: number | null;
   durationSeconds: number | null;
   notes: string;
-  media: Media;
+  media: Media | null;
+  screen: Screen | null;
 }
 
 export interface ScheduleItem {
@@ -64,14 +97,17 @@ export interface DisplaySnapshot {
   eventId: string;
   eventName: string;
   eventDate: string;
-  waitingMessage: string;
   mode: DisplayMode;
   queueItemId: string | null;
   adHocMediaId: string | null;
+  screenId: string | null;
   page: number;
   title: string | null;
   media: PublicMedia | null;
+  range: { start: number; end: number } | null;
+  screen: Screen | null;
   logo: PublicMedia | null;
+  overlay: { media: PublicMedia | null; position: OverlayPosition; size: number; opacity: number; visible: boolean };
   version: number;
   serverNow: number;
 }
@@ -103,9 +139,11 @@ export interface UploadResult {
 export type ControlCommand =
   | { type: 'next' }
   | { type: 'previous' }
-  | { type: 'show-item'; queueItemId: string }
-  | { type: 'show-media'; mediaId: string }
+  | { type: 'show-item'; queueItemId: string; page?: number }
+  | { type: 'show-media'; mediaId: string; page?: number }
   | { type: 'show-current' }
+  | { type: 'show-screen'; screenId?: string; key?: string; timerMs?: number }
+  | { type: 'overlay'; visible?: boolean; mediaId?: string | null; position?: OverlayPosition; size?: number; opacity?: number }
   | { type: 'black' }
   | { type: 'waiting' }
   | { type: 'logo' }
@@ -118,3 +156,18 @@ export type ControlCommand =
   | { type: 'timer-reset' }
   | { type: 'timer-adjust'; deltaMs: number }
   | { type: 'timer-configure'; durationMs?: number; warningMs?: number; showOnDisplay?: boolean };
+
+export interface AuthStatus {
+  provider: 'local' | 'supabase' | 'none';
+  enabled: boolean;
+  configured: boolean;
+  authenticated: boolean;
+  user: string | null;
+}
+
+export interface SystemStatus {
+  server: { ok: boolean; time: number };
+  storage: { provider: string; ok: boolean; message: string; pending: number; errors: number };
+  conversion: { available: boolean; queued: number };
+  auth: { provider: string };
+}

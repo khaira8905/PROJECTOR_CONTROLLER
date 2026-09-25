@@ -8,6 +8,8 @@ import { controlCommandSchema, execute } from '../services/controlService';
 import * as display from '../services/displayService';
 import * as timer from '../services/timerService';
 import { emitToOperators, rooms, setIo } from './bus';
+import { parseCookies } from '../lib/cookies';
+import { SESSION_COOKIE, authEnabled, verifySessionToken } from '../services/authService';
 
 type Role = 'operator' | 'display';
 type Ack = (response: { ok: true; data?: unknown } | { ok: false; error: string }) => void;
@@ -64,6 +66,12 @@ export function createSocketServer(httpServer: HttpServer): Server {
         const { eventId, role } = joinSchema.parse(payload);
         const event = await prisma.event.findUnique({ where: { id: eventId }, select: { id: true } });
         if (!event) throw new HttpError(404, 'Event not found.');
+
+        // Displays may join freely; controlling the event requires a signed-in operator.
+        if (role === 'operator' && authEnabled()) {
+          const session = await verifySessionToken(parseCookies(socket.handshake.headers.cookie)[SESSION_COOKIE]);
+          if (!session) throw new HttpError(401, 'Please sign in.');
+        }
 
         const previous = socket.data.eventId as string | undefined;
         if (previous) {

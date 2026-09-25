@@ -2,18 +2,19 @@ import { Modal } from '../ui/Modal';
 import { Kbd } from '../ui/Kbd';
 
 export const SHORTCUTS: [string, string][] = [
-  ['→', 'Next queue item'],
-  ['←', 'Previous queue item'],
-  ['Space', 'Start / pause timer'],
-  ['B', 'Black screen'],
-  ['W', 'Waiting screen'],
-  ['L', 'Show event logo'],
-  ['S', 'Show current item'],
+  ['→ / Space', 'Next slide / next item'],
+  ['←', 'Previous slide / item'],
+  ['G', 'Jump to a slide number'],
+  ['B', 'Black screen (instant)'],
+  ['W', 'Please Wait screen'],
+  ['T', 'Technical Difficulty screen'],
+  ['Esc', 'Resume presentation (leave special screen)'],
+  ['L', 'Full-screen event logo'],
+  ['O', 'Show / hide logo overlay'],
   ['F', 'Fullscreen the display'],
-  ['PgDn / PgUp', 'Next / previous PDF page'],
+  ['P', 'Start / pause timer'],
   ['R', 'Reset timer'],
   ['?', 'Show this help'],
-  ['Esc', 'Close dialogs / exit fullscreen'],
 ];
 
 export function ShortcutsHelp({ open, onClose }: { open: boolean; onClose: () => void }) {

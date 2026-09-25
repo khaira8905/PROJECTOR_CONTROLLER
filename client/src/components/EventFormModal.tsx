@@ -76,11 +76,8 @@ export function EventFormModal({ open, event, logoOptions, onClose, onSubmit }: 
         <Field label="Description" className="sm:col-span-2">
           <TextArea value={form.description} onChange={(e) => set('description', e.target.value)} placeholder="What is this event about?" maxLength={2000} />
         </Field>
-        <Field label="Waiting screen message" hint="Shown on the projector under the event name." className="sm:col-span-2">
-          <TextInput value={form.waitingMessage} onChange={(e) => set('waitingMessage', e.target.value)} placeholder="Please wait…" maxLength={200} />
-        </Field>
         {event && logoOptions && (
-          <Field label="Event logo" hint="Used by the SHOW LOGO control. Upload an image to the media library first." className="sm:col-span-2">
+          <Field label="Event logo" hint="Shown full-screen by SHOW LOGO. Upload an image to the library first." className="sm:col-span-2">
             <select
               value={form.logoMediaId ?? ''}
               onChange={(e) => set('logoMediaId', e.target.value || null)}

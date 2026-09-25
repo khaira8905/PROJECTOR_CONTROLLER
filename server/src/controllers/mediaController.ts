@@ -16,9 +16,10 @@ import {
   removeStoredFile,
   resolveStoragePath,
   storeFile,
-  storedFileExists,
 } from '../services/mediaStorage';
 import * as display from '../services/displayService';
+import { enqueueConversion, processNewMedia, resetSofficeCache } from '../services/processingService';
+import { enqueueCloudUpload, ensureLocalCopy, removeFromCloud } from '../services/cloudSync';
 import { emitToOperators } from '../socket/bus';
 import { findEventOr404 } from './eventsController';
 
@@ -65,6 +66,7 @@ export async function uploadMedia(req: Request<{ id: string }>, res: Response) {
     throw badRequest('No files were uploaded.');
   }
 
+  const folder = folderSchema.parse(typeof req.query.folder === 'string' ? req.query.folder : '');
   const uploaded = [];
   const duplicates = [];
   const seenHashes = new Set<string>();
@@ -104,9 +106,14 @@ export async function uploadMedia(req: Request<{ id: string }>, res: Response) {
           mimeType: type.mimeType,
           size: file.size,
           hash,
+          folder,
+          conversionStatus: type.kind === 'presentation' ? 'pending' : 'none',
         },
       });
-      uploaded.push(toMediaDto(media));
+      // Page counting / PowerPoint conversion and the cloud copy happen in the background.
+      await processNewMedia(media.id);
+      enqueueCloudUpload(media.id);
+      uploaded.push(toMediaDto((await prisma.media.findUnique({ where: { id: media.id } }))!));
       logger.info(`Uploaded "${name}" (${type.kind}, ${file.size} bytes) to event ${event.id}`);
     } catch (err) {
       logger.error(`Upload of "${name}" failed:`, err);
@@ -126,20 +133,29 @@ export async function uploadMedia(req: Request<{ id: string }>, res: Response) {
   });
 }
 
-const renameSchema = z.object({
+const folderSchema = z
+  .string()
+  .trim()
+  .max(60)
+  .transform((v) => v.replace(/[\u0000-\u001f\u007f/\\]/g, ''));
+
+const updateSchema = z.object({
   name: z
     .string()
     .trim()
     .min(1, 'Name is required')
     .max(200)
-    .transform((v) => v.replace(/[\u0000-\u001f\u007f/\\]/g, '')),
+    .transform((v) => v.replace(/[\u0000-\u001f\u007f/\\]/g, ''))
+    .optional(),
+  folder: folderSchema.optional(),
 });
 
+/** Rename a file and/or move it to another library folder. */
 export async function renameMedia(req: Request<{ mediaId: string }>, res: Response) {
   const media = await findMediaOr404(req.params.mediaId);
-  const { name } = renameSchema.parse(req.body);
-  if (!name) throw badRequest('Name is required.');
-  const updated = await prisma.media.update({ where: { id: media.id }, data: { name } });
+  const { name, folder } = updateSchema.parse(req.body);
+  if (name !== undefined && !name) throw badRequest('Name is required.');
+  const updated = await prisma.media.update({ where: { id: media.id }, data: { name, folder } });
   await notifyMediaChanged(media.eventId);
   res.json(toMediaDto(updated));
 }
@@ -154,31 +170,57 @@ export async function deleteMedia(req: Request<{ mediaId: string }>, res: Respon
   await prisma.event.updateMany({ where: { id: media.eventId, logoMediaId: media.id }, data: { logoMediaId: null } });
   try {
     await removeStoredFile(media.storagePath);
+    if (media.renderPath) await removeStoredFile(media.renderPath);
   } catch (err) {
     logger.warn('Could not remove media file from disk', media.id, err);
   }
+  void removeFromCloud([media.storagePath, media.renderPath]);
   await notifyMediaChanged(media.eventId);
   logger.info(`Deleted media "${media.name}" (${media.id})`);
   res.status(204).end();
 }
 
-/** Streams a media file (with HTTP range support for video seeking). */
-export async function serveMediaFile(req: Request<{ mediaId: string }>, res: Response) {
-  const media = await findMediaOr404(req.params.mediaId);
-  if (!storedFileExists(media.storagePath)) {
-    throw new HttpError(404, 'Media file no longer exists.', 'MEDIA_MISSING');
-  }
-  const download = req.query.download === '1';
-  res.setHeader('Content-Type', media.mimeType);
+function sendStored(res: Response, relativePath: string, mimeType: string, name: string, download: boolean, mediaId: string) {
+  res.setHeader('Content-Type', mimeType);
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  const fileName = encodeURIComponent(media.name);
-  res.setHeader('Content-Disposition', `${download ? 'attachment' : 'inline'}; filename*=UTF-8''${fileName}`);
-  res.sendFile(resolveStoragePath(media.storagePath), { cacheControl: true, maxAge: '1h', dotfiles: 'deny' }, (err) => {
+  res.setHeader('Content-Disposition', `${download ? 'attachment' : 'inline'}; filename*=UTF-8''${encodeURIComponent(name)}`);
+  res.sendFile(resolveStoragePath(relativePath), { cacheControl: true, maxAge: '1h', dotfiles: 'deny' }, (err) => {
     if (err && !res.headersSent) {
-      logger.error('Failed to send media file', media.id, err);
+      logger.error('Failed to send media file', mediaId, err);
       res.status(404).json({ error: 'Media file no longer exists.' });
     }
   });
+}
+
+/**
+ * Streams a media file (with HTTP range support for video seeking). Files are always
+ * served from the local copy; if it is gone, it is restored from cloud storage first.
+ */
+export async function serveMediaFile(req: Request<{ mediaId: string }>, res: Response) {
+  const media = await findMediaOr404(req.params.mediaId);
+  if (!(await ensureLocalCopy(media.storagePath))) {
+    throw new HttpError(404, 'Media file no longer exists.', 'MEDIA_MISSING');
+  }
+  sendStored(res, media.storagePath, media.mimeType, media.name, req.query.download === '1', media.id);
+}
+
+/** The browser-renderable PDF generated from a PPT/PPTX. */
+export async function serveRenderedFile(req: Request<{ mediaId: string }>, res: Response) {
+  const media = await findMediaOr404(req.params.mediaId);
+  if (!media.renderPath || media.conversionStatus !== 'ready' || !(await ensureLocalCopy(media.renderPath))) {
+    throw new HttpError(404, 'Slides for this presentation are not available.', 'RENDER_MISSING');
+  }
+  const pdfName = media.name.replace(/\.(pptx?|PPTX?)$/, '') + '.pdf';
+  sendStored(res, media.renderPath, 'application/pdf', pdfName, req.query.download === '1', media.id);
+}
+
+/** Retries a failed/unavailable PowerPoint conversion (e.g. after installing LibreOffice). */
+export async function reconvertMedia(req: Request<{ mediaId: string }>, res: Response) {
+  const media = await findMediaOr404(req.params.mediaId);
+  if (media.kind !== 'presentation') throw badRequest('Only PowerPoint files are converted.');
+  resetSofficeCache();
+  enqueueConversion(media.id);
+  res.status(202).json({ ok: true });
 }
 
 function openerFor(file: string): { cmd: string; args: string[] } {
@@ -203,7 +245,7 @@ export async function openMediaExternally(req: Request<{ mediaId: string }>, res
   if (!config.allowExternalOpen) {
     throw new HttpError(403, 'Opening files on the server machine is disabled.', 'OPEN_DISABLED');
   }
-  if (!storedFileExists(media.storagePath)) {
+  if (!(await ensureLocalCopy(media.storagePath))) {
     throw new HttpError(404, 'Media file no longer exists.', 'MEDIA_MISSING');
   }
   const file = resolveStoragePath(media.storagePath);

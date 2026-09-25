@@ -6,30 +6,43 @@ import { config } from '../config';
 import { prisma } from '../lib/prisma';
 import { logger } from '../lib/logger';
 import { getFileType, hashFile, storeFile } from './mediaStorage';
+import { processNewMedia } from './processingService';
+import { ensureBuiltinScreens, findScreenByKey } from './screenService';
 
-interface DemoItem {
-  file: string;
-  title?: string;
-  notes?: string;
-  durationSeconds?: number;
-}
+/** A Show Flow entry: a demo file (optionally a slide range) or a built-in screen. */
+type DemoItem =
+  | { file: string; title?: string; notes?: string; durationSeconds?: number; startPage?: number; endPage?: number }
+  | { screen: string; title?: string; notes?: string; durationSeconds?: number };
 
-const QUEUE: DemoItem[] = [
+const FOLDERS: Record<string, string> = {
+  'Welcome.png': 'Event Branding',
+  'ACM Introduction.pptx': 'Main Presentation',
+  'Speaker Presentation.pdf': 'Speaker 1',
+  'Break.webm': 'Break Screens',
+  'Closing.png': 'Event Branding',
+  'ACM Logo.png': 'Logos',
+};
+
+const FLOW: DemoItem[] = [
+  { screen: 'starting', notes: 'Doors open. Start the 5:00 countdown when the MC is ready.', durationSeconds: 300 },
   { file: 'Welcome.png', title: 'Welcome Screen', notes: 'Hold on this until the auditorium is seated. Cue the MC.' },
   {
     file: 'ACM Introduction.pptx',
     title: 'ACM Introduction',
-    notes: 'Open in PowerPoint on the projector laptop (Open Externally). Introduce the ACM student chapter before slide 3.',
+    notes: 'Introduce the ACM student chapter before slide 3.',
     durationSeconds: 600,
   },
+  { screen: 'please-wait', notes: 'Speaker is setting up the microphone.', durationSeconds: 30 },
   {
     file: 'Speaker Presentation.pdf',
     title: 'Guest Speaker — Building for the Web',
     notes: 'Speaker asked for a 2-minute warning. Start the 20:00 timer when they begin.',
     durationSeconds: 1200,
   },
-  { file: 'Break.webm', title: 'Break Video', notes: 'Loop during the 10-minute break. Lights up.', durationSeconds: 600 },
+  { screen: 'break', notes: '10-minute break. Lights up.', durationSeconds: 600 },
+  { file: 'Break.webm', title: 'Break Video', notes: 'Plays during the break.' },
   { file: 'Closing.png', title: 'Closing & Thank You', notes: 'Thank sponsors and volunteers. Announce the group photo.' },
+  { screen: 'thanks' },
 ];
 
 const SCHEDULE = [
@@ -56,12 +69,12 @@ export async function seedDemoIfEmpty() {
       description: 'Annual technical festival of the ACM student chapter — talks, workshops and demos.',
       waitingMessage: 'The session will begin shortly',
       timerState: { create: { durationMs: 10 * 60_000, remainingMs: 10 * 60_000, warningMs: 2 * 60_000 } },
-      displayState: { create: { mode: 'waiting' } },
+      displayState: { create: { mode: 'screen' } },
       scheduleItems: { create: SCHEDULE },
     },
   });
 
-  const files = [...QUEUE.map((q) => q.file), 'ACM Logo.png'];
+  const files = Object.keys(FOLDERS);
   const mediaIds = new Map<string, string>();
   const tmpDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'eventcontrol-demo-'));
   try {
@@ -78,33 +91,62 @@ export async function seedDemoIfEmpty() {
       const [hash, stat] = await Promise.all([hashFile(copy), fsp.stat(copy)]);
       const storagePath = await storeFile(copy, event.id, file);
       const media = await prisma.media.create({
-        data: { eventId: event.id, name: file, originalName: file, storagePath, kind: type.kind, mimeType: type.mimeType, size: stat.size, hash },
+        data: {
+          eventId: event.id,
+          name: file,
+          originalName: file,
+          storagePath,
+          kind: type.kind,
+          mimeType: type.mimeType,
+          size: stat.size,
+          hash,
+          folder: FOLDERS[file] ?? '',
+        },
       });
       mediaIds.set(file, media.id);
+      // Page counts now, PowerPoint conversion in the background.
+      await processNewMedia(media.id);
     }
   } finally {
     await fsp.rm(tmpDir, { recursive: true, force: true });
   }
 
+  await ensureBuiltinScreens(event.id);
   let position = 0;
-  for (const item of QUEUE) {
+  for (const item of FLOW) {
+    if ('screen' in item) {
+      const screen = await findScreenByKey(event.id, item.screen);
+      if (!screen) continue;
+      await prisma.queueItem.create({
+        data: { eventId: event.id, kind: 'screen', screenId: screen.id, position: position++, notes: item.notes ?? '', durationSeconds: item.durationSeconds ?? null },
+      });
+      continue;
+    }
     const mediaId = mediaIds.get(item.file);
     if (!mediaId) continue;
     await prisma.queueItem.create({
       data: {
         eventId: event.id,
+        kind: 'media',
         mediaId,
         position: position++,
         title: item.title,
         notes: item.notes ?? '',
         durationSeconds: item.durationSeconds ?? null,
+        startPage: item.startPage ?? null,
+        endPage: item.endPage ?? null,
       },
     });
   }
   const logoId = mediaIds.get('ACM Logo.png');
-  if (logoId) await prisma.event.update({ where: { id: event.id }, data: { logoMediaId: logoId } });
+  if (logoId) {
+    await prisma.event.update({
+      where: { id: event.id },
+      data: { logoMediaId: logoId, overlayMediaId: logoId, overlayPosition: 'top-right', overlaySize: 8, overlayOpacity: 85, overlayVisible: false },
+    });
+  }
 
-  await prisma.event.create({
+  const recruitment = await prisma.event.create({
     data: {
       name: 'ACM Recruitment 2026',
       date: new Date('2026-10-05T00:00:00.000Z'),
@@ -114,6 +156,7 @@ export async function seedDemoIfEmpty() {
       displayState: { create: {} },
     },
   });
+  await ensureBuiltinScreens(recruitment.id);
 
   logger.info(`Demo event "${event.name}" created with ${mediaIds.size} media files.`);
 }

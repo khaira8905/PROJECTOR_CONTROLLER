@@ -16,7 +16,8 @@
     "start": "npm run db:push && npm run start -w server",
     "typecheck": "npm run typecheck -w server && npm run typecheck -w client",
     "test": "npm run test -w server",
-    "e2e": "node scripts/e2e-flow.mjs"
+    "e2e": "node scripts/e2e-flow.mjs",
+    "reset-password": "npm run reset-password -w server"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",

@@ -1,22 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-// The legacy build includes polyfills for older browsers (projector laptops are rarely up to date).
-import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
-import workerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist';
-
-pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
-
-// Keep loaded documents around so page flips are instant.
-const documents = new Map<string, Promise<PDFDocumentProxy>>();
-function loadDocument(url: string) {
-  let doc = documents.get(url);
-  if (!doc) {
-    doc = pdfjs.getDocument({ url }).promise;
-    doc.catch(() => documents.delete(url));
-    documents.set(url, doc);
-  }
-  return doc;
-}
+import { loadDocument } from '../../lib/pdf';
 
 interface PdfViewProps {
   url: string;

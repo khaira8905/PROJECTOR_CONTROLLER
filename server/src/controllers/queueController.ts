@@ -14,26 +14,41 @@ const optionalTitle = trimmed(200)
   .transform((v) => (v === undefined ? undefined : v || null));
 const duration = z.number().int().min(0).max(24 * 60 * 60).nullable().optional();
 
-const addSchema = z.object({
-  mediaId: idParam,
-  title: optionalTitle,
-  durationSeconds: duration,
-  notes: trimmed(5000).optional(),
-});
+const pageNumber = z.number().int().min(1).max(9999).nullable().optional();
+
+/** A Show Flow item is either a piece of media (optionally a slide range) or a special screen. */
+const addSchema = z
+  .object({
+    kind: z.enum(['media', 'screen']).optional(),
+    mediaId: idParam.optional(),
+    screenId: idParam.optional(),
+    title: optionalTitle,
+    startPage: pageNumber,
+    endPage: pageNumber,
+    durationSeconds: duration,
+    notes: trimmed(5000).optional(),
+  })
+  .refine((b) => (b.kind === 'screen' ? !!b.screenId : !!b.mediaId), 'mediaId (or screenId for screen items) is required');
 
 const reorderSchema = z.object({ order: z.array(idParam).max(1000) });
 
 const updateSchema = z.object({
   title: optionalTitle,
+  startPage: pageNumber,
+  endPage: pageNumber,
   durationSeconds: duration,
   notes: trimmed(5000).optional(),
 });
+
+function checkRange(start?: number | null, end?: number | null) {
+  if (start && end && start > end) throw badRequest('The first slide must come before the last slide.');
+}
 
 async function queueFor(eventId: string) {
   const items = await prisma.queueItem.findMany({
     where: { eventId },
     orderBy: { position: 'asc' },
-    include: { media: true },
+    include: { media: true, screen: true },
   });
   return items.map(toQueueItemDto);
 }
@@ -46,7 +61,7 @@ async function queueChanged(eventId: string) {
 
 async function findItemOr404(id: string) {
   const item = await prisma.queueItem.findUnique({ where: { id: idParam.parse(id) } });
-  if (!item) throw notFound('Queue item not found.');
+  if (!item) throw notFound('Show Flow item not found.');
   return item;
 }
 
@@ -58,19 +73,30 @@ export async function getQueue(req: Request<{ id: string }>, res: Response) {
 export async function addToQueue(req: Request<{ id: string }>, res: Response) {
   const event = await findEventOr404(req.params.id);
   const body = addSchema.parse(req.body);
-  const media = await prisma.media.findFirst({ where: { id: body.mediaId, eventId: event.id } });
-  if (!media) throw badRequest('Media not found in this event.');
+  checkRange(body.startPage, body.endPage);
+  const kind = body.kind ?? 'media';
+  if (kind === 'screen') {
+    const screen = await prisma.screen.findFirst({ where: { id: body.screenId, eventId: event.id } });
+    if (!screen) throw badRequest('Screen not found in this event.');
+  } else {
+    const media = await prisma.media.findFirst({ where: { id: body.mediaId, eventId: event.id } });
+    if (!media) throw badRequest('Media not found in this event.');
+  }
   const last = await prisma.queueItem.findFirst({ where: { eventId: event.id }, orderBy: { position: 'desc' } });
   const item = await prisma.queueItem.create({
     data: {
       eventId: event.id,
-      mediaId: media.id,
+      kind,
+      mediaId: kind === 'media' ? body.mediaId : null,
+      screenId: kind === 'screen' ? body.screenId : null,
       position: (last?.position ?? -1) + 1,
       title: body.title ?? null,
+      startPage: kind === 'media' ? (body.startPage ?? null) : null,
+      endPage: kind === 'media' ? (body.endPage ?? null) : null,
       durationSeconds: body.durationSeconds ?? null,
       notes: body.notes ?? '',
     },
-    include: { media: true },
+    include: { media: true, screen: true },
   });
   await queueChanged(event.id);
   res.status(201).json(toQueueItemDto(item));
@@ -95,7 +121,8 @@ export async function reorderQueue(req: Request<{ id: string }>, res: Response) 
 export async function updateQueueItem(req: Request<{ itemId: string }>, res: Response) {
   const item = await findItemOr404(req.params.itemId);
   const body = updateSchema.parse(req.body);
-  const updated = await prisma.queueItem.update({ where: { id: item.id }, data: body, include: { media: true } });
+  checkRange(body.startPage === undefined ? item.startPage : body.startPage, body.endPage === undefined ? item.endPage : body.endPage);
+  const updated = await prisma.queueItem.update({ where: { id: item.id }, data: body, include: { media: true, screen: true } });
   await queueChanged(item.eventId);
   res.json(toQueueItemDto(updated));
 }

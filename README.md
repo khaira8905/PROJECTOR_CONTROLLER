@@ -1,381 +1,304 @@
-# EventControl
+# EventControl — Mission Control for Presentations
 
-**Event presentation and projector control system.** One dashboard for the person running the projector at a college fest, conference or seminar, plus a clean audience display that shows only what the operator chooses.
+A presentation control console for events, seminars, conferences and classrooms. One operator dashboard controls everything the projector shows: slides from **several independent PowerPoint/PDF files**, special screens (Please Wait, Technical Difficulty, Break, Thank You, custom announcements), logos, countdowns, images and videos. You don't need to open PowerPoint, Alt-Tab between windows or hunt for files.
 
 ```
- OPERATOR DASHBOARD  ──►  SERVER (Express + Socket.IO + SQLite)  ──►  PROJECTOR DISPLAY
-   /events/:id              authoritative display + timer state          /display/:id
+UPLOAD → ORGANIZE → PREVIEW → QUEUE (Show Flow) → CONTROL → DISPLAY
 ```
 
-![Operator dashboard](docs/screenshots/dashboard.png)
+![Operator console](docs/screenshots/console.png)
+
+---
 
 ## ⚡ Quick start (no commands needed)
 
 1. Install **Node.js LTS** from https://nodejs.org (one time), then restart your computer.
-2. On this GitHub page click the green **`<> Code`** button → **Download ZIP**.
-3. Right-click the downloaded ZIP → **Extract All…** → **Extract**.
+2. *Recommended:* install **LibreOffice** from https://www.libreoffice.org (free). It turns PowerPoint files into slides EventControl can control one by one. PDFs, images and videos work without it.
+3. On GitHub click the green **`<> Code`** button → **Download ZIP**, then right-click the ZIP → **Extract All…**
 4. Open the extracted folder and double-click:
-   - **Windows:** `START-EventControl.bat`. If Windows shows "Windows protected your PC", click **More info → Run anyway**.
+   - **Windows:** `START-EventControl.bat`. If Windows shows "Windows protected your PC", click **More info → Run anyway**. If nothing happens, open the folder, type `cmd` in the address bar, and run `npm install` then `npm run dev`.
    - **macOS:** `START-EventControl-mac.command`. The first time, right-click it → **Open** → **Open**.
 5. The first run installs packages (1–3 minutes). Then your browser opens **http://localhost:5173**.
+6. **Create the operator password** when asked. This stops other people on the same Wi-Fi from controlling your projector.
 
-Keep the black window open while you use EventControl, and close it to stop the app.
+Keep the black window open while you use EventControl, and close it to stop the app. Forgot the password? Stop the app and run `npm run reset-password`.
 
 ---
 
-## 1. What is EventControl?
+## What the operator can do
 
-EventControl is a local web application that turns any laptop into a lightweight **event AV control room**. The operator:
-
-- creates an event and uploads its slides, PDFs, images and videos,
-- arranges them into an ordered **event queue**,
-- presses **NEXT / PREVIOUS** to step through the queue,
-- sees the **current** and **up next** items and **speaker notes**,
-- runs a **countdown timer** that stays in sync on every screen,
-- can hit **BLACK SCREEN**, **WAITING SCREEN** or **SHOW LOGO** at any moment.
-
-A second browser window, `/display/:eventId`, is dragged to the projector and made fullscreen. It has no controls or navigation, and it updates as soon as the operator acts.
-
-## 2. What problem it solves
-
-At real events the person at the projector juggles PowerPoint, a PDF viewer, a video player, a file explorer full of `final_v3 (2).pptx` files, a phone timer and a printed schedule. Every switch between applications risks showing the audience the desktop, a notification or the wrong file.
-
-EventControl puts all of that in **one screen**, and the audience only ever sees the display window.
-
-## 3. Features
-
-| Area | What you get |
+| Area | Features |
 | --- | --- |
-| **Events** | Create, edit, delete and open events (name, date, venue, description, custom waiting-screen message, logo). |
-| **Media library** | Drag-and-drop upload of `.ppt .pptx .pdf .png .jpg .jpeg .webp .mp4 .webm .mov`. Type detection, icons, thumbnails, rename, delete, open, download, add to queue, "show now". Duplicate files are detected by SHA-256 and skipped. |
-| **Event queue** | Ordered playlist of media with drag-and-drop reordering (mouse or keyboard), optional title, planned duration and notes. Stored in SQLite. |
-| **Current / Next** | The dashboard always shows what is on air, what comes next and the current item's speaker notes. |
-| **Projector display** | Fullscreen audience view: images, video (with play/pause/restart from the dashboard), PDFs rendered page by page (page control from the dashboard), a title card for PowerPoint files, a waiting screen, a logo screen and a black screen. |
-| **Program monitor** | The dashboard shows a live, scaled copy of exactly what the projector shows. It uses the same rendering component as the display. |
-| **Emergency controls** | Large, colour-coded BLACK / WAITING / LOGO / SHOW CURRENT buttons with single-key shortcuts. Black screen takes about 30–80 ms end to end in local testing. |
-| **Timer** | Server-authoritative countdown with a configurable duration and warning threshold, start/pause/reset, ±1 minute, and an optional overlay on the projector. |
-| **Schedule** | A simple time-based run sheet with NOW / NEXT / upcoming based on the wall clock. It is a reference for the operator and does not advance anything on its own. |
-| **Speaker notes** | Per queue item and visible to operators only. The server never sends them to display clients, and a test checks this. |
-| **Presence** | LIVE / OFFLINE badge showing how many displays are connected, plus alerts when a display drops or the server connection is lost. |
-| **Resilience** | Displays reconnect automatically and restore the exact state (including the PDF page and the timer). State is persisted, so it also survives a server restart. |
-| **Keyboard first** | Every live action has a shortcut. Press `?` in the dashboard to see them. |
-| **Demo mode** | The first start seeds "ACM Tech Fest 2026" with real sample media, a queue with notes and a schedule. |
+| **Presentations library** | Upload PPT, PPTX, PDF, images (PNG/JPG/WEBP) and videos (MP4/WEBM/MOV) by drag-and-drop. Each file is a card with a thumbnail, slide/page count, upload date and status. Files are organised in **folders** (Main Presentation, Speaker 1, Speaker 2, Sponsors, Break Screens, Emergency Screens, Logos, Event Branding, or your own). You can **preview** a file privately, **show** it (optionally a specific slide), add it to the flow, rename, move, download or delete it. Duplicate uploads are detected and skipped. |
+| **PowerPoint handling** | PPT/PPTX files are converted to PDF in the background with LibreOffice. The **original file is kept** and the converted version is what the display renders, which gives real slide-by-slide control. "Open in PowerPoint" launches the original if you need animations or embedded media. |
+| **Show Flow (Run of Show)** | Prepare the whole event beforehand: `01 Starting Soon → 02 Opening (slides 1–8) → 03 Please Wait (30 sec) → 04 Speaker 1 → …`. Items are presentations (with an optional **slide range**) or screens. Reorder them by drag-and-drop. **Next** walks through the slides of the current item, then moves on to the next item and file. Playback is always manual. |
+| **Live control** | ◀ Previous / ▶ Next, **jump to slide N**, a clickable **slide strip**, **"Speaker 1 — Slide 07 / 24"**, Up Next, operator-only **speaker notes**, video play/pause/restart, and asking the display to go fullscreen. |
+| **Special screens** | Built-in **Please Wait, Technical Difficulty, We'll Be Back Shortly, Session Starting Soon, Coming Up Next** (announces the next item automatically) and **Thank You**, with animated backgrounds. You can edit their text and create **custom screens** (title, subtitle, colour, image/video background). Any screen can be shown **with a countdown** ("Please Wait — 05:00"). |
+| **Quick actions** | 🟢 Resume · 🟡 Please Wait · 🟠 Technical Difficulty · 🔴 **Black screen**. The Black button needs a second click to confirm; the `B` key acts instantly. Plus Logo and Fullscreen. |
+| **Branding** | A logo overlay (university, event or sponsor logo) drawn over slides and screens. Choose the position (4 corners or centre), size, opacity and show/hide. There's also a separate full-screen logo mode. |
+| **Timer** | A server-authoritative countdown (start/pause/reset, ±1 min, warning threshold, show/hide on display). It is shown large on special screens and as a corner badge over slides, and stays in sync on every screen. |
+| **Status bar** | Display connected / offline, server, cloud storage (synced / syncing / offline), upload progress. |
+| **Schedule** | A time-based run sheet (NOW / NEXT) as an operator reference. |
+| **Reliability** | The display keeps the last content if the network drops, reconnects on its own and restores the exact state (slide, screen, overlay, timer). State survives server restarts. Files are always served from a local copy, so everything works offline. |
 
-### Keyboard shortcuts (dashboard)
+### Keyboard shortcuts
 
 | Key | Action |
 | --- | --- |
-| `→` / `←` | Next / previous queue item |
-| `Space` | Start / pause timer |
-| `B` | Black screen |
-| `W` | Waiting screen |
-| `L` | Show event logo |
-| `S` | Show current item (go back on air) |
-| `F` | Ask the display to go fullscreen |
-| `PgDn` / `PgUp` | Next / previous PDF page |
+| `→` / `Space` / `PgDn` | Next slide / next item |
+| `←` / `PgUp` | Previous slide / item |
+| `G` | Jump to a slide number |
+| `B` | Black screen (instant) |
+| `W` | Please Wait screen |
+| `T` | Technical Difficulty screen |
+| `Esc` | Resume the presentation (leave the special screen, back to the same slide) |
+| `L` | Full-screen event logo |
+| `O` | Show / hide logo overlay |
+| `F` | Fullscreen the display |
+| `P` | Start / pause timer |
 | `R` | Reset timer |
 | `?` | Shortcut help |
-| `Esc` | Close dialogs / exit fullscreen |
 
-Shortcuts are ignored while typing in a text field, and holding a key down never skips several items.
-
-On the display window, a click or `F` toggles fullscreen.
-
-## 4. Architecture
-
-```
-event-control/
-├── client/                 React + Vite + TypeScript + Tailwind (operator UI and display)
-│   └── src/
-│       ├── pages/          EventsPage, DashboardPage, DisplayPage
-│       ├── components/     ui/ (primitives), dashboard/ (panels), display/ (DisplayStage, PdfView)
-│       ├── hooks/          useEventSocket, useTimerRemaining, useKeyboardShortcuts, useEventData
-│       ├── services/       REST client (api.ts), Socket.IO client (socket.ts)
-│       ├── lib/            formatting, schedule and timer maths
-│       └── types/          shared DTO types
-├── server/                 Express + Socket.IO + Prisma (TypeScript)
-│   ├── src/
-│   │   ├── routes/         REST route table
-│   │   ├── controllers/    events, media, queue, schedule, control
-│   │   ├── services/       displayService, timerService, controlService, mediaStorage, demoSeed
-│   │   ├── socket/         Socket.IO server, room layout (bus.ts)
-│   │   ├── middleware/     error handling
-│   │   ├── app.ts          Express app factory (also serves client/dist in production)
-│   │   └── server.ts       entry point
-│   ├── demo-assets/        media used by demo mode
-│   └── test/               Vitest + Supertest + Socket.IO integration tests
-├── prisma/schema.prisma    SQLite schema (DB file: prisma/eventcontrol.db)
-├── uploads/                uploaded media: <eventId>/{presentations,videos,images,documents}/
-└── package.json            npm workspaces + top-level scripts
-```
-
-### Data model
-
-```
-Event ─┬─< Media ─────< QueueItem   (QueueItem → Media, cascade on delete)
-       ├─< QueueItem
-       ├─< ScheduleItem
-       ├── TimerState    (1:1, persisted authoritative timer)
-       └── DisplayState  (1:1, persisted "what is on screen")
-```
-
-All child rows cascade when an event is deleted, and the event's upload folder is removed as well.
-
-### Server-side state
-
-The server is the **single source of truth** for each event's display and timer:
-
-- `displayService` holds `{ mode, queueItemId (cursor), adHocMediaId, page }` in memory, builds a **display snapshot** (event name, waiting message, media URL, title, logo), broadcasts it and persists it to SQLite.
-- `timerService` holds `{ status, durationMs, warningMs, remainingMs, startedAt }`. Clients never count down on their own. They compute `remaining = remainingMs − (serverNow − startedAt)` using a measured clock offset, so every screen shows the same value. The server schedules a timeout that marks the timer `finished`.
-- `controlService` is one typed command dispatcher (validated with Zod) used by both Socket.IO and REST.
-
-## 5. Technology stack
-
-| Layer | Choice |
-| --- | --- |
-| Frontend | React 19, Vite, TypeScript, Tailwind CSS v4, React Router, lucide-react icons, dnd-kit (drag and drop), pdf.js |
-| Backend | Node.js (≥ 20), Express 5, TypeScript, Multer (uploads), Zod (validation) |
-| Real time | Socket.IO 4 |
-| Database | SQLite through Prisma ORM 6 |
-| Tests | Vitest, Supertest, socket.io-client |
-
-## 6. Installation
-
-Requirements: **Node.js 20 or newer** and npm.
-
-```bash
-git clone <this repo> event-control
-cd event-control
-npm install        # installs client + server (npm workspaces) and generates the Prisma client
-```
-
-## 7. Running the frontend and backend
-
-### Development (hot reload)
-
-```bash
-npm run dev
-```
-
-This creates or updates the SQLite database (`prisma db push`), then starts:
-
-- **Backend** on http://localhost:4000 (API + Socket.IO)
-- **Frontend** on **http://localhost:5173** ← open this
-
-Vite proxies `/api` and `/socket.io` to the backend, so the browser only talks to port 5173.
-
-The first start seeds the demo event. To start again from scratch, stop the app and run `npm run db:reset`. Then delete the old event folders in `uploads/` (keep `.gitkeep`).
-
-### Production (single port)
-
-```bash
-npm run build      # compiles server to server/dist and client to client/dist
-npm start          # serves API, Socket.IO and the built UI on http://localhost:4000
-```
-
-### Other scripts
-
-| Command | Purpose |
-| --- | --- |
-| `npm test` | Server integration tests (temporary database, never touches your data) |
-| `npm run e2e` | Browser end-to-end check of the critical flow against the running app (needs `npx playwright install chromium` once, or `CHROME_PATH=/path/to/chrome`) |
-| `npm run typecheck` | TypeScript checks for server and client |
-| `npm run db:push` | Apply `prisma/schema.prisma` to the SQLite database |
-| `npm run db:reset` | Wipe the database (re-seeds the demo on next start) |
-
-### Configuration (environment variables, all optional)
-
-| Variable | Default | Meaning |
-| --- | --- | --- |
-| `PORT` | `4000` | Backend port |
-| `HOST` | `0.0.0.0` | Bind address (all interfaces, so a projector laptop on the LAN can connect) |
-| `UPLOADS_DIR` | `./uploads` | Where media files are stored |
-| `MAX_UPLOAD_MB` | `1024` | Per-file upload limit |
-| `ALLOW_EXTERNAL_OPEN` | `true` | Allow "Open in PowerPoint" to launch files on the server machine |
-| `SEED_DEMO` | `true` | Create the demo event when the database is empty |
-| `DATABASE_URL` | `prisma/eventcontrol.db` | Override the SQLite file used at runtime (e.g. `file:/data/ec.db`) |
-| `API_TARGET` | `http://localhost:4000` | (client dev server) where Vite proxies API calls |
-
-## 8. Creating an event
-
-1. Open http://localhost:5173 and click **Create Event**.
-2. Enter a name, date and optional venue, description and waiting-screen message. You land on the event dashboard.
-3. **Upload media**: drop files onto the *Media library* panel or click **Upload**. Unsupported or disguised files (e.g. a `.txt` renamed to `.png`) are rejected with a clear message, and duplicates are skipped.
-4. Click **+ Queue** on each file to add it to the *Event queue*. Drag the ☰ handle to reorder, and use ✎ to add a title such as "Director Speech", a planned duration and **speaker notes**.
-5. Optional: choose an image as the **event logo** (media ⋯ menu → *Use as event logo*, or **Edit** in the header).
-6. Optional: add the run sheet in the *Schedule* panel (＋), and set the timer duration and warning threshold (⚙ in the *Timer* panel).
-
-## 9. Connecting the projector / display
-
-**Same laptop (most common):**
-
-1. Connect the projector and set the OS to **extend** (not mirror) the desktop.
-2. In the dashboard click **Open Display**. A new window opens at `/display/<eventId>`.
-3. Drag that window onto the projector screen and **click it once** (or press `F`) to go fullscreen. That click also lets the browser play video with sound.
-4. The dashboard header now shows **LIVE · 1 display**.
-
-**Separate projector machine (e.g. a PC in the AV booth):**
-
-1. Start EventControl on the operator laptop. The server log prints `on your network: http://192.168.x.y:4000`.
-2. On the projector machine open `http://192.168.x.y:5173/display/<eventId>` in dev mode, or `:4000` in production mode. You can copy the event id from the dashboard URL.
-3. Click once for fullscreen.
-
-The **FULLSCREEN DISPLAY** button (`F`) asks the display to go fullscreen remotely. Browsers only allow this after someone has clicked the display window at least once, and the dashboard tells you if it was blocked.
-
-If the display's network drops, it **keeps showing the last content**, reconnects automatically and re-syncs. If you refresh or reopen it, it restores exactly what it should be showing, including the PDF page and the timer.
-
-### How each media type is shown
-
-| Type | On the display |
-| --- | --- |
-| Image | Fullscreen, letterboxed on black |
-| Video | Fullscreen playback; Play / Pause / Restart from the dashboard. It autoplays with sound once the display has been clicked, and muted otherwise. |
-| PDF | Rendered with pdf.js one page at a time, fitted to the screen; page control from the dashboard (`PgUp`/`PgDn`) |
-| PowerPoint | A title card with the item title. Use **Open in PowerPoint** to launch the file in PowerPoint on the machine running the server, then present from PowerPoint. EventControl does not try to re-implement PowerPoint. |
-| Waiting | Event name, date, waiting message and logo |
-| Logo | The event logo (or a typographic event name if no logo is set) |
-| Black | Pure black. The timer overlay is hidden as well. |
-
-## 10. How Socket.IO works here
-
-Each client connects and joins its event with a role:
-
-```ts
-socket.emit('event:join', { eventId, role: 'operator' | 'display' }, ack)
-// ack → { ok: true, data: { display: DisplaySnapshot, timer: TimerSnapshot, presence } }
-```
-
-The server puts the socket into rooms:
-
-| Room | Members | Receives |
-| --- | --- | --- |
-| `event:<id>` | everyone | `display:update`, `timer:update`, `event:changed`, `event:deleted` |
-| `event:<id>:operators` | dashboards | `queue:changed`, `media:changed`, `schedule:changed`, `presence:update`, `display:fullscreen-result` |
-| `event:<id>:displays` | projector windows | `display:video`, `display:fullscreen` |
-
-**Operator commands** all go through one acknowledged event, which only operator sockets may send:
-
-```ts
-socket.emit('control', { type: 'next' }, ack)                 // NEXT
-socket.emit('control', { type: 'previous' }, ack)             // PREVIOUS
-socket.emit('control', { type: 'show-item', queueItemId }, ack)
-socket.emit('control', { type: 'show-media', mediaId }, ack)  // SHOW_MEDIA (straight from the library)
-socket.emit('control', { type: 'show-current' }, ack)
-socket.emit('control', { type: 'black' | 'waiting' | 'logo' }, ack)
-socket.emit('control', { type: 'page', delta: 1 }, ack)       // PDF page
-socket.emit('control', { type: 'video', action: 'play' | 'pause' | 'restart' }, ack)
-socket.emit('control', { type: 'fullscreen' }, ack)
-socket.emit('control', { type: 'timer-start' | 'timer-pause' | 'timer-toggle' | 'timer-reset' }, ack)
-socket.emit('control', { type: 'timer-adjust', deltaMs: 60000 }, ack)
-socket.emit('control', { type: 'timer-configure', durationMs, warningMs, showOnDisplay }, ack)
-```
-
-**Design decisions**
-
-- **Full snapshots, not deltas.** Every change broadcasts the complete `display:update` snapshot, so a client can never drift out of sync. Snapshots carry a monotonic `version`, and clients drop anything older than what they have.
-- **The ack carries the new state.** The operator UI updates as soon as the server confirms, and the broadcast confirms it again.
-- **Emergency fast path.** Black, waiting and logo reuse the cached snapshot and skip the database entirely. Persistence happens after the broadcast.
-- **Reconnect.** The Socket.IO client retries forever (0.5–3 s backoff). On every `connect` the client re-emits `event:join` and receives a fresh snapshot. Short drops also benefit from Socket.IO connection-state recovery.
-- **Clock sync.** `clock:ping` measures the offset between client and server clocks (re-measured every minute), so countdowns match across machines.
-- **Notes stay private.** Speaker notes are only in REST queue responses and operator-room events. Display snapshots never include them, and the test suite asserts this.
-- **Same commands over REST.** `POST /api/events/:id/control` accepts the same JSON (e.g. `{"type":"black"}`), so a future phone remote or Stream Deck can reuse it.
-
-### REST API
-
-| Method | Path | Description |
-| --- | --- | --- |
-| GET | `/api/events` | List events (with media/queue counts) |
-| POST | `/api/events` | Create event `{ name, date: "YYYY-MM-DD", description?, venue?, waitingMessage? }` |
-| GET | `/api/events/:id` | Get event |
-| PUT | `/api/events/:id` | Update event (incl. `logoMediaId`) |
-| DELETE | `/api/events/:id` | Delete event, its media files, queue and schedule |
-| GET | `/api/events/:id/media` | List media |
-| POST | `/api/events/:id/media` | Upload (`multipart/form-data`, field `files`, up to 20 per request) → `{ uploaded, duplicates, rejected }` |
-| PATCH | `/api/media/:id` | Rename `{ name }` |
-| DELETE | `/api/media/:id` | Delete media (and its queue entries) |
-| GET | `/api/media/:id/file` | Stream the file (HTTP range support; `?download=1` for attachment) |
-| POST | `/api/media/:id/open` | Open the file with its native app on the server machine |
-| GET | `/api/events/:id/queue` | Get queue |
-| POST | `/api/events/:id/queue` | Append `{ mediaId, title?, notes?, durationSeconds? }` |
-| PUT | `/api/events/:id/queue` | Reorder `{ order: [queueItemId, …] }` (must list every item once) |
-| PATCH | `/api/queue/:id` | Update `{ title?, notes?, durationSeconds? }` |
-| DELETE | `/api/queue/:id` | Remove from queue |
-| GET | `/api/events/:id/schedule` | Get schedule |
-| POST | `/api/events/:id/schedule` | Add `{ time: "HH:MM", title, description?, durationMinutes? }` |
-| PATCH / DELETE | `/api/schedule/:id` | Update / delete schedule item |
-| GET | `/api/events/:id/state` | Current display + timer + presence |
-| POST | `/api/events/:id/control` | Run a control command (same payload as the socket) |
-| GET | `/api/health` | Health check |
-
-Errors always look like `{ "error": "Human readable message." }` with an appropriate status code (400 validation, 403 forbidden, 404 not found, 413 file too large, 500 unexpected). Stack traces are only logged on the server.
-
-### Security and reliability
-
-- **Upload allowlist.** The extension decides the type, and the file's **magic bytes must match**, so a `.exe` renamed to `.png` is rejected.
-- **Filenames are sanitized** (ASCII, no path separators), prefixed with a random id and stored under `uploads/<eventId>/<type>/`. Multer writes to a random temp name first, so client-supplied names never reach the filesystem unsanitized.
-- **Path traversal protection.** Every stored path is resolved and checked to be inside `uploads/`. Clients only ever see `/api/media/:id/file` URLs, never filesystem paths.
-- **Size limits**: `MAX_UPLOAD_MB` per file, 20 files per request, 1 MB JSON bodies.
-- **Input validation** on every route and socket command with Zod. Ids are validated before touching the filesystem.
-- **No arbitrary command execution.** "Open in PowerPoint" launches only files tracked in the database, with a fixed OS opener (`open` / `explorer.exe` / `xdg-open`) and **no shell**. It can be disabled with `ALLOW_EXTERNAL_OPEN=false`.
-- **Missing files** are reported (`Media file no longer exists.`) and flagged in the library. The audience display falls back to the waiting screen instead of showing an error.
-- No authentication in the MVP, by design. It is intended for a trusted local network.
-
-### Technical decisions (made where the brief left room)
-
-| Decision | Why |
-| --- | --- |
-| npm workspaces (`client`, `server`) with Prisma at the root | One `npm install` and one `npm run dev`; front and back end stay cleanly separated. |
-| SQLite file at `prisma/eventcontrol.db` (hard-coded default, `DATABASE_URL` override) | Nothing to configure for a local app, and no `.env` file needed. |
-| `prisma db push` instead of migrations | A simpler MVP workflow. Switch to `prisma migrate` once the schema stabilizes. |
-| Display state persisted in a `DisplayState` table | "What is on screen" survives server restarts, not just display refreshes. |
-| Queue cursor plus ad-hoc media | "Show now" from the library doesn't lose your place in the queue. NEXT continues from the cursor. |
-| Removing the on-air item switches the display to the waiting screen | The audience never jumps to unexpected content. |
-| pdf.js (legacy build) instead of the browser's PDF viewer | No toolbar on the projector, remote page control, and it works on older browsers. |
-| Video plays once and holds the last frame | This is predictable. The operator can restart it from the dashboard. |
-| Server also serves the built client in production | A single port, which makes a later Electron wrapper trivial: start the server, then load `http://localhost:4000`. |
-| Schedule "now/next" follows the local wall clock | This matches how operators use a printed run sheet. |
-| Demo "Break" video is WebM | It is generated without ffmpeg. MP4 and MOV uploads are fully supported. |
-
-## 11. Future improvements
-
-These are intentionally **not** in the MVP:
-
-- PowerPoint slide-level control
-- Google Slides integration
-- Remote phone controller (the REST control endpoint is ready for it)
-- Multi-projector support / multiple display outputs
-- OBS integration
-- Audio control
-- Automatic event playback (auto-advance by duration or schedule)
-- Cloud synchronization
-- User authentication and team collaboration
-- Event templates
-- Analytics / logging
-- Electron desktop application
-- Raspberry Pi display node
-
-## 12. Screenshots
-
-| | |
-| --- | --- |
-| **Events** ![Events](docs/screenshots/events.png) | **Operator dashboard** ![Dashboard](docs/screenshots/dashboard.png) |
-| **Display: waiting screen** ![Waiting](docs/screenshots/display-waiting.png) | **Display: PDF with timer overlay** ![PDF](docs/screenshots/display-pdf-timer.png) |
-| **Display: PowerPoint title card** ![Presentation](docs/screenshots/display-presentation.png) | |
+Shortcuts are ignored while typing, and holding a key never skips several slides. On the display window, a click or `F` toggles fullscreen.
 
 ---
 
-## Verified MVP flow
+## Architecture
 
-The following flow is exercised end to end in a real browser by `npm run e2e` (Playwright/Chromium against the running app), and the server parts are also covered by `npm test`:
+```
+┌─────────────────────────┐   REST + Socket.IO    ┌────────────────────────────────────┐   HTTPS (optional)   ┌───────────────────┐
+│ Operator dashboard      │ ◀──────────────────▶ │ EventControl server (this laptop)  │ ───────────────────▶ │ Supabase Storage  │
+│ React · /events/:id     │   (signed-in)         │ Express · Socket.IO · SQLite       │   file copies        │ (cloud bucket)    │
+└─────────────────────────┘                       │ • authoritative display & timer    │ ◀─────────────────── │                   │
+┌─────────────────────────┐   Socket.IO (read)    │ • Show Flow navigation             │   restore if missing └───────────────────┘
+│ Projector display       │ ◀──────────────────── │ • PPTX → PDF (LibreOffice)         │
+│ React · /display/:id    │                       │ • local file copies (uploads/)     │
+└─────────────────────────┘                       └────────────────────────────────────┘
+```
 
-1. Start the application → 2. open the demo event → 3. upload an image (plus a rejected `.txt`, a disguised `.png` and a duplicate) → 4. add it to the queue → 5. open `/display/:eventId` in another window (dashboard shows LIVE) → 6. select an item, and the display shows it → 7–9. press **→**: presentation card, then PDF (and `PgDn` → page 2) → 10–11. press **B**: display goes black (~30–80 ms) → 12–13. **Space** starts the timer and it counts down correctly; operator and display show the same value → 14. refresh the display: it reconnects and restores the waiting screen, the PDF page and the timer overlay.
+```
+event-control/
+├── client/src/
+│   ├── pages/           EventsPage, DashboardPage (operator console), DisplayPage (projector)
+│   ├── components/
+│   │   ├── dashboard/   ProgramMonitor, QuickActions, ShowFlowPanel, PresentationLibrary, PreviewModal,
+│   │   │                ScreensPanel, BrandingPanel, TimerPanel, SchedulePanel, FlowItemModal…
+│   │   ├── display/     DisplayStage (renders any state, used by display + live preview), PdfView
+│   │   └── AuthGate     first-run password / sign-in
+│   ├── hooks/           useEventSocket (realtime state), useTimerRemaining, useKeyboardShortcuts, useSystemStatus
+│   └── lib/             pdf.js loader & thumbnails, flow helpers, formatting
+├── server/src/
+│   ├── controllers/     events, media, queue (Show Flow), screens, schedule, control, auth, status
+│   ├── services/
+│   │   ├── displayService    what is on screen + Next/Previous across slides & files
+│   │   ├── timerService      authoritative countdown
+│   │   ├── controlService    one typed command dispatcher (socket + REST)
+│   │   ├── processingService PDF page counts, PPTX → PDF conversion queue
+│   │   ├── storage/          CloudStorage interface + Supabase implementation
+│   │   ├── cloudSync         background upload/retry, restore-from-cloud, delete
+│   │   ├── authService       password hashing, signed sessions, Supabase Auth
+│   │   └── screenService     built-in special screens
+│   ├── socket/          rooms (operators / displays), join + control handlers
+│   └── scripts/         reset-password
+├── prisma/schema.prisma SQLite: Event, Media, QueueItem (Show Flow), Screen, ScheduleItem, TimerState, DisplayState, Setting
+└── uploads/             local copies: <event>/{presentations,documents,images,videos}/
+```
+
+### Key architectural decisions
+
+| Decision | Why |
+| --- | --- |
+| **Local-first server + cloud file storage** (not a cloud-only backend) | Venue Wi-Fi is unreliable, and a live show must never depend on it. The local server is the realtime hub between the dashboard and the display, and keeps a local copy of every file. The cloud holds durable copies of the uploads; if a local file is missing (cleaned disk, reinstall), it is restored from the cloud automatically. |
+| **Supabase via its REST API, behind a `CloudStorage` interface** | No SDK lock-in. Swapping in S3, Firebase Storage or another provider means writing one small class (`server/src/services/storage/`). With no Supabase settings, the app runs fully locally. |
+| **Metadata stays in local SQLite for now** | Events, flows, screens and state live next to the server for speed and offline safety. Syncing metadata to the cloud (so a second laptop sees the same library) fits naturally with *Event presets* in Phase 3; the storage interface and DTOs are already separated for that. |
+| **PPTX → PDF with LibreOffice, keeping the original** | Browsers cannot render PowerPoint. LibreOffice's headless export preserves layout, fonts and images well and runs offline. Conversion happens in a one-at-a-time background queue with a private LibreOffice profile (so it doesn't clash with an open LibreOffice window) and a timeout. Animations/transitions and embedded video in decks are not reproduced; use "Open in PowerPoint" for those decks. |
+| **pdf.js (legacy build) renders slides in the browser** | Pixel-accurate slides, instant page flips (documents are cached), thumbnails, and it works on older projector-laptop browsers. |
+| **Server-authoritative state, full snapshots** | Every change broadcasts a complete, versioned display snapshot. A display that reconnects or refreshes asks once and is exactly in sync. Emergency modes (black/logo) and slide flips reuse the cached snapshot, so they're applied in milliseconds. |
+| **One command dispatcher** | Socket.IO `control` events and `POST /api/events/:id/control` run the same typed commands, so a phone remote or Stream Deck can be added later without touching the core. |
+| **Sessions in an HttpOnly cookie** | They work transparently for REST, uploads and the Socket.IO handshake. Displays don't need to sign in, so the projector machine needs no password; only operator control is protected. |
+| **Schema changes are additive** | Existing installs upgrade in place with `prisma db push` (run automatically by `npm run dev`); nothing is lost. |
+
+---
+
+## Installation & running (developer view)
+
+Requirements: **Node.js ≥ 20**, npm. Optional: **LibreOffice** (PowerPoint conversion).
+
+```bash
+npm install        # client + server (npm workspaces) and the Prisma client
+npm run dev        # http://localhost:5173 (API + Socket.IO on :4000, proxied by Vite)
+```
+
+Production (single port, e.g. for a dedicated laptop):
+
+```bash
+npm run build
+npm start          # everything on http://localhost:4000
+```
+
+| Command | Purpose |
+| --- | --- |
+| `npm test` | Server integration tests: auth, Show Flow navigation across files and slide ranges, screens, overlay, real PPTX conversion (if LibreOffice is installed), cloud storage against a mock Supabase API, and more |
+| `npm run e2e` | Browser end-to-end check against the running app (`E2E_PASSWORD=… npm run e2e`; needs `npx playwright install chromium` once or `CHROME_PATH`) |
+| `npm run typecheck` | TypeScript checks |
+| `npm run reset-password` | Clear the operator password (the next visit asks for a new one) |
+| `npm run db:reset` | Wipe the database (the demo event is re-created on the next start) |
+
+### Configuration
+
+Copy **`.env.example`** to **`.env`** in the project folder and fill in what you need. Everything is optional.
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | empty | Enable cloud storage (see below) |
+| `SUPABASE_BUCKET` | `eventcontrol` | Storage bucket name |
+| `AUTH_PROVIDER` | `local` | `local` (operator password), `supabase` (Supabase Auth email + password, needs `SUPABASE_ANON_KEY`), `none` |
+| `SESSION_HOURS` | `168` | How long a sign-in lasts |
+| `SOFFICE_PATH` | auto-detected | Path to LibreOffice's `soffice` if it's installed somewhere unusual |
+| `CONVERSION_TIMEOUT_SECONDS` | `180` | Give up converting a deck after this long |
+| `PORT` / `HOST` | `4000` / `0.0.0.0` | Server address (all interfaces, so a projector PC on the LAN can connect) |
+| `MAX_UPLOAD_MB` | `1024` | Per-file upload limit |
+| `ALLOW_EXTERNAL_OPEN` | `true` | Allow "Open in PowerPoint" on the server machine |
+| `SEED_DEMO` | `true` | Create the demo event when the database is empty |
+
+### Enabling cloud storage (Supabase)
+
+1. Create a free project at https://supabase.com.
+2. **Storage → New bucket** → name it `eventcontrol` and keep it **private**.
+3. **Project Settings → API** → copy the **Project URL** and the **service_role** key into `.env` (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`).
+4. Restart EventControl. The status bar shows **CLOUD SYNCED** once uploads are copied, and each file card shows its cloud status. Existing files are uploaded automatically.
+
+The service key stays on the server (it is never sent to the browser). Uploads are retried with backoff if the connection drops.
+
+### Installing LibreOffice (PowerPoint slides)
+
+- **Windows / macOS:** install from https://www.libreoffice.org. EventControl finds it automatically.
+- **Linux:** `sudo apt install libreoffice-impress` (or your distribution's equivalent).
+
+Decks uploaded before LibreOffice was installed are converted automatically on the next start, or immediately via the card's **⋯ → Retry slide conversion**.
+
+---
+
+## Running an event
+
+1. **Create / open the event** (← Events → **Create Event**).
+2. **Upload** decks, PDFs, logos and videos into folders. PowerPoint files show *Converting slides…* for a few seconds, then *24 slides*.
+3. **Preview** a file (👁) to check it privately. From the preview you can add a slide range (e.g. slides 1–8) to the flow or put a slide live.
+4. **Build the Show Flow**: **+ Flow** on presentations, **+ Screen** for Please Wait / Break / Thank You… Drag to reorder, ✎ to set slide ranges, durations and speaker notes.
+5. **Connect the projector:** set the display to *Extend*, click **Open Display**, drag the window to the projector and click it once (fullscreen, and it allows video sound). The status bar shows **DISPLAY CONNECTED**. From another computer, open `http://<laptop-ip>:5173/display/<eventId>` (or `:4000` in production); the IP is printed when the server starts.
+6. **Run the show** with `→`/`Space`. Use `W` / `T` / `B` for emergencies and `Esc` to return to the exact slide. Use `O` for the logo overlay, and the Screens tab (⏱) for "Please Wait — 05:00" countdowns.
+
+![Show flow and live control](docs/screenshots/show-flow.png)
+
+---
+
+## Realtime protocol (Socket.IO)
+
+```ts
+socket.emit('event:join', { eventId, role: 'operator' | 'display' }, ack)
+// ack → { ok, data: { display: DisplaySnapshot, timer: TimerSnapshot, presence } }
+// Operators must be signed in (session cookie); displays can always join (read-only).
+```
+
+| Room | Members | Receives |
+| --- | --- | --- |
+| `event:<id>` | everyone | `display:update` (full versioned snapshot), `timer:update`, `event:changed`, `event:deleted` |
+| `event:<id>:operators` | dashboards | `queue:changed`, `media:changed`, `screens:changed`, `schedule:changed`, `presence:update`, `display:fullscreen-result` |
+| `event:<id>:displays` | projector windows | `display:video`, `display:fullscreen` |
+
+Operator commands (`socket.emit('control', command, ack)` or `POST /api/events/:id/control`):
+
+```ts
+{ type: 'next' } | { type: 'previous' }                         // slides, then the next/previous Show Flow item
+{ type: 'show-item', queueItemId, page? }                      // put a flow item on air (optionally a slide)
+{ type: 'show-media', mediaId, page? }                         // show a library file directly
+{ type: 'page', page } | { type: 'page', delta }               // jump to a slide
+{ type: 'show-screen', key: 'please-wait', timerMs?: 300000 }  // or screenId; optional countdown
+{ type: 'show-current' }                                       // resume (Esc)
+{ type: 'black' } | { type: 'logo' }
+{ type: 'overlay', visible?, mediaId?, position?, size?, opacity? }
+{ type: 'video', action: 'play' | 'pause' | 'restart' } | { type: 'fullscreen' }
+{ type: 'timer-start' | 'timer-pause' | 'timer-toggle' | 'timer-reset' }
+{ type: 'timer-adjust', deltaMs } | { type: 'timer-configure', durationMs?, warningMs?, showOnDisplay? }
+```
+
+The display state the server keeps (and every display renders):
+
+```text
+mode (media | screen | black | logo) · current Show Flow item · current page/slide · slide range
+current screen · logo overlay (media, position, size, opacity, visible) · timer state · version
+```
+
+### REST API
+
+All routes except sign-in, health and media file downloads require the operator session.
+
+| Method | Path | Description |
+| --- | --- | --- |
+| GET | `/api/auth/status` | `{ provider, configured, authenticated }` |
+| POST | `/api/auth/setup` · `/login` · `/logout` · `/change-password` | Sign-in management |
+| GET | `/api/status` | Cloud storage, conversion and server health |
+| GET/POST | `/api/events` | List / create events |
+| GET/PUT/DELETE | `/api/events/:id` | Event (incl. overlay settings, full-screen logo) |
+| GET/POST | `/api/events/:id/media` | List / upload (`multipart`, field `files`, `?folder=Sponsors`) |
+| PATCH/DELETE | `/api/media/:id` | Rename / move folder (`{ name?, folder? }`) / delete (local + cloud) |
+| GET | `/api/media/:id/file` · `/render` | Original file · converted slides PDF (HTTP range support) |
+| POST | `/api/media/:id/convert` · `/open` | Retry PPTX conversion · open in the native app on the server machine |
+| GET/POST/PUT | `/api/events/:id/queue` | Show Flow: list / add (`{ mediaId, startPage?, endPage? }` or `{ kind: 'screen', screenId }`) / reorder |
+| PATCH/DELETE | `/api/queue/:id` | Edit title, slide range, duration, notes / remove |
+| GET/POST | `/api/events/:id/screens` | Special screens (built-ins are created automatically) |
+| PATCH/DELETE | `/api/screens/:id` | Edit / delete (custom screens only) |
+| GET/POST, PATCH/DELETE | `/api/events/:id/schedule`, `/api/schedule/:id` | Run sheet |
+| GET | `/api/events/:id/state` | Current display + timer + presence |
+| POST | `/api/events/:id/control` | Any control command |
+
+---
+
+## Security & reliability
+
+- **Sign-in:** scrypt-hashed operator password (or Supabase Auth), HMAC-signed HttpOnly `SameSite=Strict` session cookie, rate-limited sign-in, and a password change signs out other sessions. Operator REST routes and socket control require a session; displays are read-only.
+- **Uploads:** extension allowlist and **magic-byte check** (a renamed `.exe` is rejected), sanitized filenames, random temp names, size limits and SHA-256 duplicate detection.
+- **Paths:** every stored path is resolved and confined to `uploads/`, and clients only ever see `/api/media/:id/...` URLs.
+- **No arbitrary execution:** LibreOffice and "Open in PowerPoint" run fixed binaries with `execFile`/`spawn` (no shell) on files tracked in the database.
+- **Resilience:** the display keeps its last frame when disconnected, reconnects forever and restores state exactly. State is persisted (survives restarts), interrupted conversions and cloud uploads resume on start, and missing local files are restored from the cloud. Speaker notes are never sent to displays, and a test checks this.
+
+---
+
+## Roadmap
+
+**Phase 1 — MVP ✅** Local web app, cloud storage (Supabase), authentication, uploads, presentation library, PDF support, display page, realtime slide control, next/previous, fullscreen, live preview.
+
+**Phase 2 ✅** PPT/PPTX conversion, Show Flow with drag-and-drop and slide ranges, Please Wait / Black / Technical Difficulty screens, logo overlay, countdown timer, keyboard shortcuts. Custom screens, video playback and basic animations from Phase 3 are also in.
+
+**Phase 3 — next**
+- Overlays: lower thirds, speaker names, announcements tickers
+- Multiple outputs: Display 1 / Display 2 / confidence monitor (speaker's view with notes and next slide)
+- Remote control from a phone or tablet (the REST control API is ready)
+- Event presets: save/load a whole event (files, flow, screens, branding), with metadata synced to the cloud so any laptop can run it
+- Audio / background music, configurable timer styles, configurable shortcuts
+- Electron desktop app; Raspberry Pi display node
+
+---
+
+## Screenshots
+
+| | |
+| --- | --- |
+| **First run: operator password** ![First run](docs/screenshots/first-run.png) | **Preview a deck privately** ![Preview](docs/screenshots/preview.png) |
+| **Projector: converted PowerPoint slide + logo overlay + timer** ![Slide](docs/screenshots/display-pptx-slide.png) | **Projector: Technical Difficulty** ![Technical](docs/screenshots/display-technical.png) |
+| **Projector: Please Wait with countdown** ![Countdown](docs/screenshots/display-countdown.png) | **Events** ![Events](docs/screenshots/events.png) |
+
+---
 
 ## Troubleshooting
 
 | Symptom | Fix |
 | --- | --- |
-| `EADDRINUSE :4000` | Another instance is running, or start with `PORT=4100 npm run dev` and set `API_TARGET=http://localhost:4100` for the client. |
+| A PowerPoint card says "Install LibreOffice…" | Install LibreOffice, then **⋯ → Retry slide conversion** (or restart the app). Or upload a PDF export of the deck. |
+| "Could not convert this presentation" | Open it in PowerPoint and **Save As → PDF**, then upload the PDF. |
+| Forgot the operator password | Stop the app, run `npm run reset-password`, open the dashboard and choose a new one. |
+| Status bar shows **CLOUD OFFLINE** | No internet, or wrong Supabase settings (hover the pill for details). The show keeps running from local copies; uploads sync when it's back. |
+| `EADDRINUSE :4000` | EventControl is already running in another window. |
 | Video plays muted on the display | Click the display window once (browser autoplay policy). |
 | "The display blocked fullscreen" | Click the display window once, or press `F` there. |
-| "Unable to start presentation" | No PowerPoint (or default app) on the server machine, or `ALLOW_EXTERNAL_OPEN=false`. The dashboard downloads the file instead. |
-| Display can't be reached from another computer | Allow ports 5173/4000 through the OS firewall and use the LAN address printed by the server. |
+| The projector PC can't connect | Allow ports 5173/4000 in the firewall and use the LAN address printed by the server. |

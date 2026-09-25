@@ -98,7 +98,7 @@ export function TimerPanel({ timer, remaining, send, className }: TimerPanelProp
         icon={running ? <Pause size={18} /> : <Play size={18} />}
         onClick={() => send({ type: running ? 'timer-pause' : 'timer-start' })}
       >
-        {running ? 'Pause' : timer.status === 'paused' ? 'Resume' : 'Start'} <Kbd className="ml-1 border-black/20 bg-black/10 text-current">Space</Kbd>
+        {running ? 'Pause' : timer.status === 'paused' ? 'Resume' : 'Start'} <Kbd className="ml-1 border-black/20 bg-black/10 text-current">P</Kbd>
       </Button>
       <div className="mt-2 grid grid-cols-3 gap-2">
         <Button icon={<RotateCcw size={15} />} onClick={() => send({ type: 'timer-reset' })}>
