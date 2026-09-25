@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, ListVideo, MonitorSmartphone, Pencil, Play, Plus, StickyNote, X } from 'lucide-react';
+import { Check, FolderOpen, GripVertical, ListVideo, MonitorSmartphone, Pencil, Play, Plus, StickyNote, X } from 'lucide-react';
+import { PdfThumb } from '../PdfThumb';
 import { MediaIcon } from '../MediaIcon';
 import { Panel } from '../ui/Panel';
 import { Badge } from '../ui/Badge';
@@ -24,12 +25,15 @@ interface ShowFlowPanelProps {
   onEdit: (item: QueueItem) => void;
   onRemove: (item: QueueItem) => void;
   onAddScreen: (screen: Screen) => void;
+  /** Opens the file library to add a presentation or other file. */
+  onAddFile?: () => void;
   className?: string;
 }
 
 /** Run of Show: the whole event prepared in advance, operated manually. */
-export function ShowFlowPanel({ flow, screens, currentId, nextId, onAir, onReorder, onShow, onEdit, onRemove, onAddScreen, className }: ShowFlowPanelProps) {
+export function ShowFlowPanel({ flow, screens, currentId, nextId, onAir, onReorder, onShow, onEdit, onRemove, onAddScreen, onAddFile, className }: ShowFlowPanelProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
   const listRef = useRef<HTMLOListElement>(null);
   // Keep the live item in view as the show advances.
   useEffect(() => {
@@ -52,24 +56,35 @@ export function ShowFlowPanel({ flow, screens, currentId, nextId, onAir, onReord
 
   return (
     <Panel
-      title="Show flow"
-      icon={<ListVideo size={14} />}
+      title="Show Flow"
+      icon={<ListVideo size={20} />}
       className={className}
-      bodyClassName="scroll-thin overflow-y-auto p-2"
+      bodyClassName="scroll-thin overflow-y-auto px-2 py-1.5"
       actions={
         <>
-          <span className="mr-1 text-xs text-slate-500">
-            {flow.length} items{totalSeconds ? ` · ${formatDurationShort(totalSeconds)}` : ''}
-          </span>
           <div className="relative">
-            <Button size="sm" variant="secondary" icon={<Plus size={14} />} onClick={() => setMenuOpen((o) => !o)}>
-              Screen
+            <Button size="sm" variant="primary" icon={<Plus size={15} />} onClick={() => setMenuOpen((o) => !o)} aria-expanded={menuOpen}>
+              Add
             </Button>
             {menuOpen && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
                 <div className="ec-card ec-card-raised ec-pop-in absolute right-0 z-20 mt-1 max-h-72 w-60 origin-top-right overflow-y-auto rounded-xl py-1">
-                  <p className="px-3 py-1.5 text-[10px] font-semibold tracking-widest text-slate-500 uppercase">Add a screen to the flow</p>
+                  {onAddFile && (
+                    <>
+                      <button
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-white/5"
+                        onClick={() => {
+                          setMenuOpen(false);
+                          onAddFile();
+                        }}
+                      >
+                        <FolderOpen size={15} className="text-slate-400" /> Presentation or file…
+                      </button>
+                      <div className="my-1 border-t ec-divider" />
+                    </>
+                  )}
+                  <p className="px-3 py-1.5 text-[11px] font-medium text-slate-500">Screens</p>
                   {screens.map((s) => (
                     <button
                       key={s.id}
@@ -86,6 +101,9 @@ export function ShowFlowPanel({ flow, screens, currentId, nextId, onAir, onReord
               </>
             )}
           </div>
+          <Button size="sm" variant="secondary" icon={editing ? <Check size={14} /> : <Pencil size={14} />} onClick={() => setEditing((e) => !e)} aria-pressed={editing}>
+            {editing ? 'Done' : 'Edit'}
+          </Button>
         </>
       }
     >
@@ -94,13 +112,13 @@ export function ShowFlowPanel({ flow, screens, currentId, nextId, onAir, onReord
           <ListVideo size={30} className="ec-bob mb-3 text-sky-400/60" />
           <p>Build the running order of your event.</p>
           <p>
-            Use <b className="text-slate-300">+ Flow</b> on a presentation, or <b className="text-slate-300">+ Screen</b> above.
+            Press <b className="text-slate-300">Add</b> to put presentations and screens in order.
           </p>
         </div>
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <SortableContext items={flow.map((q) => q.id)} strategy={verticalListSortingStrategy}>
-            <ol ref={listRef} className="flex flex-col gap-1">
+            <ol ref={listRef} className="flex flex-col">
               {flow.map((item, index) => (
                 <FlowRow
                   key={item.id}
@@ -109,12 +127,17 @@ export function ShowFlowPanel({ flow, screens, currentId, nextId, onAir, onReord
                   isCurrent={item.id === currentId}
                   isNext={item.id === nextId}
                   onAir={onAir}
+                  editing={editing}
                   onShow={() => onShow(item)}
                   onEdit={() => onEdit(item)}
                   onRemove={() => onRemove(item)}
                 />
               ))}
             </ol>
+            <p className="px-2 pt-2 pb-1 text-xs text-slate-500">
+              {flow.length} {flow.length === 1 ? 'item' : 'items'}
+              {totalSeconds ? ` · about ${formatDurationShort(totalSeconds)}` : ''}
+            </p>
           </SortableContext>
         </DndContext>
       )}
@@ -142,6 +165,7 @@ function FlowRow({
   isCurrent,
   isNext,
   onAir,
+  editing,
   onShow,
   onEdit,
   onRemove,
@@ -151,6 +175,7 @@ function FlowRow({
   isCurrent: boolean;
   isNext: boolean;
   onAir: boolean;
+  editing: boolean;
   onShow: () => void;
   onEdit: () => void;
   onRemove: () => void;
@@ -164,18 +189,58 @@ function FlowRow({
       data-flow-id={item.id}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
-        'group relative flex items-center gap-2 overflow-hidden rounded-lg border px-2 py-2 transition-[background-color,border-color,box-shadow] duration-300',
-        isCurrent
-          ? onAir
-            ? 'border-red-500/40 bg-gradient-to-r from-red-500/[0.14] to-red-500/[0.03] shadow-[0_0_24px_-10px_rgba(239,68,68,0.6)]'
-            : 'border-sky-500/40 bg-gradient-to-r from-sky-500/[0.14] to-sky-500/[0.03]'
-          : 'border-transparent hover:border-white/[0.06] hover:bg-white/[0.035]',
-        isDragging && 'z-10 border-sky-400/50 bg-console-700 shadow-xl',
+        'group relative flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors duration-150',
+        isCurrent ? 'ec-row-active' : 'hover:bg-[var(--row-hover)]',
+        isDragging && 'z-10 bg-console-800 shadow-lg ring-1 ring-sky-400/40',
       )}
       onDoubleClick={onShow}
+      title="Double-click to show on the display"
     >
-      {/* A bar on the left edge marks the item on the display. */}
-      {isCurrent && <span className={cn('ec-rise-in absolute inset-y-1.5 left-0 w-[3px] rounded-full', onAir ? 'bg-red-400' : 'bg-sky-400')} aria-hidden />}
+      <span
+        className={cn(
+          'flex h-7 w-8 shrink-0 items-center justify-center rounded-md border font-mono text-xs tabular-nums',
+          isCurrent ? (onAir ? 'border-red-500 bg-red-500 text-[#fff]' : 'border-sky-500 bg-sky-500 text-[#fff]') : 'border-[var(--line-strong)] text-slate-400',
+        )}
+      >
+        {String(index + 1).padStart(2, '0')}
+      </span>
+      <FlowThumb item={item} />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          <p className={cn('truncate text-[13px] font-medium', isCurrent ? 'text-sky-300' : 'text-slate-200')}>{label}</p>
+          {item.notes && <StickyNote size={12} className="shrink-0 text-amber-400" aria-label="Has notes" />}
+        </div>
+        <p className="truncate text-xs text-slate-500">
+          {item.media?.missing ? <span className="text-red-400">File missing · </span> : null}
+          {itemDetail(item)}
+        </p>
+      </div>
+      {editing ? (
+        <div className="flex items-center">
+          <Button size="icon-sm" variant="ghost" onClick={onEdit} aria-label={`Edit ${label}`} title="Edit title, slides, duration & notes">
+            <Pencil size={14} />
+          </Button>
+          <Button size="icon-sm" variant="ghost" onClick={onRemove} aria-label={`Remove ${label} from flow`} title="Remove from flow" className="hover:text-red-300">
+            <X size={15} />
+          </Button>
+        </div>
+      ) : (
+        <>
+          <div className="flex items-center group-focus-within:hidden group-hover:hidden">
+            {isCurrent && onAir && (
+              <Badge tone="live" dot>
+                Live
+              </Badge>
+            )}
+            {isNext && !isCurrent && <span className="text-[11px] font-medium text-slate-500">Next</span>}
+          </div>
+          <div className="hidden items-center group-focus-within:flex group-hover:flex">
+            <Button size="icon-sm" variant="ghost" onClick={onShow} aria-label={`Show ${label} on display`} title="Show on display">
+              <Play size={14} />
+            </Button>
+          </div>
+        </>
+      )}
       <button
         ref={setActivatorNodeRef}
         {...attributes}
@@ -185,46 +250,25 @@ function FlowRow({
       >
         <GripVertical size={16} />
       </button>
-      <span className="w-6 font-mono text-xs text-slate-500 tabular-nums">{String(index + 1).padStart(2, '0')}</span>
-      {item.kind === 'screen' ? (
-        <span className="inline-flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-lg bg-white/5 ring-1 ring-white/10">
-          <ScreenDot style={item.screen?.style ?? 'custom'} />
-        </span>
-      ) : item.media ? (
-        <MediaIcon kind={item.media.kind} size={13} />
-      ) : (
-        <MonitorSmartphone size={16} />
-      )}
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
-          <p className={cn('truncate text-sm font-medium', isCurrent ? 'text-white' : 'text-slate-200')}>{label}</p>
-          {item.notes && <StickyNote size={12} className="shrink-0 text-amber-400/70" aria-label="Has notes" />}
-        </div>
-        <p className="truncate text-xs text-slate-500">
-          {item.media?.missing ? <span className="text-red-400">File missing · </span> : null}
-          {itemDetail(item)}
-        </p>
-      </div>
-      {/* Status badges give way to the row actions on hover/focus to keep titles readable. */}
-      <div className="flex items-center group-focus-within:hidden group-hover:hidden">
-        {isCurrent && (
-          <Badge tone={onAir ? 'live' : 'info'} dot={onAir}>
-            {onAir ? 'Live' : 'Current'}
-          </Badge>
-        )}
-        {isNext && !isCurrent && <Badge tone="neutral">Next</Badge>}
-      </div>
-      <div className="hidden items-center group-focus-within:flex group-hover:flex">
-        <Button size="icon-sm" variant="ghost" onClick={onShow} aria-label={`Show ${label} on display`} title="Show on display">
-          <Play size={14} />
-        </Button>
-        <Button size="icon-sm" variant="ghost" onClick={onEdit} aria-label="Edit item" title="Edit title, slides, duration & notes">
-          <Pencil size={14} />
-        </Button>
-        <Button size="icon-sm" variant="ghost" onClick={onRemove} aria-label="Remove from flow" title="Remove from flow" className="hover:text-red-300">
-          <X size={14} />
-        </Button>
-      </div>
     </li>
   );
+}
+
+/** A small picture of the item: its first slide, the image itself, or a screen swatch. */
+function FlowThumb({ item }: { item: QueueItem }) {
+  const box = 'relative h-9 w-16 shrink-0 overflow-hidden rounded-[5px] border border-[var(--line)]';
+  if (item.kind === 'screen') {
+    return (
+      <span className={cn(box, 'flex items-center justify-center bg-[#101a2e]')}>
+        <span className="truncate px-1 text-[7px] font-bold tracking-wide text-[#fff]/80 uppercase">{item.screen?.title ?? 'Screen'}</span>
+        <span className="absolute bottom-1 left-1">
+          <ScreenDot style={item.screen?.style ?? 'custom'} />
+        </span>
+      </span>
+    );
+  }
+  const media = item.media;
+  if (media?.pdfUrl && !media.missing) return <PdfThumb url={media.pdfUrl} page={item.startPage ?? 1} width={96} className={cn(box, 'bg-[#fff]')} />;
+  if (media?.kind === 'image' && !media.missing) return <img src={media.url} alt="" loading="lazy" className={cn(box, 'object-cover')} />;
+  return <span className={cn(box, 'flex items-center justify-center bg-console-850')}>{media ? <MediaIcon kind={media.kind} size={10} className="ring-0" /> : <MonitorSmartphone size={14} />}</span>;
 }

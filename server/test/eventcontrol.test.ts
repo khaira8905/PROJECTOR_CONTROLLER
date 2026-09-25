@@ -341,8 +341,14 @@ describe('real-time control (Socket.IO)', () => {
     // The server finishes the countdown on its own.
     await emit(operator, 'control', { type: 'timer-configure', durationMs: 1000 });
     const finished = nextEvent(operator, 'timer:update', (t: any) => t.status === 'finished');
+    const startedAt = Date.now();
     await emit(operator, 'control', { type: 'timer-start' });
-    expect((await finished).remainingMs).toBe(0);
+    const done = await finished;
+    expect(done.remainingMs).toBe(0);
+    // It records when it hit zero, so operators can count the overtime; a reset clears it.
+    expect(done.finishedAt).toBeGreaterThanOrEqual(startedAt + 900);
+    const cleared = await emit(operator, 'control', { type: 'timer-reset' });
+    expect(cleared.data.finishedAt).toBeNull();
   });
 
   it('exposes the same commands over REST', async () => {

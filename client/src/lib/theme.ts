@@ -1,9 +1,8 @@
-export type ThemeId = 'aurora' | 'ember' | 'ocean';
+export type ThemeId = 'light' | 'blue';
 
 export const THEMES: { id: ThemeId; name: string; note: string; swatch: [string, string, string] }[] = [
-  { id: 'aurora', name: 'Aurora', note: 'Ink violet, lilac glow', swatch: ['#110e19', '#8f67fb', '#e07bf5'] },
-  { id: 'ember', name: 'Ember', note: 'Warm graphite, copper', swatch: ['#13100d', '#f97a1f', '#fcd34d'] },
-  { id: 'ocean', name: 'Ocean', note: 'Midnight blue, the classic', swatch: ['#0b0f17', '#0ea5e9', '#8b5cf6'] },
+  { id: 'light', name: 'White', note: 'Bright rooms and daytime', swatch: ['#eef1f5', '#ffffff', '#1f5ad6'] },
+  { id: 'blue', name: 'Blue', note: 'Dark hall, easy on the eyes', swatch: ['#0b1324', '#111b30', '#3b7cf0'] },
 ];
 
 const KEY = 'ec-theme';
@@ -13,17 +12,18 @@ export function storedTheme(): ThemeId {
   try {
     const v = localStorage.getItem(KEY);
     if (isTheme(v)) return v;
+    // Earlier versions had dark-only themes: keep those operators on a dark console.
+    if (v) return 'blue';
   } catch {
     /* storage blocked: fall back to the default */
   }
-  return 'aurora';
+  return 'light';
 }
 
 /** Applies a theme to the page (and remembers it in this browser). */
 export function applyTheme(id: ThemeId, persist = true) {
   document.documentElement.dataset.theme = id;
-  const meta = document.querySelector('meta[name="theme-color"]');
-  meta?.setAttribute('content', THEMES.find((t) => t.id === id)!.swatch[0]);
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', id === 'light' ? '#152646' : '#0a1120');
   if (!persist) return;
   try {
     localStorage.setItem(KEY, id);

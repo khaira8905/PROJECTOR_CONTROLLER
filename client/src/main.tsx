@@ -12,11 +12,9 @@ import './index.css';
 import './styles/motion.css';
 import './styles/console.css';
 import { applyTheme, storedTheme } from './lib/theme';
-import { installSpotlight } from './lib/spotlight';
 
 // Before the first paint, so the console never flashes the wrong colours.
 applyTheme(storedTheme(), false);
-installSpotlight();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

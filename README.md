@@ -6,7 +6,13 @@ A presentation control console for events, seminars, conferences and classrooms.
 UPLOAD → ORGANIZE → PREVIEW → QUEUE (Show Flow) → CONTROL → DISPLAY
 ```
 
-![Operator console](docs/screenshots/console.png)
+![Operator console, White theme](docs/screenshots/console.png)
+
+<details><summary>Blue theme</summary>
+
+![Operator console, Blue theme](docs/screenshots/console-blue.png)
+
+</details>
 
 ---
 
@@ -32,15 +38,15 @@ Keep the black window open while you use EventControl, and close it to stop the 
 | **Presentations library** | Upload PPT, PPTX, PDF, images (PNG/JPG/WEBP) and videos (MP4/WEBM/MOV) by drag-and-drop. Each file is a card with a thumbnail, slide/page count, upload date and status. Files are organised in **folders** (Main Presentation, Speaker 1, Speaker 2, Sponsors, Break Screens, Emergency Screens, Logos, Event Branding, or your own). You can **preview** a file privately, **show** it (optionally a specific slide), add it to the flow, rename, move, download or delete it. Duplicate uploads are detected and skipped. |
 | **PowerPoint handling** | PPT/PPTX files are converted to PDF in the background with LibreOffice. The **original file is kept** and the converted version is what the display renders, which gives real slide-by-slide control. "Open in PowerPoint" launches the original if you need animations or embedded media. |
 | **Show Flow (Run of Show)** | Prepare the whole event beforehand: `01 Starting Soon → 02 Opening (slides 1–8) → 03 Please Wait (30 sec) → 04 Speaker 1 → …`. Items are presentations (with an optional **slide range**) or screens. Reorder them by drag-and-drop. **Next** walks through the slides of the current item, then moves on to the next item and file. Playback is always manual. |
-| **Live control** | ◀ Previous / ▶ Next, **jump to slide N**, a clickable **slide strip**, **"Speaker 1 — Slide 07 / 24"**, Up Next, operator-only **speaker notes**, video play/pause/restart, and asking the display to go fullscreen. |
+| **Control screen** | Everything for running the show on one screen, with no page scrolling on a 1080p laptop: a large **Live Preview** of the projector, **Next Slide** (hover it to see exactly what comes next), skip to the previous/next item, a slide picker (**"Slide 3 of 24"**), readable **slide thumbnails** with the next one marked, speaker notes, **Live Controls** (Resume, Previous/Next, Go to Slide), **Quick Screens**, the **Timer** and the **Show Flow**. The sidebar opens the other sections: Presentations, Show Flow, Screens, Media Library, Branding, Timers and Settings. |
 | **Special screens** | Built-in **Please Wait, Technical Difficulty, We'll Be Back Shortly, Session Starting Soon, Coming Up Next** (announces the next item automatically) and **Thank You**. Each has its own hand-built animation: slow ripples, TV colour bars with a signal glitch, a steaming coffee cup, a sweeping clock ring, chevrons pulling toward what's next, and falling paper confetti. You can edit their text and create **custom screens** (title, subtitle, colour, image/video background). Any screen can be shown **with a countdown** ("Please Wait — 05:00") whose digits roll as they change. |
 | **Quick actions** | 🟢 Resume · 🟡 Please Wait · 🟠 Technical Difficulty · 🔴 **Black screen**. The Black button needs a second click to confirm; the `B` key acts instantly. Plus Logo and Fullscreen. |
 | **Branding** | A logo overlay (university, event or sponsor logo) drawn over slides and screens. Choose the position (4 corners or centre), size, opacity and show/hide. There's also a separate full-screen logo mode. |
-| **Timer** | A server-authoritative countdown (start/pause/reset, ±1 min, warning threshold, show/hide on display). It is shown large on special screens and as a corner badge over slides, and stays in sync on every screen. |
-| **Status bar** | Display connected / offline, server, cloud storage (synced / syncing / offline), upload progress. |
+| **Timer** | A server-authoritative countdown (start/pause/reset, ±1 min, warning threshold, show/hide on display), shown large on special screens and as a corner badge over slides. When time runs out, the console keeps counting the **overtime in red** (+01:25) while the audience still sees 00:00. A **Clock** tab shows the current time. |
+| **Top bar** | Display connected / offline, cloud or local storage, upload progress, free disk space (in the sidebar), theme switch, Settings and Open Display. |
 | **Schedule** | A time-based run sheet (NOW / NEXT) as an operator reference. |
-| **Themes** | Three console colour themes: **Aurora** (ink violet, the default), **Ember** (warm graphite and copper) and **Ocean** (the original midnight blue). Pick one with the **Theme** button in the top bar; the choice is remembered in that browser. The theme only changes the operator console, never what the audience sees. |
-| **Motion** | Everything on the projector cross-fades: no flash of black between items, slides turn with a soft directional drift, and the logo overlay and corner timer fade in and out. Headlines rise word by word and underlines draw themselves in. The console has touches of its own: a soft light that follows the pointer across cards, a red on-air frame around the program monitor while the projector is live, sliding tabs, pages that fade in, toasts that count down, a shaking Black button when it's armed, and a LIVE equaliser. People who turn on "reduce motion" in their OS get a calm, static version. |
+| **Themes** | **White** (the default, for bright rooms) and **Blue** (a dark navy console for dark halls). Switch with the sun/moon button in the top bar or under Settings; the choice is remembered in that browser. Themes only change the operator console, never what the audience sees. |
+| **Motion** | Everything on the projector cross-fades: no flash of black between items, slides turn with a soft directional drift, and the logo overlay and corner timer fade in and out. Headlines rise word by word and underlines draw themselves in. The console keeps its motion small and useful: a red on-air frame around the preview while the projector is live, a peek at the next slide, sliding tabs, sections that fade in, rolling timer digits, toasts that count down, a shaking Black button when it's armed, and a LIVE equaliser. People who turn on "reduce motion" in their OS get a calm, static version. |
 | **Reliability** | The display keeps the last content if the network drops, reconnects on its own and restores the exact state (slide, screen, overlay, timer). State survives server restarts. Files are always served from a local copy, so everything works offline. |
 
 ### Keyboard shortcuts
@@ -83,13 +89,13 @@ event-control/
 ├── client/src/
 │   ├── pages/           EventsPage, DashboardPage (operator console), DisplayPage (projector)
 │   ├── components/
-│   │   ├── dashboard/   ProgramMonitor, QuickActions, ShowFlowPanel, PresentationLibrary, PreviewModal,
-│   │   │                ScreensPanel, BrandingPanel, TimerPanel, SchedulePanel, FlowItemModal…
+│   │   ├── dashboard/   LivePreview, LiveControls (+ QuickScreens), LibraryTable, ShowFlowPanel, TimerPanel,
+│   │   │                PresentationLibrary, PreviewModal, ScreensPanel, BrandingPanel, SchedulePanel, FlowItemModal…
 │   │   ├── display/     DisplayStage (renders any state, used by display + live preview), PdfView,
 │   │   │                ScreenScene (special screens + their motifs), motion (crossfades, rolling digits), Confetti
 │   │   └── AuthGate     first-run password / sign-in
 │   ├── styles/motion.css  every animation, eased by hand, with a reduced-motion fallback
-│   ├── styles/themes.css  console colour themes (Aurora, Ember, Ocean); console.css: glass cards, spotlight, tally
+│   ├── styles/themes.css  console colour themes (White, Blue); console.css: cards, sidebar, tables, on-air frame
 │   ├── hooks/           useEventSocket (realtime state), useTimerRemaining, useKeyboardShortcuts, useSystemStatus
 │   └── lib/             pdf.js loader & thumbnails, flow helpers, formatting
 ├── server/src/

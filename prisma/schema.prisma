@@ -153,6 +153,8 @@ model TimerState {
   // Remaining time at the moment `startedAt` was recorded (or now, if not running).
   remainingMs   Int       @default(600000)
   startedAt     DateTime?
+  // When the countdown reached zero (null unless finished).
+  finishedAt    DateTime?
   showOnDisplay Boolean   @default(false)
   updatedAt     DateTime  @updatedAt
 

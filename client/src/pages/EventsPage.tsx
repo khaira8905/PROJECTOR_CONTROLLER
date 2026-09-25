@@ -53,7 +53,7 @@ export default function EventsPage() {
 
   return (
     <div className="min-h-full">
-      <header className="sticky top-0 z-20 bg-console-950/70 backdrop-blur-xl">
+      <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-console-900">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
           <BrandMark />
           <div className="flex items-center gap-1.5">
@@ -70,19 +70,12 @@ export default function EventsPage() {
           </Button>
           </div>
         </div>
-        <div className="ec-hairline" />
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
         <div className="ec-panel-in mb-10">
-          <span className="inline-flex items-center gap-2 rounded-full bg-white/[0.04] px-3 py-1 font-mono text-[11px] tracking-[0.2em] text-slate-400 uppercase ring-1 ring-white/[0.08] ring-inset">
-            <span className="ec-dot-live h-1.5 w-1.5 rounded-full bg-emerald-400 text-emerald-400/60" />
-            Control room
-          </span>
-          <h1 className="mt-4 font-display text-5xl leading-[1.02] font-bold tracking-[-0.03em] text-white sm:text-6xl">
-            Your <span className="ec-gradient-text">events</span>
-          </h1>
-          <p className="mt-3 max-w-xl text-[15px] text-slate-400">Open an event to run its presentations, projector display and timer — everything the audience sees, from one console.</p>
+          <h1 className="text-[32px] leading-tight font-bold tracking-[-0.02em] text-white">Events</h1>
+          <p className="mt-1.5 max-w-xl text-[15px] text-slate-400">Open an event to run its presentations, projector display and timer.</p>
           {events && events.length > 0 && (
             <div className="mt-6 flex flex-wrap gap-2">
               <Stat value={upcoming.length} label="upcoming" />

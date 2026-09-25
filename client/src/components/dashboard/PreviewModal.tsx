@@ -123,7 +123,7 @@ export function PreviewModal({ media, onClose, onShowPage, onAddToFlow }: Props)
             {Array.from({ length: count }, (_, i) => i + 1).map((p) => (
               <button key={p} onClick={() => setPage(p)} className={cn('relative w-24 shrink-0 overflow-hidden rounded-md ring-2', p === page ? 'ring-sky-400' : 'ring-transparent hover:ring-white/30')}>
                 <PdfThumb url={media.pdfUrl!} page={p} width={96} className="aspect-video w-full" />
-                <span className="absolute bottom-0.5 left-0.5 rounded bg-black/70 px-1 font-mono text-[10px] text-slate-300">{p}</span>
+                <span className="absolute bottom-0.5 left-0.5 rounded bg-black/70 px-1 font-mono text-[10px] text-[#fff]/85">{p}</span>
               </button>
             ))}
           </div>

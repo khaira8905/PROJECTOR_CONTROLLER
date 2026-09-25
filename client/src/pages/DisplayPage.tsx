@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useParams } from 'react-router-dom';
 import { DisplayStage, type VideoCommand } from '../components/display/DisplayStage';
 import { useEventSocket } from '../hooks/useEventSocket';
@@ -87,7 +87,7 @@ export default function DisplayPage() {
   }, [display?.eventName]);
 
   return (
-    <div className="fixed inset-0 bg-black select-none" style={{ cursor: cursorHidden ? 'none' : 'default' }}>
+    <div className="fixed inset-0 bg-black select-none" style={{ cursor: cursorHidden ? 'none' : 'default', '--color-white': '#fff', colorScheme: 'dark' } as CSSProperties}>
       {/* The last known state stays on screen while reconnecting: the display never blanks on a network blip. */}
       {display ? (
         <DisplayStage display={display} timer={timer} timerRemaining={remaining} variant="display" videoCommand={videoCommand} />

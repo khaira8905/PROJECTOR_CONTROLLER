@@ -7,8 +7,8 @@ import { ScreenDot } from './ShowFlowPanel';
 /** Current + next queue item and the operator-only notes for the current item. */
 export function UpNextCard({ current, next, onEditNotes }: { current: QueueItem | null; next: QueueItem | null; onEditNotes: (item: QueueItem) => void }) {
   return (
-    <div className="grid gap-3 md:grid-cols-2">
-      <div className="group rounded-xl bg-gradient-to-br from-sky-500/[0.09] to-transparent p-4 ring-1 ring-sky-400/15 ring-inset">
+    <div className="grid gap-3">
+      <div className="ec-card group rounded-xl p-4">
         <p className="text-[11px] font-semibold tracking-[0.14em] text-sky-400 uppercase">Up next</p>
         {next ? (
           <div key={next.id} className="ec-fade-up mt-2 flex items-center gap-3" style={{ animationDuration: '450ms' }}>
@@ -24,7 +24,7 @@ export function UpNextCard({ current, next, onEditNotes }: { current: QueueItem 
         )}
       </div>
 
-      <div className="rounded-xl bg-gradient-to-br from-amber-500/[0.09] to-transparent p-4 ring-1 ring-amber-400/15 ring-inset">
+      <div className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-4">
         <div className="flex items-center justify-between">
           <p className="flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.14em] text-amber-300 uppercase">
             <StickyNote size={12} /> Speaker notes

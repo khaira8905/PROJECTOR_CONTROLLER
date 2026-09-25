@@ -55,7 +55,7 @@ try {
 
   console.log(`Event ${event.id}`);
   await op.goto(`${BASE}/events/${event.id}`);
-  await op.getByText('Program output').waitFor();
+  await op.getByText('Live Preview').waitFor();
   ok('1-2. dashboard opened');
 
   await op.locator('input[type=file]').setInputFiles([path.join(assets, 'Welcome.png'), path.join(assets, 'Speaker Presentation.pdf')]);
@@ -63,7 +63,8 @@ try {
   ok('3. uploaded image + PDF');
 
   for (const name of ['Welcome.png', 'Speaker Presentation.pdf']) {
-    await op.locator('ul li', { hasText: name }).getByRole('button', { name: 'Flow' }).click();
+    await op.getByPlaceholder('Search files…').fill(name);
+    await op.getByRole('button', { name: `Add ${name} to the show flow` }).click();
     await op.getByText(`Added "${name}" to the show flow.`).waitFor();
   }
   ok('4. added both to the show flow');
@@ -72,8 +73,8 @@ try {
   display.on('pageerror', (e) => errors.push(e.message));
   await display.goto(`${BASE}/display/${event.id}`);
   await display.getByRole('heading', { name: 'Please Wait' }).waitFor();
-  await op.getByText('Display connected', { exact: true }).waitFor();
-  ok('5. display connected (status bar shows DISPLAY CONNECTED)');
+  await op.getByText('Display Connected', { exact: true }).waitFor();
+  ok('5. display connected (top bar shows Display Connected)');
 
   await op.locator('ol li', { hasText: 'Welcome.png' }).hover();
   await op.getByRole('button', { name: 'Show Welcome.png on display' }).click();
@@ -85,7 +86,7 @@ try {
   await op.keyboard.press('ArrowRight');
   await display.locator('canvas:not(.invisible)').waitFor();
   await op.keyboard.press('ArrowRight');
-  await op.getByText(/Page 02 \/ 04/).waitFor();
+  await op.getByText(/Page 2 of 4/).waitFor();
   ok('8-9. NEXT shows the PDF, then its next page');
 
   const t0 = Date.now();
@@ -95,7 +96,12 @@ try {
 
   await op.keyboard.press('p');
   await op.waitForTimeout(2200);
-  const value = await op.locator('.text-6xl').innerText();
+  // Background tabs only repaint about once a second, so give the readout a moment to catch up.
+  let value = '';
+  for (let i = 0; i < 20 && !/^09:5[6-8]$/.test(value); i++) {
+    value = await op.locator('.ec-timer-readout').innerText();
+    if (!/^09:5[6-8]$/.test(value)) await op.waitForTimeout(100);
+  }
   if (!/^09:5[6-8]$/.test(value)) throw new Error(`Unexpected timer value ${value}`);
   ok(`12-13. timer running (${value})`);
 

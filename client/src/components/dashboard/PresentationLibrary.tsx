@@ -11,7 +11,7 @@ import { ACCEPTED_FILE_TYPES } from '../../services/api';
 import { formatBytes } from '../../lib/format';
 import { pageWord } from '../../lib/flow';
 import { cn } from '../../lib/cn';
-import type { Media } from '../../types';
+import type { Media, MediaKind } from '../../types';
 
 export const DEFAULT_FOLDERS = ['Main Presentation', 'Speaker 1', 'Speaker 2', 'Sponsors', 'Break Screens', 'Emergency Screens', 'Logos', 'Event Branding'];
 
@@ -33,6 +33,9 @@ interface Props {
   onSetOverlay: (media: Media) => void;
   onReconvert: (media: Media) => void;
   onDelete: (media: Media) => void;
+  /** Only these kinds of file (all when omitted). */
+  kinds?: MediaKind[];
+  title?: string;
   className?: string;
 }
 
@@ -40,7 +43,8 @@ const ALL = '__all__';
 const UNFILED = '';
 
 export function PresentationLibrary(props: Props) {
-  const { media, uploadProgress, onUpload, className } = props;
+  const { uploadProgress, onUpload, className, kinds, title = 'Presentations' } = props;
+  const media = useMemo(() => (kinds ? props.media.filter((m) => kinds.includes(m.kind)) : props.media), [props.media, kinds]);
   const inputRef = useRef<HTMLInputElement>(null);
   const [folder, setFolder] = useState<string>(ALL);
   const [dragging, setDragging] = useState(false);
@@ -82,8 +86,8 @@ export function PresentationLibrary(props: Props) {
 
   return (
     <Panel
-      title="Presentations"
-      icon={<FolderOpen size={14} />}
+      title={title}
+      icon={<FolderOpen size={20} />}
       className={className}
       bodyClassName="scroll-thin overflow-y-auto"
       actions={
@@ -107,7 +111,7 @@ export function PresentationLibrary(props: Props) {
       }
     >
       {/* Folder tabs */}
-      <div className="scroll-thin -mx-1 mb-3 flex gap-1 overflow-x-auto px-1 pb-1">
+      <div className="mb-3 flex flex-wrap gap-1">
         <FolderTab label="All" count={media.length} active={folder === ALL} onClick={() => setFolder(ALL)} />
         {counts[UNFILED] ? <FolderTab label="Unfiled" count={counts[UNFILED]} active={folder === UNFILED} onClick={() => setFolder(UNFILED)} /> : null}
         {folders.map((f) => (
@@ -134,7 +138,7 @@ export function PresentationLibrary(props: Props) {
       >
         {uploadProgress !== null && (
           <div className="mb-3 h-1 overflow-hidden rounded-full bg-white/5">
-            <div className="h-full bg-[linear-gradient(90deg,var(--accent-400),var(--accent-2))] transition-[width]" style={{ width: `${uploadProgress * 100}%` }} />
+            <div className="h-full bg-sky-500 transition-[width]" style={{ width: `${uploadProgress * 100}%` }} />
           </div>
         )}
         {sorted.length === 0 ? (
@@ -147,7 +151,7 @@ export function PresentationLibrary(props: Props) {
             <span className="mt-1 text-xs text-slate-600">PPT, PPTX, PDF, PNG, JPG, WEBP, MP4, WEBM, MOV</span>
           </button>
         ) : (
-          <ul className="ec-stagger grid grid-cols-1 gap-3 sm:grid-cols-2 min-[1700px]:grid-cols-3">
+          <ul className="ec-stagger grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-3">
             {sorted.map((m) => (
               <PresentationCard key={m.id} {...props} item={m} onStartRename={() => setRenaming(m)} onStartMove={() => setMoving(m)} />
             ))}

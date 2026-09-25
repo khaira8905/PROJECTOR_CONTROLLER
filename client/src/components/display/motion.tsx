@@ -153,13 +153,17 @@ export function Grain() {
  * pseudo-element, so the element's text is always exactly the current time.
  */
 export function RollingClock({ ms, live, className }: { ms: number; live?: boolean; className?: string }) {
-  const text = formatClock(ms);
+  return <RollingDigits text={formatClock(ms)} live={live} className={className} />;
+}
+
+/** Any digit string ("12:04:59", "+01:25") with the same rolling digits. */
+export function RollingDigits({ text, live, className }: { text: string; live?: boolean; className?: string }) {
   return (
     <span className={cn('inline-block whitespace-nowrap tabular-nums', className)} role="timer" aria-label={text}>
       {text.split('').map((ch, i) =>
-        ch === ':' ? (
-          <span key={`c${i}`} className={cn('ec-digit-slot', live && 'ec-colon-live')}>
-            :
+        ch === ':' || !/\d/.test(ch) ? (
+          <span key={`c${i}`} className={cn('ec-digit-slot', ch === ':' && live && 'ec-colon-live')}>
+            {ch}
           </span>
         ) : (
           <RollingChar key={`d${text.length - i}`} ch={ch} />

@@ -79,7 +79,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             </button>
             {/* How long until it goes away. */}
             <span
-              className={cn('ec-toast-bar absolute bottom-0 left-0 h-0.5 w-full', t.tone === 'error' ? 'bg-red-400/60' : t.tone === 'warning' ? 'bg-amber-400/60' : 'bg-[linear-gradient(90deg,var(--accent-400),var(--accent-2))] opacity-70')}
+              className={cn('ec-toast-bar absolute bottom-0 left-0 h-0.5 w-full', t.tone === 'error' ? 'bg-red-400/60' : t.tone === 'warning' ? 'bg-amber-400/60' : 'bg-sky-500/70')}
               style={{ animationDuration: `${t.ttl}ms` }}
             />
           </div>

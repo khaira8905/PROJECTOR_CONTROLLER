@@ -52,7 +52,8 @@ export function DisplayStage({ display, timer, timerRemaining = 0, variant, vide
   if (display.mode === 'screen') layerKey = `s:${screen?.id ?? 'wait'}`;
 
   return (
-    <div className="absolute inset-0 overflow-hidden bg-black text-white" style={{ containerType: 'size' }}>
+    // The console's white theme redefines "white" as dark text; the projector output always uses real white.
+    <div className="absolute inset-0 overflow-hidden bg-black text-white" style={{ containerType: 'size', '--color-white': '#fff' } as CSSProperties}>
       <StageTransition layerKey={layerKey} kind={kind}>
         {display.mode === 'black' ? null : display.mode === 'screen' ? (
           <ScreenScene

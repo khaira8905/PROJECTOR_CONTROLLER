@@ -8,7 +8,8 @@ import type { TimerSnapshot } from '../types';
  */
 export function useTimerRemaining(timer: TimerSnapshot | null, clockOffset: number): number {
   const [, setTick] = useState(0);
-  const running = timer?.status === 'running';
+  // A finished countdown keeps ticking too: the operator console counts the overtime.
+  const running = timer?.status === 'running' || timer?.status === 'finished';
 
   useEffect(() => {
     if (!running) return;

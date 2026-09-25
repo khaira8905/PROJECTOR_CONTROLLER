@@ -7,6 +7,12 @@ export function timerRemaining(timer: TimerSnapshot, clockOffsetMs: number, clie
   return Math.max(0, timer.remainingMs - (serverNow - timer.startedAt));
 }
 
+/** How long a finished countdown has been over time (0 unless it has finished). */
+export function timerOvertime(timer: TimerSnapshot, clockOffsetMs: number, clientNow = Date.now()): number {
+  if (timer.status !== 'finished' || !timer.finishedAt) return 0;
+  return Math.max(0, clientNow + clockOffsetMs - timer.finishedAt);
+}
+
 export type TimerTone = 'normal' | 'warning' | 'finished' | 'idle';
 
 export function timerTone(timer: TimerSnapshot, remaining: number): TimerTone {

@@ -13,6 +13,8 @@ interface TimerRecord {
   remainingMs: number;
   /** Server epoch ms when the current run started; null unless running. */
   startedAt: number | null;
+  /** Server epoch ms when a countdown reached zero; lets operators see how far over time it is. */
+  finishedAt: number | null;
   showOnDisplay: boolean;
 }
 
@@ -52,6 +54,7 @@ async function load(eventId: string): Promise<TimerRecord> {
     status: row.status as TimerStatus,
     remainingMs: row.remainingMs,
     startedAt: row.startedAt ? row.startedAt.getTime() : null,
+    finishedAt: row.finishedAt ? row.finishedAt.getTime() : null,
     showOnDisplay: row.showOnDisplay,
   };
   timers.set(eventId, record);
@@ -67,19 +70,22 @@ function scheduleFinish(eventId: string, t: TimerRecord) {
   const timeout = setTimeout(() => {
     const current = timers.get(eventId);
     if (!current || current.status !== 'running') return;
-    void commit(eventId, { ...current, status: 'finished', remainingMs: 0, startedAt: null });
+    void commit(eventId, { ...current, status: 'finished', remainingMs: 0, startedAt: null, finishedAt: Date.now() });
   }, ms);
   timeout.unref?.();
   finishTimeouts.set(eventId, timeout);
 }
 
 async function commit(eventId: string, next: TimerRecord): Promise<TimerSnapshot> {
+  // Only a finished countdown has a finish time.
+  if (next.status !== 'finished') next = { ...next, finishedAt: null };
+  else if (next.finishedAt == null) next = { ...next, finishedAt: Date.now() };
   timers.set(eventId, next);
   scheduleFinish(eventId, next);
   const snapshot = toSnapshot(eventId, next);
   emitToEvent(eventId, 'timer:update', snapshot);
   try {
-    const data = { ...next, startedAt: next.startedAt ? new Date(next.startedAt) : null };
+    const data = { ...next, startedAt: next.startedAt ? new Date(next.startedAt) : null, finishedAt: next.finishedAt ? new Date(next.finishedAt) : null };
     await prisma.timerState.upsert({ where: { eventId }, create: { eventId, ...data }, update: data });
   } catch (err) {
     logger.error('Failed to persist timer state', eventId, err);
@@ -158,7 +164,7 @@ export async function restoreRunningTimers() {
   for (const row of rows) {
     const t = await load(row.eventId);
     if (remainingNow(t) <= 0) {
-      await commit(row.eventId, { ...t, status: 'finished', remainingMs: 0, startedAt: null });
+      await commit(row.eventId, { ...t, status: 'finished', remainingMs: 0, startedAt: null, finishedAt: (t.startedAt ?? Date.now()) + t.remainingMs });
     }
   }
 }

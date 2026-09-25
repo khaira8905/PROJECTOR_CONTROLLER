@@ -1,131 +1,177 @@
 /*
- * Operator console themes. Tailwind's `sky-*` (accent), `slate-*` (text) and `console-*`
- * (surfaces) resolve to these variables, so switching `data-theme` on <html> recolours the
- * whole console instantly. The audience display uses its own colours and is unaffected.
+ * Operator console themes. Tailwind's `sky-*` (accent), `slate-*` (text), `console-*`
+ * (surfaces), `white` (strongest foreground) and the light status shades resolve to these
+ * variables, so switching `data-theme` on <html> recolours the whole console at once.
+ * The audience display keeps its own colours.
  *
- *   aurora  deep ink-violet with a lilac → orchid accent (default)
- *   ember   warm graphite with a copper → gold accent
- *   ocean   the original midnight blue with a sky → violet accent
+ *   light  white cards on a cool grey page, navy sidebar, blue actions (default)
+ *   blue   the same layout at night: deep navy surfaces, bright blue actions
  */
 
 :root,
-:root[data-theme='aurora'] {
-  --accent-50: #f6f3ff;
-  --accent-100: #ece6ff;
-  --accent-200: #dcd1ff;
-  --accent-300: #c3b1ff;
-  --accent-400: #a88bff;
-  --accent-500: #8f67fb;
-  --accent-600: #7a4bef;
-  --accent-700: #6637d4;
-  --accent-800: #522cab;
-  --accent-900: #3f2583;
-  --accent-950: #26154f;
-  --accent-2: #e07bf5;
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  /* Accent: read as "blue text on white" for the light end, "blue fill" in the middle. */
+  --accent-50: #0f1f47;
+  --accent-100: #172f6b;
+  --accent-200: #1a3d91;
+  --accent-300: #1d4fc4;
+  --accent-400: #2160e0;
+  --accent-500: #1f5ad6;
+  --accent-600: #1a4ebd;
+  --accent-700: #1a439e;
+  --accent-800: #c9d9f8;
+  --accent-900: #e3ecfc;
+  --accent-950: #f0f5fe;
   --on-accent: #ffffff;
 
-  --ink-50: #f8f7fc;
-  --ink-100: #efedf7;
-  --ink-200: #dfdcec;
-  --ink-300: #c3bfd6;
-  --ink-400: #9d98b4;
-  --ink-500: #777290;
-  --ink-600: #58536f;
-  --ink-700: #403c53;
-  --ink-800: #2a2739;
-  --ink-900: #1a1725;
-  --ink-950: #0e0c15;
+  /* Text, strongest (100) to faintest (600); 700+ are hairlines and fills. */
+  --contrast: #0f1728;
+  --ink-50: #0b1220;
+  --ink-100: #111a2c;
+  --ink-200: #1f2a3e;
+  --ink-300: #364257;
+  --ink-400: #4d596d;
+  --ink-500: #677286;
+  --ink-600: #97a0b0;
+  --ink-700: #ccd2dc;
+  --ink-800: #e2e6ed;
+  --ink-900: #eff2f6;
+  --ink-950: #f7f8fa;
 
-  --surface-950: #0a0810;
-  --surface-900: #110e19;
-  --surface-850: #15121f;
-  --surface-800: #1a1627;
-  --surface-700: #241f35;
-  --surface-600: #322b48;
-  --surface-500: #463d62;
+  --surface-950: #eef1f5; /* page */
+  --surface-900: #ffffff; /* cards */
+  --surface-850: #f6f7f9; /* insets, table header */
+  --surface-800: #ffffff; /* raised: menus, modals */
+  --surface-700: #f0f2f6; /* secondary buttons */
+  --surface-600: #e4e8ee;
+  --surface-500: #d3d9e2;
 
-  --backdrop-a: rgba(143, 103, 251, 0.2);
-  --backdrop-b: rgba(224, 123, 245, 0.11);
-  --backdrop-c: rgba(56, 189, 248, 0.07);
+  --line: #e1e5eb;
+  --line-strong: #cfd5de;
+  --card-shadow: 0 1px 2px rgb(16 24 40 / 0.05);
+  --pop-shadow: 0 12px 32px -12px rgb(16 24 40 / 0.22), 0 2px 6px rgb(16 24 40 / 0.06);
+  --row-hover: #f5f7fa;
+  --row-active: #e8effc;
+  --kbd-bg: #f3f5f8;
+  --q-amber-bg: #fdf0d8;
+  --q-amber-bd: #f6d9a4;
+  --q-amber-fg: #7a4a06;
+  --q-red-bg: #fde4e2;
+  --q-red-bd: #f7c1bc;
+  --q-red-fg: #9b1c14;
+
+  --sidebar-bg: #152646;
+  --sidebar-border: #1f3358;
+  --sidebar-text: #c7d0df;
+  --sidebar-muted: #8391aa;
+  --sidebar-hover: #1b2f55;
+  --sidebar-active: #22427a;
+  --sidebar-strong: #ffffff;
+
+  /* Status text shades that stay readable on white. */
+  --st-red-100: #7a271a;
+  --st-red-200: #912018;
+  --st-red-300: #b42318;
+  --st-red-400: #d92d20;
+  --st-emerald-100: #054f31;
+  --st-emerald-200: #05603a;
+  --st-emerald-300: #067647;
+  --st-emerald-400: #079455;
+  --st-amber-100: #7a2e0e;
+  --st-amber-200: #93370d;
+  --st-amber-300: #b54708;
+  --st-amber-400: #dc6803;
+  --st-yellow-100: #713b12;
+  --st-yellow-200: #854a0e;
+  --st-yellow-300: #a15c07;
+  --st-orange-100: #7e2410;
+  --st-orange-200: #97180c;
+  --st-orange-300: #c4320a;
+  --st-violet-100: #3e1c96;
+  --st-violet-200: #4a1fb8;
+  --st-violet-300: #5925dc;
+}
+
+:root[data-theme='blue'] {
   color-scheme: dark;
-}
 
-:root[data-theme='ember'] {
-  --accent-50: #fff6ed;
-  --accent-100: #ffead3;
-  --accent-200: #ffd2a6;
-  --accent-300: #ffb06d;
-  --accent-400: #ff9142;
-  --accent-500: #f97a1f;
-  --accent-600: #e0620f;
-  --accent-700: #b94b0e;
-  --accent-800: #933c13;
-  --accent-900: #773413;
-  --accent-950: #401806;
-  --accent-2: #fcd34d;
-  --on-accent: #1d0f04;
+  --accent-50: #eef5ff;
+  --accent-100: #dbe9ff;
+  --accent-200: #bcd6ff;
+  --accent-300: #8fbaff;
+  --accent-400: #5d98fb;
+  --accent-500: #3b7cf0;
+  --accent-600: #2d66d6;
+  --accent-700: #2552b0;
+  --accent-800: #1f438d;
+  --accent-900: #1b3970;
+  --accent-950: #11244a;
+  --on-accent: #ffffff;
 
-  --ink-50: #faf8f5;
-  --ink-100: #f3efea;
-  --ink-200: #e6e0d8;
-  --ink-300: #cdc5ba;
-  --ink-400: #a79e92;
-  --ink-500: #80776c;
-  --ink-600: #5f574e;
-  --ink-700: #463f38;
-  --ink-800: #2e2925;
-  --ink-900: #1d1a17;
-  --ink-950: #100e0c;
+  --contrast: #ffffff;
+  --ink-50: #f7f9fc;
+  --ink-100: #eef2f8;
+  --ink-200: #dfe5ee;
+  --ink-300: #c4cdda;
+  --ink-400: #9aa7ba;
+  --ink-500: #728096;
+  --ink-600: #55627a;
+  --ink-700: #38445a;
+  --ink-800: #243049;
+  --ink-900: #16203a;
+  --ink-950: #0b1226;
 
-  --surface-950: #0c0a08;
-  --surface-900: #13100d;
-  --surface-850: #181411;
-  --surface-800: #1e1915;
-  --surface-700: #29221d;
-  --surface-600: #382f28;
-  --surface-500: #4d4138;
+  --surface-950: #0b1324;
+  --surface-900: #111b30;
+  --surface-850: #0e172a;
+  --surface-800: #16223b;
+  --surface-700: #1a2742;
+  --surface-600: #22314f;
+  --surface-500: #2e3f60;
 
-  --backdrop-a: rgba(249, 122, 31, 0.16);
-  --backdrop-b: rgba(252, 211, 77, 0.08);
-  --backdrop-c: rgba(239, 68, 68, 0.06);
-}
+  --line: #1f2c47;
+  --line-strong: #2a3a5a;
+  --card-shadow: 0 1px 2px rgb(0 0 0 / 0.3);
+  --pop-shadow: 0 16px 40px -12px rgb(0 0 0 / 0.6);
+  --row-hover: #15213a;
+  --row-active: #172d55;
+  --kbd-bg: #1a2742;
+  --q-amber-bg: rgb(245 158 11 / 0.14);
+  --q-amber-bd: rgb(245 158 11 / 0.35);
+  --q-amber-fg: #fcd99a;
+  --q-red-bg: rgb(239 68 68 / 0.14);
+  --q-red-bd: rgb(239 68 68 / 0.38);
+  --q-red-fg: #fecaca;
 
-:root[data-theme='ocean'] {
-  --accent-50: #f0f9ff;
-  --accent-100: #e0f2fe;
-  --accent-200: #bae6fd;
-  --accent-300: #7dd3fc;
-  --accent-400: #38bdf8;
-  --accent-500: #0ea5e9;
-  --accent-600: #0284c7;
-  --accent-700: #0369a1;
-  --accent-800: #075985;
-  --accent-900: #0c4a6e;
-  --accent-950: #082f49;
-  --accent-2: #8b5cf6;
-  --on-accent: #04111c;
+  --sidebar-bg: #0a1120;
+  --sidebar-border: #16213a;
+  --sidebar-text: #b5c0d3;
+  --sidebar-muted: #6f7d96;
+  --sidebar-hover: #121d33;
+  --sidebar-active: #1b3566;
+  --sidebar-strong: #ffffff;
 
-  --ink-50: #f8fafc;
-  --ink-100: #f1f5f9;
-  --ink-200: #e2e8f0;
-  --ink-300: #cbd5e1;
-  --ink-400: #94a3b8;
-  --ink-500: #64748b;
-  --ink-600: #475569;
-  --ink-700: #334155;
-  --ink-800: #1e293b;
-  --ink-900: #0f172a;
-  --ink-950: #020617;
-
-  --surface-950: #07090e;
-  --surface-900: #0b0f17;
-  --surface-850: #0f141e;
-  --surface-800: #141a26;
-  --surface-700: #1c2433;
-  --surface-600: #283246;
-  --surface-500: #3a4660;
-
-  --backdrop-a: rgba(14, 165, 233, 0.15);
-  --backdrop-b: rgba(139, 92, 246, 0.1);
-  --backdrop-c: rgba(16, 185, 129, 0.05);
+  --st-red-100: #fee2e2;
+  --st-red-200: #fecaca;
+  --st-red-300: #fca5a5;
+  --st-red-400: #f87171;
+  --st-emerald-100: #d1fae5;
+  --st-emerald-200: #a7f3d0;
+  --st-emerald-300: #6ee7b7;
+  --st-emerald-400: #34d399;
+  --st-amber-100: #fef3c7;
+  --st-amber-200: #fde68a;
+  --st-amber-300: #fcd34d;
+  --st-amber-400: #fbbf24;
+  --st-yellow-100: #fef9c3;
+  --st-yellow-200: #fef08a;
+  --st-yellow-300: #fde047;
+  --st-orange-100: #ffedd5;
+  --st-orange-200: #fed7aa;
+  --st-orange-300: #fdba74;
+  --st-violet-100: #ede9fe;
+  --st-violet-200: #ddd6fe;
+  --st-violet-300: #c4b5fd;
 }

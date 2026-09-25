@@ -119,6 +119,8 @@ export interface TimerSnapshot {
   status: TimerStatus;
   remainingMs: number;
   startedAt: number | null;
+  /** When the countdown reached zero (server epoch ms), for the operator's overtime count. */
+  finishedAt?: number | null;
   showOnDisplay: boolean;
   serverNow: number;
 }
@@ -170,4 +172,6 @@ export interface SystemStatus {
   storage: { provider: string; ok: boolean; message: string; pending: number; errors: number };
   conversion: { available: boolean; queued: number };
   auth: { provider: string };
+  /** Free/total bytes on the drive holding the uploads (null if unknown). */
+  disk?: { free: number; total: number } | null;
 }

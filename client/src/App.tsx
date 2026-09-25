@@ -2,7 +2,6 @@ import { Suspense, lazy } from 'react';
 import { Route, Routes, useLocation } from 'react-router-dom';
 import { ToastProvider } from './components/ui/Toast';
 import { AuthGate } from './components/AuthGate';
-import { Backdrop } from './components/Backdrop';
 
 const EventsPage = lazy(() => import('./pages/EventsPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
@@ -11,7 +10,7 @@ const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 
 export default function App() {
   return (
-    <Suspense fallback={<div className="h-full bg-black" />}>
+    <Suspense fallback={null}>
     <Routes>
       {/* The audience display is deliberately outside the operator UI shell. */}
       <Route path="/display/:eventId" element={<DisplayPage />} />
@@ -19,7 +18,6 @@ export default function App() {
         path="*"
         element={
           <ToastProvider>
-            <Backdrop />
             <div className="ec-shell min-h-full">
               <AuthGate>
                 <OperatorRoutes />

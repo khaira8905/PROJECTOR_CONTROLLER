@@ -3,8 +3,8 @@ import { MonitorPlay } from 'lucide-react';
 export function BrandMark({ compact }: { compact?: boolean }) {
   return (
     <span className="flex items-center gap-2.5">
-      <span className="ec-shimmer relative flex h-8 w-8 items-center justify-center rounded-lg bg-[linear-gradient(120deg,var(--accent-500),var(--accent-2),var(--accent-500))] shadow-lg shadow-sky-500/25 ring-1 ring-white/15 ring-inset">
-        <MonitorPlay size={17} className="text-white" />
+      <span className="relative flex h-8 w-8 items-center justify-center rounded-lg bg-sky-500">
+        <MonitorPlay size={17} className="text-[#fff]" />
       </span>
       {!compact && (
         <span className="font-display text-[16px] font-bold tracking-tight text-white">
