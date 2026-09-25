@@ -110,7 +110,7 @@ event-control/
 | --- | --- |
 | **Local-first server + cloud file storage** (not a cloud-only backend) | Venue Wi-Fi is unreliable, and a live show must never depend on it. The local server is the realtime hub between the dashboard and the display, and keeps a local copy of every file. The cloud holds durable copies of the uploads; if a local file is missing (cleaned disk, reinstall), it is restored from the cloud automatically. |
 | **Supabase via its REST API, behind a `CloudStorage` interface** | No SDK lock-in. Swapping in S3, Firebase Storage or another provider means writing one small class (`server/src/services/storage/`). With no Supabase settings, the app runs fully locally. |
-| **Metadata stays in local SQLite for now** | Events, flows, screens and state live next to the server for speed and offline safety. Syncing metadata to the cloud (so a second laptop sees the same library) fits naturally with *Event presets* in Phase 3; the storage interface and DTOs are already separated for that. |
+| **SQLite locally, Postgres when hosted** | On a laptop, events, flows, screens and state live in a SQLite file next to the server (zero setup, offline-safe). Set `DATABASE_URL` to a Postgres URL (e.g. Supabase) and the same schema runs on Postgres — that's how the free cloud deployment keeps its data. `scripts/prisma.mjs` switches the Prisma provider automatically; the test suite passes on both. |
 | **PPTX → PDF with LibreOffice, keeping the original** | Browsers cannot render PowerPoint. LibreOffice's headless export preserves layout, fonts and images well and runs offline. Conversion happens in a one-at-a-time background queue with a private LibreOffice profile (so it doesn't clash with an open LibreOffice window) and a timeout. Animations/transitions and embedded video in decks are not reproduced; use "Open in PowerPoint" for those decks. |
 | **pdf.js (legacy build) renders slides in the browser** | Pixel-accurate slides, instant page flips (documents are cached), thumbnails, and it works on older projector-laptop browsers. |
 | **Server-authoritative state, full snapshots** | Every change broadcasts a complete, versioned display snapshot. A display that reconnects or refreshes asks once and is exactly in sync. Emergency modes (black/logo) and slide flips reuse the cached snapshot, so they're applied in milliseconds. |
@@ -138,7 +138,7 @@ npm start          # everything on http://localhost:4000
 
 | Command | Purpose |
 | --- | --- |
-| `npm test` | Server integration tests: auth, Show Flow navigation across files and slide ranges, screens, overlay, real PPTX conversion (if LibreOffice is installed), cloud storage against a mock Supabase API, and more |
+| `npm test` | Server integration tests (SQLite; `TEST_DATABASE_URL=postgresql://…` runs them on an empty Postgres database): auth, Show Flow navigation across files and slide ranges, screens, overlay, real PPTX conversion (if LibreOffice is installed), cloud storage against a mock Supabase API, and more |
 | `npm run e2e` | Browser end-to-end check against the running app (`E2E_PASSWORD=… npm run e2e`; needs `npx playwright install chromium` once or `CHROME_PATH`) |
 | `npm run typecheck` | TypeScript checks |
 | `npm run reset-password` | Clear the operator password (the next visit asks for a new one) |
@@ -150,6 +150,7 @@ Copy **`.env.example`** to **`.env`** in the project folder and fill in what you
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
+| `DATABASE_URL` | SQLite `prisma/eventcontrol.db` | `file:/path/to.db` or a Postgres URL (`postgresql://…`, e.g. Supabase) |
 | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | empty | Enable cloud storage (see below) |
 | `SUPABASE_BUCKET` | `eventcontrol` | Storage bucket name |
 | `AUTH_PROVIDER` | `local` | `local` (operator password), `supabase` (Supabase Auth email + password, needs `SUPABASE_ANON_KEY`), `none` |
@@ -169,6 +170,45 @@ Copy **`.env.example`** to **`.env`** in the project folder and fill in what you
 4. Restart EventControl. The status bar shows **CLOUD SYNCED** once uploads are copied, and each file card shows its cloud status. Existing files are uploaded automatically.
 
 The service key stays on the server (it is never sent to the browser). Uploads are retried with backoff if the connection drops.
+
+## Free cloud hosting (Render + Supabase)
+
+Run EventControl on the internet at no cost: **Render** (free web service) runs the server, and **Supabase** (free plan) stores the database and the uploaded files. Neither needs a credit card.
+
+> **Honest trade-offs of free hosting**
+> - Render's free instance **sleeps after ~15 minutes without visitors**; the first visit after that takes about a minute to wake it. **Open the dashboard 5 minutes before your event starts.**
+> - Every slide change travels over the venue's internet. For events with unreliable Wi-Fi, running on your laptop (Quick start) is still the most reliable option.
+> - The free Supabase project pauses after a week without use. Restore it from the Supabase dashboard (your data is kept).
+> - Free limits: 512 MB memory on Render (plenty for EventControl), 1 GB of file storage and 500 MB of database on Supabase.
+> - "Open in PowerPoint" is disabled on a hosted server. Everything else works, including PowerPoint → slides conversion (LibreOffice is inside the container).
+
+### 1. Supabase (database + file storage)
+
+1. Sign up at https://supabase.com → **New project**. Choose a name, a **database password** (write it down) and a region near your venue.
+2. **Storage → New bucket** → name `eventcontrol` → keep **Public** switched **off** → Create.
+3. Click **Connect** (top of the project page) → **Session pooler** → copy the URI. It looks like
+   `postgresql://postgres.abcdefgh:[YOUR-PASSWORD]@aws-0-ap-south-1.pooler.supabase.com:5432/postgres`.
+   Replace `[YOUR-PASSWORD]` with your database password (if it contains symbols like `@`, `#` or `/`, pick a password with only letters and numbers instead). Use the **Session pooler** one: Render can't reach the "Direct connection" address.
+4. **Project Settings → API** → copy the **Project URL** and the **service_role** key (click "Reveal"). Keep the service_role key secret.
+
+### 2. Render (the server)
+
+1. Sign up at https://render.com with your GitHub account.
+2. **New → Blueprint** → select your `PROJECTOR_CONTROLLER` repository → Render reads `render.yaml` and proposes a free web service called **eventcontrol**.
+3. Fill in the three values it asks for:
+   | Key | Value |
+   | --- | --- |
+   | `DATABASE_URL` | the Session pooler URI from step 1.3 |
+   | `SUPABASE_URL` | the Project URL from step 1.4 |
+   | `SUPABASE_SERVICE_ROLE_KEY` | the service_role key from step 1.4 |
+4. Click **Apply**. The first build takes ~10 minutes (it installs LibreOffice). When the log shows `EventControl server listening`, open the `https://eventcontrol-….onrender.com` address Render shows.
+5. **Create the operator password immediately** — the address is public, and the first visitor chooses it. Use a strong one.
+
+Every push to `main` redeploys automatically. Events and files survive restarts and redeploys (they live in Supabase; files are cached on the server and re-downloaded when needed).
+
+**Projector:** open `https://<your-app>.onrender.com/display/<eventId>` on the projector computer (the dashboard's **Open Display** button does this for you).
+
+**Other Docker hosts:** the same `Dockerfile` runs anywhere (Railway, Fly.io, a VPS, a Raspberry Pi…). Set `DATABASE_URL` (Postgres, or `file:/data/eventcontrol.db` on a persistent volume), and optionally `SUPABASE_*` for file storage.
 
 ### Installing LibreOffice (PowerPoint slides)
 

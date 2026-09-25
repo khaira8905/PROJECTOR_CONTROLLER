@@ -9,16 +9,13 @@ import path from 'node:path';
  */
 const root = path.resolve(__dirname, '..', '..');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'eventcontrol-test-'));
-const schema = fs
-  .readFileSync(path.join(root, 'prisma', 'schema.prisma'), 'utf8')
-  .replace(/url\s*=\s*"file:[^"]*"/, `url = "file:${path.join(tmp, 'test.db')}"`);
-const schemaPath = path.join(tmp, 'schema.prisma');
-fs.writeFileSync(schemaPath, schema);
-execFileSync(process.execPath, [require.resolve('prisma/build/index.js'), 'db', 'push', '--schema', schemaPath, '--skip-generate'], {
+// TEST_DATABASE_URL=postgresql://… runs the suite against an EMPTY Postgres database (the client must be
+// generated for Postgres first: DATABASE_URL=… node scripts/prisma.mjs generate).
+process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || `file:${path.join(tmp, 'test.db')}`;
+execFileSync(process.execPath, [path.join(root, 'scripts', 'prisma.mjs'), 'db', 'push', '--skip-generate'], {
   stdio: 'ignore',
+  env: process.env,
 });
-
-process.env.DATABASE_URL = `file:${path.join(tmp, 'test.db')}`;
 process.env.UPLOADS_DIR = path.join(tmp, 'uploads');
 process.env.ALLOW_EXTERNAL_OPEN = 'false';
 process.env.MAX_UPLOAD_MB = '5';

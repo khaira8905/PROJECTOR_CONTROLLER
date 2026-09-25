@@ -8,6 +8,8 @@ import { apiNotFound, errorHandler } from './middleware/errorHandler';
 export function createApp() {
   const app = express();
   app.disable('x-powered-by');
+  // Behind a hosting proxy (Render, Railway…): trust X-Forwarded-* so HTTPS cookies and client IPs work.
+  if (process.env.TRUST_PROXY) app.set('trust proxy', Number(process.env.TRUST_PROXY) || process.env.TRUST_PROXY);
   app.use(express.json({ limit: '1mb' }));
 
   app.use('/api', apiRouter);

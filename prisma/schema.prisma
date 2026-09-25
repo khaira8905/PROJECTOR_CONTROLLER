@@ -1,5 +1,6 @@
 // EventControl database schema (SQLite via Prisma).
-// The database file lives next to this schema: prisma/eventcontrol.db
+// DATABASE_URL defaults to prisma/eventcontrol.db (set by scripts/prisma.mjs and the server);
+// hosted deployments point it at a persistent volume, e.g. file:/data/eventcontrol.db
 
 generator client {
   provider = "prisma-client-js"
@@ -7,7 +8,7 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = "file:./eventcontrol.db"
+  url      = env("DATABASE_URL")
 }
 
 model Event {

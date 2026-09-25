@@ -8,9 +8,9 @@
     "server"
   ],
   "scripts": {
-    "postinstall": "prisma generate",
-    "db:push": "prisma db push --skip-generate",
-    "db:reset": "prisma db push --force-reset --skip-generate",
+    "postinstall": "node scripts/prisma.mjs generate",
+    "db:push": "node scripts/prisma.mjs db push --skip-generate",
+    "db:reset": "node scripts/prisma.mjs db push --force-reset --skip-generate",
     "dev": "npm run db:push && concurrently -k -n server,client -c blue,magenta \"npm run dev -w server\" \"npm run dev -w client\"",
     "build": "npm run build -w server && npm run build -w client",
     "start": "npm run db:push && npm run start -w server",

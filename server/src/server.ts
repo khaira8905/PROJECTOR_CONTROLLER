@@ -37,6 +37,9 @@ async function main() {
   server.listen(config.port, config.host, () => {
     logger.info(`EventControl server listening on http://localhost:${config.port}`);
     for (const ip of lanAddresses()) logger.info(`  on your network: http://${ip}:${config.port}`);
+    if (process.env.RENDER && !config.supabase.url) {
+      logger.warn('Running on Render without SUPABASE_URL: uploaded files will be lost when the instance restarts.');
+    }
     logger.info(`Sign-in: ${config.auth.provider} · Cloud storage: ${config.supabase.url ? `Supabase (${config.supabase.bucket})` : 'off (local files only)'}`);
   });
 
