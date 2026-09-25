@@ -8,6 +8,7 @@ import { Kbd } from '../ui/Kbd';
 import { MediaIcon } from '../MediaIcon';
 import { cn } from '../../lib/cn';
 import { pageWord } from '../../lib/flow';
+import { revealWithin } from '../../lib/scroll';
 import type { DisplaySnapshot, TimerSnapshot } from '../../types';
 
 interface ProgramMonitorProps {
@@ -163,7 +164,7 @@ function SlideStrip({
 }) {
   const strip = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    strip.current?.querySelector<HTMLElement>(`[data-page="${current}"]`)?.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+    revealWithin(strip.current?.querySelector<HTMLElement>(`[data-page="${current}"]`), 'x', true);
   }, [current]);
 
   return (
@@ -178,7 +179,7 @@ function SlideStrip({
             onClick={() => onGo(page)}
             title={`Show ${page}`}
             className={cn(
-              'group relative w-28 shrink-0 overflow-hidden rounded-lg ring-2 transition-colors',
+              'group relative w-28 shrink-0 overflow-hidden rounded-lg ring-2 transition-[box-shadow,transform,opacity] duration-200 ease-out hover:-translate-y-0.5',
               active ? (live ? 'ring-red-500' : 'ring-sky-400') : 'ring-transparent hover:ring-white/30',
               !inRange && 'opacity-40',
             )}
@@ -195,12 +196,19 @@ function SlideStrip({
 export function TransportControls({ onPrevious, onNext, canPrevious, canNext }: { onPrevious: () => void; onNext: () => void; canPrevious: boolean; canNext: boolean }) {
   return (
     <div className="grid grid-cols-2 gap-3">
-      <Button size="lg" variant="secondary" onClick={onPrevious} disabled={!canPrevious} className="h-16 text-lg" icon={<ChevronLeft size={22} />}>
+      <Button
+        size="lg"
+        variant="secondary"
+        onClick={onPrevious}
+        disabled={!canPrevious}
+        className="h-16 text-lg"
+        icon={<ChevronLeft size={22} className="transition-transform duration-200 group-hover/btn:-translate-x-1" />}
+      >
         Previous <Kbd className="ml-1">←</Kbd>
       </Button>
       <Button size="lg" variant="primary" onClick={onNext} disabled={!canNext} className="h-16 text-lg">
         Next <Kbd className="ml-1 border-slate-900/20 bg-slate-900/10 text-slate-900">→</Kbd>
-        <ChevronRight size={22} />
+        <ChevronRight size={22} className="transition-transform duration-200 group-hover/btn:translate-x-1" />
       </Button>
     </div>
   );

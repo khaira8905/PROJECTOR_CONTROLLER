@@ -102,7 +102,7 @@ export default function DisplayPage() {
 
       {!activated && display && (
         <div className="pointer-events-none absolute inset-x-0 bottom-6 flex justify-center">
-          <div className="rounded-full bg-white/10 px-4 py-2 text-sm text-white/70 backdrop-blur">
+          <div className="ec-fade-up rounded-full bg-white/10 px-4 py-2 text-sm text-white/70 backdrop-blur" style={{ animationDelay: '1.2s' }}>
             Click anywhere or press <b>F</b> for fullscreen
           </div>
         </div>

@@ -115,12 +115,15 @@ function Action({
       disabled={disabled}
       aria-pressed={active}
       className={cn(
-        'relative flex h-20 flex-col items-center justify-center gap-1.5 rounded-xl border px-2 text-center text-[12px] leading-tight font-bold tracking-wide uppercase transition-colors disabled:opacity-40',
+        'relative flex h-20 flex-col items-center justify-center gap-1.5 rounded-xl border px-2 text-center text-[12px] leading-tight font-bold tracking-wide uppercase transition-[background-color,border-color,color,box-shadow,transform] duration-200 ease-out active:scale-[0.97] disabled:opacity-40',
         active ? tones[tone].on : tones[tone].idle,
-        armed && 'animate-pulse-soft border-red-400 bg-red-600/40 text-white',
+        armed && 'ec-armed border-red-400 bg-red-600/40 text-white shadow-[0_0_0_3px_rgba(239,68,68,0.25)]',
       )}
     >
-      {icon}
+      {/* The icon pops when this mode goes live — a small confirmation you can see from the corner of your eye. */}
+      <span key={active ? 'on' : 'off'} className={active ? 'ec-pop' : undefined}>
+        {icon}
+      </span>
       <span>{label}</span>
       <Kbd className="absolute top-1.5 right-1.5 border-current/30 bg-black/10 text-current opacity-70">{hint}</Kbd>
     </button>

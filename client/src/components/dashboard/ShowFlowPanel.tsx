@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -10,6 +10,7 @@ import { Button } from '../ui/Button';
 import { cn } from '../../lib/cn';
 import { formatDurationShort } from '../../lib/format';
 import { itemDetail, itemLabel } from '../../lib/flow';
+import { revealWithin } from '../../lib/scroll';
 import type { QueueItem, Screen } from '../../types';
 
 interface ShowFlowPanelProps {
@@ -29,6 +30,12 @@ interface ShowFlowPanelProps {
 /** Run of Show: the whole event prepared in advance, operated manually. */
 export function ShowFlowPanel({ flow, screens, currentId, nextId, onAir, onReorder, onShow, onEdit, onRemove, onAddScreen, className }: ShowFlowPanelProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const listRef = useRef<HTMLOListElement>(null);
+  // Keep the live item in view as the show advances.
+  useEffect(() => {
+    if (!currentId) return;
+    revealWithin(listRef.current?.querySelector<HTMLElement>(`[data-flow-id="${currentId}"]`));
+  }, [currentId]);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -93,7 +100,7 @@ export function ShowFlowPanel({ flow, screens, currentId, nextId, onAir, onReord
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <SortableContext items={flow.map((q) => q.id)} strategy={verticalListSortingStrategy}>
-            <ol className="flex flex-col gap-1">
+            <ol ref={listRef} className="flex flex-col gap-1">
               {flow.map((item, index) => (
                 <FlowRow
                   key={item.id}
@@ -154,9 +161,10 @@ function FlowRow({
   return (
     <li
       ref={setNodeRef}
+      data-flow-id={item.id}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
-        'group flex items-center gap-2 rounded-lg border px-2 py-2 transition-colors',
+        'group flex items-center gap-2 rounded-lg border px-2 py-2 transition-[background-color,border-color,box-shadow] duration-300',
         isCurrent ? (onAir ? 'border-red-500/40 bg-red-500/[0.08]' : 'border-sky-500/40 bg-sky-500/[0.07]') : 'border-transparent hover:bg-white/[0.03]',
         isDragging && 'z-10 border-sky-400/50 bg-console-700 shadow-xl',
       )}

@@ -100,12 +100,12 @@ function SignIn({ status, onDone }: { status: AuthStatus; onDone: () => Promise<
 
   return (
     <Centered>
-      <form onSubmit={submit} className="w-full max-w-sm rounded-2xl border border-white/[0.06] bg-console-900 p-6 text-left shadow-2xl">
+      <form onSubmit={submit} className="ec-modal-in w-full max-w-sm rounded-2xl border border-white/[0.06] bg-console-900 p-6 text-left shadow-2xl">
         <div className="mb-5 flex items-center justify-between">
           <BrandMark />
           <KeyRound size={18} className="text-slate-500" />
         </div>
-        <h1 className="text-xl font-semibold text-white">{setup ? 'Create the operator password' : 'Operator sign-in'}</h1>
+        <h1 className="font-display text-2xl font-bold tracking-tight text-white">{setup ? 'Create the operator password' : 'Operator sign-in'}</h1>
         <p className="mt-1 mb-5 text-sm text-slate-400">
           {setup
             ? 'This stops other people on the same Wi-Fi from controlling your projector. You will use it every time you open the dashboard.'

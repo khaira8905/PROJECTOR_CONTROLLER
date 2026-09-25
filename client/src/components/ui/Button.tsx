@@ -36,7 +36,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       ref={ref}
       type={type}
       className={cn(
-        'inline-flex shrink-0 items-center justify-center whitespace-nowrap transition-colors select-none',
+        'group/btn inline-flex shrink-0 items-center justify-center whitespace-nowrap select-none',
+        // A small, quick press: feels physical without slowing anything down.
+        'transition-[background-color,color,border-color,box-shadow,transform] duration-150 ease-out active:scale-[0.97]',
         'disabled:pointer-events-none disabled:opacity-40',
         variants[variant],
         sizes[size],

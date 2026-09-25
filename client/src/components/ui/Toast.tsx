@@ -7,6 +7,8 @@ interface Toast {
   id: number;
   tone: ToastTone;
   message: string;
+  ttl: number;
+  leaving?: boolean;
 }
 
 interface ToastApi {
@@ -29,14 +31,19 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const nextId = useRef(1);
 
-  const dismiss = useCallback((id: number) => setToasts((t) => t.filter((x) => x.id !== id)), []);
+  // Toasts slide out before they're removed.
+  const dismiss = useCallback((id: number) => {
+    setToasts((t) => t.map((x) => (x.id === id ? { ...x, leaving: true } : x)));
+    window.setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 200);
+  }, []);
 
   const push = useCallback(
     (tone: ToastTone, message: string) => {
       const id = nextId.current++;
+      const ttl = tone === 'error' ? 6000 : 3500;
       // Collapse identical messages so repeated errors don't stack up.
-      setToasts((t) => [...t.filter((x) => x.message !== message), { id, tone, message }].slice(-4));
-      window.setTimeout(() => dismiss(id), tone === 'error' ? 6000 : 3500);
+      setToasts((t) => [...t.filter((x) => x.message !== message), { id, tone, message, ttl }].slice(-4));
+      window.setTimeout(() => dismiss(id), ttl);
     },
     [dismiss],
   );
@@ -60,8 +67,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             key={t.id}
             role={t.tone === 'error' ? 'alert' : 'status'}
             className={cn(
-              'pointer-events-auto flex items-start gap-3 rounded-xl border bg-console-800/95 px-4 py-3 text-sm text-slate-100 shadow-xl backdrop-blur',
+              'pointer-events-auto relative flex items-start gap-3 overflow-hidden rounded-xl border bg-console-800/95 px-4 py-3 text-sm text-slate-100 shadow-xl backdrop-blur',
               t.tone === 'error' ? 'border-red-500/30' : t.tone === 'warning' ? 'border-amber-500/30' : 'border-white/10',
+              t.leaving ? 'ec-toast-out' : 'ec-toast-in',
             )}
           >
             <span className="mt-0.5">{icons[t.tone]}</span>
@@ -69,6 +77,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             <button onClick={() => dismiss(t.id)} className="text-slate-500 hover:text-white" aria-label="Dismiss">
               <X size={16} />
             </button>
+            {/* How long until it goes away. */}
+            <span
+              className={cn('ec-toast-bar absolute bottom-0 left-0 h-0.5 w-full', t.tone === 'error' ? 'bg-red-400/60' : t.tone === 'warning' ? 'bg-amber-400/60' : 'bg-white/20')}
+              style={{ animationDuration: `${t.ttl}ms` }}
+            />
           </div>
         ))}
       </div>

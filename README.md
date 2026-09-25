@@ -33,12 +33,13 @@ Keep the black window open while you use EventControl, and close it to stop the 
 | **PowerPoint handling** | PPT/PPTX files are converted to PDF in the background with LibreOffice. The **original file is kept** and the converted version is what the display renders, which gives real slide-by-slide control. "Open in PowerPoint" launches the original if you need animations or embedded media. |
 | **Show Flow (Run of Show)** | Prepare the whole event beforehand: `01 Starting Soon → 02 Opening (slides 1–8) → 03 Please Wait (30 sec) → 04 Speaker 1 → …`. Items are presentations (with an optional **slide range**) or screens. Reorder them by drag-and-drop. **Next** walks through the slides of the current item, then moves on to the next item and file. Playback is always manual. |
 | **Live control** | ◀ Previous / ▶ Next, **jump to slide N**, a clickable **slide strip**, **"Speaker 1 — Slide 07 / 24"**, Up Next, operator-only **speaker notes**, video play/pause/restart, and asking the display to go fullscreen. |
-| **Special screens** | Built-in **Please Wait, Technical Difficulty, We'll Be Back Shortly, Session Starting Soon, Coming Up Next** (announces the next item automatically) and **Thank You**, with animated backgrounds. You can edit their text and create **custom screens** (title, subtitle, colour, image/video background). Any screen can be shown **with a countdown** ("Please Wait — 05:00"). |
+| **Special screens** | Built-in **Please Wait, Technical Difficulty, We'll Be Back Shortly, Session Starting Soon, Coming Up Next** (announces the next item automatically) and **Thank You**. Each has its own hand-built animation: slow ripples, TV colour bars with a signal glitch, a steaming coffee cup, a sweeping clock ring, chevrons pulling toward what's next, and falling paper confetti. You can edit their text and create **custom screens** (title, subtitle, colour, image/video background). Any screen can be shown **with a countdown** ("Please Wait — 05:00") whose digits roll as they change. |
 | **Quick actions** | 🟢 Resume · 🟡 Please Wait · 🟠 Technical Difficulty · 🔴 **Black screen**. The Black button needs a second click to confirm; the `B` key acts instantly. Plus Logo and Fullscreen. |
 | **Branding** | A logo overlay (university, event or sponsor logo) drawn over slides and screens. Choose the position (4 corners or centre), size, opacity and show/hide. There's also a separate full-screen logo mode. |
 | **Timer** | A server-authoritative countdown (start/pause/reset, ±1 min, warning threshold, show/hide on display). It is shown large on special screens and as a corner badge over slides, and stays in sync on every screen. |
 | **Status bar** | Display connected / offline, server, cloud storage (synced / syncing / offline), upload progress. |
 | **Schedule** | A time-based run sheet (NOW / NEXT) as an operator reference. |
+| **Motion** | Everything on the projector cross-fades: no flash of black between items, slides turn with a soft directional drift, and the logo overlay and corner timer fade in and out. Headlines rise word by word and underlines draw themselves in. The console has small touches too: toasts that count down, a shaking Black button when it's armed, and a LIVE equaliser. People who turn on "reduce motion" in their OS get a calm, static version. |
 | **Reliability** | The display keeps the last content if the network drops, reconnects on its own and restores the exact state (slide, screen, overlay, timer). State survives server restarts. Files are always served from a local copy, so everything works offline. |
 
 ### Keyboard shortcuts
@@ -83,8 +84,10 @@ event-control/
 │   ├── components/
 │   │   ├── dashboard/   ProgramMonitor, QuickActions, ShowFlowPanel, PresentationLibrary, PreviewModal,
 │   │   │                ScreensPanel, BrandingPanel, TimerPanel, SchedulePanel, FlowItemModal…
-│   │   ├── display/     DisplayStage (renders any state, used by display + live preview), PdfView
+│   │   ├── display/     DisplayStage (renders any state, used by display + live preview), PdfView,
+│   │   │                ScreenScene (special screens + their motifs), motion (crossfades, rolling digits), Confetti
 │   │   └── AuthGate     first-run password / sign-in
+│   ├── styles/motion.css  every animation, eased by hand, with a reduced-motion fallback
 │   ├── hooks/           useEventSocket (realtime state), useTimerRemaining, useKeyboardShortcuts, useSystemStatus
 │   └── lib/             pdf.js loader & thumbnails, flow helpers, formatting
 ├── server/src/
@@ -116,6 +119,7 @@ event-control/
 | **Server-authoritative state, full snapshots** | Every change broadcasts a complete, versioned display snapshot. A display that reconnects or refreshes asks once and is exactly in sync. Emergency modes (black/logo) and slide flips reuse the cached snapshot, so they're applied in milliseconds. |
 | **One command dispatcher** | Socket.IO `control` events and `POST /api/events/:id/control` run the same typed commands, so a phone remote or Stream Deck can be added later without touching the core. |
 | **Sessions in an HttpOnly cookie** | They work transparently for REST, uploads and the Socket.IO handshake. Displays don't need to sign in, so the projector machine needs no password; only operator control is protected. |
+| **Motion in plain CSS, sized with container units** | The animations only change `transform` and `opacity`, so they stay smooth on a modest projector laptop, and they need no animation library. The operator's live preview is the same component as the projector, sized with container-query units, so it's an exact miniature, animations included. Fonts (Bricolage Grotesque, Instrument Serif, JetBrains Mono, Inter) are bundled, so screens look the same with no internet. |
 | **Schema changes are additive** | Existing installs upgrade in place with `prisma db push` (run automatically by `npm run dev`); nothing is lost. |
 
 ---
@@ -324,9 +328,10 @@ All routes except sign-in, health and media file downloads require the operator 
 
 | | |
 | --- | --- |
-| **First run: operator password** ![First run](docs/screenshots/first-run.png) | **Preview a deck privately** ![Preview](docs/screenshots/preview.png) |
-| **Projector: converted PowerPoint slide + logo overlay + timer** ![Slide](docs/screenshots/display-pptx-slide.png) | **Projector: Technical Difficulty** ![Technical](docs/screenshots/display-technical.png) |
-| **Projector: Please Wait with countdown** ![Countdown](docs/screenshots/display-countdown.png) | **Events** ![Events](docs/screenshots/events.png) |
+| **Projector: Session Starting Soon with countdown** ![Starting soon](docs/screenshots/display-countdown.jpg) | **Projector: We'll Be Back Shortly** ![Break](docs/screenshots/display-break.jpg) |
+| **Projector: Technical Difficulty** ![Technical](docs/screenshots/display-technical.jpg) | **Projector: Thank You** ![Thank you](docs/screenshots/display-thanks.jpg) |
+| **Projector: converted PowerPoint slide + logo overlay + timer** ![Slide](docs/screenshots/display-pptx-slide.png) | **Preview a deck privately** ![Preview](docs/screenshots/preview.png) |
+| **First run: operator password** ![First run](docs/screenshots/first-run.png) | **Events** ![Events](docs/screenshots/events.png) |
 
 ---
 

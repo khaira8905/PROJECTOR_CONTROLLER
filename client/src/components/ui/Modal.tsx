@@ -40,14 +40,14 @@ export function Modal({ open, onClose, title, children, footer, size = 'md' }: M
   if (!open) return null;
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="ec-backdrop-in absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         tabIndex={-1}
         className={cn(
-          'relative flex max-h-[90vh] w-full flex-col rounded-2xl border border-white/10 bg-console-850 shadow-2xl outline-none',
+          'ec-modal-in relative flex max-h-[90vh] w-full flex-col rounded-2xl border border-white/10 bg-console-850 shadow-2xl outline-none',
           size === 'sm' ? 'max-w-md' : size === 'lg' ? 'max-w-3xl' : 'max-w-xl',
         )}
       >

@@ -16,8 +16,19 @@ const tones: Record<Tone, string> = {
 export function Badge({ tone = 'neutral', children, className, dot }: { tone?: Tone; children: ReactNode; className?: string; dot?: boolean }) {
   return (
     <span className={cn('inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold tracking-wide uppercase ring-1 ring-inset', tones[tone], className)}>
-      {dot && <span className={cn('h-1.5 w-1.5 rounded-full bg-current', tone === 'live' && 'animate-pulse-soft')} />}
+      {dot && tone === 'live' ? <LiveBars /> : dot ? <span className="h-1.5 w-1.5 rounded-full bg-current" /> : null}
       {children}
+    </span>
+  );
+}
+
+/** Three little bars bouncing like an audio meter: "this is on air right now". */
+export function LiveBars({ className }: { className?: string }) {
+  return (
+    <span className={cn('ec-eq inline-flex h-2.5 items-end gap-[2px]', className)} aria-hidden>
+      <span className="h-full w-[2px] rounded-full bg-current" />
+      <span className="h-full w-[2px] rounded-full bg-current" />
+      <span className="h-full w-[2px] rounded-full bg-current" />
     </span>
   );
 }

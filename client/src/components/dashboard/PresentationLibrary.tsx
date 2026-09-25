@@ -241,9 +241,11 @@ function PresentationCard({
   else if (media.kind === 'presentation' && media.conversionStatus === 'pending') detail = 'Converting slides…';
 
   return (
-    <li className="group flex flex-col overflow-hidden rounded-xl border border-white/[0.06] bg-console-850 hover:border-white/15">
+    <li className="group flex flex-col overflow-hidden rounded-xl border border-white/[0.06] bg-console-850 transition-[border-color,transform,box-shadow] duration-300 ease-out hover:-translate-y-0.5 hover:border-white/15 hover:shadow-xl hover:shadow-black/30">
       <button onClick={() => onPreview(media)} className="relative flex aspect-video items-center justify-center overflow-hidden bg-black/40" title="Preview">
-        <Thumbnail media={media} />
+        <span className="flex h-full w-full items-center justify-center transition-transform duration-500 ease-out group-hover:scale-[1.04]">
+          <Thumbnail media={media} />
+        </span>
         <span className="absolute top-2 left-2">
           <MediaIcon kind={media.kind} size={11} className="bg-black/60" />
         </span>

@@ -1,0 +1,328 @@
+/*
+ * EventControl motion system.
+ *
+ * Principles: motion explains change (what came in, what left, where we're going),
+ * nothing moves linearly unless it's ambient, entrances are staggered like a human
+ * would cue them, and every animation only touches transform/opacity (cheap on old
+ * projector laptops). Everything collapses to static under prefers-reduced-motion.
+ */
+:root {
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-out-back: cubic-bezier(0.34, 1.45, 0.64, 1);
+  --ease-in-out-sine: cubic-bezier(0.37, 0, 0.63, 1);
+}
+
+/* ───────────────────────── Stage transitions (display) ───────────────────────── */
+
+@keyframes ec-layer-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes ec-layer-in-media {
+  from { opacity: 0; transform: scale(1.018); }
+  to { opacity: 1; transform: none; }
+}
+.ec-layer-in { animation: ec-layer-in 650ms var(--ease-out-quart) both; }
+.ec-layer-in-media { animation: ec-layer-in-media 700ms var(--ease-out-expo) both; }
+/* Fade to black: 120 ms — effectively instant, but never a harsh cut. */
+.ec-layer-in-black { animation: ec-layer-in 120ms ease-out both; }
+
+/* Page / slide flips: a short drift in the direction of travel. */
+@keyframes ec-page-next {
+  from { opacity: 0; transform: translateX(1.4%); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ec-page-prev {
+  from { opacity: 0; transform: translateX(-1.4%); }
+  to { opacity: 1; transform: none; }
+}
+.ec-page-next { animation: ec-page-next 380ms var(--ease-out-quart) both; }
+.ec-page-prev { animation: ec-page-prev 380ms var(--ease-out-quart) both; }
+
+/* Slow, almost imperceptible push-in on still images (a "Ken Burns" nod). */
+@keyframes ec-kenburns {
+  from { transform: scale(1); }
+  to { transform: scale(1.035) translate(-0.4%, -0.3%); }
+}
+.ec-kenburns { animation: ec-kenburns 28s var(--ease-in-out-sine) both alternate infinite; }
+
+/* ───────────────────────── Text entrances ───────────────────────── */
+
+/* Words rise out of a mask with a slight tilt, like type being set by hand. */
+@keyframes ec-word-rise {
+  from { transform: translateY(108%) rotate(4deg); }
+  to { transform: none; }
+}
+.ec-word-mask { display: inline-block; overflow: hidden; vertical-align: top; padding-bottom: 0.08em; margin-bottom: -0.08em; }
+.ec-word { display: inline-block; transform-origin: 0 100%; animation: ec-word-rise 1s var(--ease-out-expo) both; }
+
+@keyframes ec-fade-up {
+  from { opacity: 0; transform: translateY(0.6em); }
+  to { opacity: 1; transform: none; }
+}
+.ec-fade-up { animation: ec-fade-up 900ms var(--ease-out-expo) both; }
+
+@keyframes ec-blur-in {
+  from { opacity: 0; filter: blur(8px); transform: translateY(0.25em); }
+  to { opacity: 1; filter: blur(0); transform: none; }
+}
+.ec-blur-in { animation: ec-blur-in 1100ms var(--ease-out-quart) both; }
+
+@keyframes ec-rule {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.ec-rule { transform-origin: 0 50%; animation: ec-rule 900ms var(--ease-out-expo) both; }
+
+/* Hand-drawn strokes (SVG with pathLength="1"). */
+@keyframes ec-draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+.ec-draw { stroke-dasharray: 1; animation: ec-draw 1.3s var(--ease-in-out-sine) both; }
+
+/* ───────────────────────── Ambient scenery ───────────────────────── */
+
+@keyframes ec-drift-a {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(6%, 4%) scale(1.12); }
+  66% { transform: translate(-3%, 6%) scale(0.96); }
+}
+@keyframes ec-drift-b {
+  0%, 100% { transform: translate(0, 0) scale(1.05); }
+  50% { transform: translate(-7%, -5%) scale(0.92); }
+}
+/* Promoted to their own GPU layers: moving them costs almost nothing. */
+.ec-drift-a, .ec-drift-b, .ec-drift-c, .ec-grain { will-change: transform; }
+.ec-drift-a { animation: ec-drift-a 26s var(--ease-in-out-sine) infinite; }
+.ec-drift-b { animation: ec-drift-b 34s var(--ease-in-out-sine) infinite; }
+.ec-drift-c { animation: ec-drift-a 41s var(--ease-in-out-sine) infinite reverse; }
+
+/* Film grain: a noise tile that jitters in steps — the texture of something made by hand. */
+@keyframes ec-grain {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(-3%, 2%); }
+  40% { transform: translate(2%, -3%); }
+  60% { transform: translate(-2%, -1%); }
+  80% { transform: translate(3%, 3%); }
+}
+.ec-grain {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  animation: ec-grain 0.9s steps(5) infinite;
+}
+
+@keyframes ec-ripple {
+  from { transform: translate(-50%, -50%) scale(0.35); opacity: 0.55; }
+  to { transform: translate(-50%, -50%) scale(2.3); opacity: 0; }
+}
+.ec-ripple { animation: ec-ripple 7.5s var(--ease-out-quart) infinite both; }
+
+@keyframes ec-float {
+  0% { transform: translateY(0) translateX(0); opacity: 0; }
+  12% { opacity: var(--o, 0.5); }
+  50% { transform: translateY(-45cqh) translateX(2cqw); }
+  88% { opacity: var(--o, 0.5); }
+  100% { transform: translateY(-90cqh) translateX(-1cqw); opacity: 0; }
+}
+.ec-float { animation: ec-float var(--d, 18s) linear infinite both; }
+
+@keyframes ec-steam {
+  0% { transform: translateY(8%) scaleX(0.9); opacity: 0; }
+  25% { opacity: 0.75; }
+  60% { transform: translateY(-18%) scaleX(1.12) skewX(-6deg); opacity: 0.45; }
+  100% { transform: translateY(-40%) scaleX(1.25) skewX(6deg); opacity: 0; }
+}
+.ec-steam { transform-origin: 50% 100%; animation: ec-steam 4.2s var(--ease-in-out-sine) infinite both; }
+
+@keyframes ec-spin { to { transform: rotate(360deg); } }
+.ec-spin-slow { animation: ec-spin 12s linear infinite; }
+.ec-spin-minute { animation: ec-spin 60s linear infinite; }
+
+@keyframes ec-chevron {
+  0%, 100% { opacity: 0.15; transform: translateX(0); }
+  40% { opacity: 1; transform: translateX(0.35em); }
+}
+.ec-chevron { animation: ec-chevron 1.8s var(--ease-in-out-sine) infinite both; }
+
+/* "Technical difficulty": a mostly-calm title with the occasional tiny signal glitch. */
+@keyframes ec-glitch {
+  0%, 86%, 100% { transform: none; text-shadow: none; }
+  87% { transform: translate(-0.4%, 0.1%) skewX(-3deg); text-shadow: 0.06em 0 rgba(255, 60, 90, 0.7), -0.06em 0 rgba(60, 220, 255, 0.7); }
+  88.5% { transform: translate(0.5%, -0.1%); text-shadow: -0.05em 0 rgba(255, 60, 90, 0.7), 0.05em 0 rgba(60, 220, 255, 0.7); }
+  90% { transform: none; text-shadow: none; }
+  93% { transform: translateX(0.2%); text-shadow: 0.03em 0 rgba(255, 60, 90, 0.5), -0.03em 0 rgba(60, 220, 255, 0.5); }
+  94% { transform: none; text-shadow: none; }
+}
+.ec-glitch { animation: ec-glitch 6.5s steps(1, end) infinite; }
+
+@keyframes ec-scanline {
+  from { transform: translateY(-20cqh); }
+  to { transform: translateY(120cqh); }
+}
+.ec-scanline { animation: ec-scanline 7s linear infinite; }
+
+@keyframes ec-bars-flicker {
+  0%, 100% { opacity: 0.9; }
+  47% { opacity: 0.9; }
+  48% { opacity: 0.55; }
+  49% { opacity: 0.95; }
+  74% { opacity: 0.8; }
+}
+.ec-bars { animation: ec-bars-flicker 5s steps(1, end) infinite; }
+
+/* A band of light sweeping across the logo every few seconds. */
+@keyframes ec-sheen {
+  0%, 62% { transform: translateX(-130%) skewX(-18deg); }
+  100% { transform: translateX(130%) skewX(-18deg); }
+}
+.ec-sheen { animation: ec-sheen 6.5s var(--ease-in-out-sine) infinite; }
+
+@keyframes ec-logo-in {
+  from { opacity: 0; transform: scale(0.9); filter: blur(14px); }
+  to { opacity: 1; transform: none; filter: blur(0); }
+}
+.ec-logo-in { animation: ec-logo-in 1.4s var(--ease-out-expo) both; }
+
+@keyframes ec-breathe {
+  0%, 100% { transform: scale(1); opacity: 0.55; }
+  50% { transform: scale(1.06); opacity: 0.85; }
+}
+.ec-breathe { animation: ec-breathe 5s var(--ease-in-out-sine) infinite; }
+
+/* ───────────────────────── Countdown digits ───────────────────────── */
+
+/* The new digit rolls up into place while the previous one (a pseudo-element,
+   so the element's text stays exact) rolls out above it. */
+@keyframes ec-digit-in {
+  from { transform: translateY(62%); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes ec-digit-out {
+  from { transform: translateY(-62%); opacity: 1; }
+  to { transform: translateY(-100%); opacity: 0; }
+}
+.ec-digit-slot { position: relative; display: inline-block; overflow: hidden; line-height: 1.08; vertical-align: top; }
+.ec-digit { position: relative; display: inline-block; }
+.ec-digit-roll { animation: ec-digit-in 460ms var(--ease-out-expo) both; }
+.ec-digit-roll::before {
+  content: attr(data-prev);
+  position: absolute;
+  inset: 0;
+  animation: ec-digit-out 460ms var(--ease-out-expo) both;
+}
+@keyframes ec-colon {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.ec-colon-live { animation: ec-colon 1s var(--ease-in-out-sine) infinite; }
+
+@keyframes ec-badge-in {
+  from { opacity: 0; transform: translateY(40%) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+.ec-badge-in { animation: ec-badge-in 600ms var(--ease-out-back) both; }
+
+@keyframes ec-overlay-in {
+  from { opacity: 0; transform: scale(0.94); filter: blur(6px); }
+  to { opacity: var(--overlay-opacity, 1); transform: none; filter: blur(0); }
+}
+@keyframes ec-overlay-out {
+  from { opacity: var(--overlay-opacity, 1); }
+  to { opacity: 0; transform: scale(0.97); }
+}
+.ec-overlay-in { animation: ec-overlay-in 700ms var(--ease-out-expo) both; }
+.ec-overlay-out { animation: ec-overlay-out 380ms ease-in both; }
+
+/* ───────────────────────── Operator console micro-interactions ───────────────────────── */
+
+@keyframes ec-panel-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+.ec-stagger > * { animation: ec-panel-in 520ms var(--ease-out-expo) both; }
+.ec-stagger > *:nth-child(2) { animation-delay: 50ms; }
+.ec-stagger > *:nth-child(3) { animation-delay: 100ms; }
+.ec-stagger > *:nth-child(4) { animation-delay: 150ms; }
+.ec-stagger > *:nth-child(5) { animation-delay: 200ms; }
+.ec-stagger > *:nth-child(6) { animation-delay: 250ms; }
+.ec-stagger > *:nth-child(n + 7) { animation-delay: 300ms; }
+.ec-panel-in { animation: ec-panel-in 520ms var(--ease-out-expo) both; }
+
+@keyframes ec-toast-in {
+  from { opacity: 0; transform: translateX(24px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ec-toast-out {
+  to { opacity: 0; transform: translateX(16px) scale(0.97); }
+}
+.ec-toast-in { animation: ec-toast-in 420ms var(--ease-out-back) both; }
+.ec-toast-out { animation: ec-toast-out 200ms ease-in both; }
+
+@keyframes ec-modal-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.975); }
+  to { opacity: 1; transform: none; }
+}
+.ec-modal-in { animation: ec-modal-in 320ms var(--ease-out-expo) both; }
+.ec-backdrop-in { animation: ec-layer-in 220ms ease-out both; }
+
+/* LIVE equalizer bars. */
+@keyframes ec-eq {
+  0%, 100% { transform: scaleY(0.35); }
+  50% { transform: scaleY(1); }
+}
+.ec-eq > span { transform-origin: 50% 100%; animation: ec-eq 0.9s var(--ease-in-out-sine) infinite; }
+.ec-eq > span:nth-child(2) { animation-duration: 0.7s; animation-delay: -0.3s; }
+.ec-eq > span:nth-child(3) { animation-duration: 1.1s; animation-delay: -0.6s; }
+
+@keyframes ec-pop {
+  0% { transform: scale(0.85); }
+  60% { transform: scale(1.12); }
+  100% { transform: none; }
+}
+.ec-pop { animation: ec-pop 420ms var(--ease-out-back) both; }
+
+@keyframes ec-dot-breathe {
+  0%, 100% { box-shadow: 0 0 0 0 currentColor; }
+  50% { box-shadow: 0 0 0 3px transparent; }
+}
+.ec-dot-live { animation: ec-dot-breathe 2.4s ease-out infinite; }
+
+@keyframes ec-shimmer {
+  from { background-position: 0% 50%; }
+  to { background-position: 200% 50%; }
+}
+.ec-shimmer { background-size: 200% 100%; animation: ec-shimmer 6s linear infinite; }
+
+@keyframes ec-armed {
+  0%, 100% { transform: none; }
+  20% { transform: translateX(-2px) rotate(-0.6deg); }
+  40% { transform: translateX(2px) rotate(0.6deg); }
+  60% { transform: translateX(-1px); }
+  80% { transform: translateX(1px); }
+}
+.ec-armed { animation: ec-armed 420ms ease-in-out both; }
+
+/* ───────────────────────── Reduced motion ───────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  [class*='ec-'],
+  [class*='ec-']::before,
+  [class*='ec-'] > * {
+    animation: none !important;
+    transition: none !important;
+  }
+  /* Things that only make sense while moving are hidden rather than frozen mid-way. */
+  .ec-digit-roll::before,
+  .ec-ripple,
+  .ec-sheen,
+  .ec-scanline {
+    display: none !important;
+  }
+}
+
+@keyframes ec-toast-timer {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+.ec-toast-bar { transform-origin: 0 50%; animation: ec-toast-timer 3.5s linear both; }

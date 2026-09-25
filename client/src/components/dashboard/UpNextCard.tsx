@@ -11,7 +11,7 @@ export function UpNextCard({ current, next, onEditNotes }: { current: QueueItem 
       <div className="rounded-xl border border-white/[0.06] bg-console-850 p-4">
         <p className="text-[11px] font-semibold tracking-[0.14em] text-sky-400 uppercase">Up next</p>
         {next ? (
-          <div className="mt-2 flex items-center gap-3">
+          <div key={next.id} className="ec-fade-up mt-2 flex items-center gap-3" style={{ animationDuration: '450ms' }}>
             {next.media ? <MediaIcon kind={next.media.kind} size={15} /> : <ScreenDot style={next.screen?.style ?? 'custom'} />}
             <div className="min-w-0">
               <p className="truncate font-semibold text-white">{itemLabel(next)}</p>
@@ -35,7 +35,7 @@ export function UpNextCard({ current, next, onEditNotes }: { current: QueueItem 
             </button>
           )}
         </div>
-        <p className="mt-2 text-sm whitespace-pre-wrap text-amber-50/90">
+        <p key={current?.id ?? 'none'} className="ec-fade-up mt-2 text-sm whitespace-pre-wrap text-amber-50/90" style={{ animationDuration: '450ms' }}>
           {current?.notes ? current.notes : <span className="text-slate-500">{current ? 'No notes for this item.' : 'Select a show flow item.'}</span>}
         </p>
         <p className="mt-2 text-[10px] text-slate-600">Visible to operators only — never shown on the display.</p>

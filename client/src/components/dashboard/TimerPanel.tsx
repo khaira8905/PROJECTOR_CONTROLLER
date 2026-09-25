@@ -6,6 +6,7 @@ import { Badge } from '../ui/Badge';
 import { Kbd } from '../ui/Kbd';
 import { TextInput } from '../ui/Field';
 import { formatClock, parseClock } from '../../lib/format';
+import { RollingClock } from '../display/motion';
 import { timerTone } from '../../lib/timer';
 import { cn } from '../../lib/cn';
 import type { ControlCommand, TimerSnapshot } from '../../types';
@@ -78,11 +79,11 @@ export function TimerPanel({ timer, remaining, send, className }: TimerPanelProp
         )}
         aria-live="off"
       >
-        {formatClock(remaining)}
+        <RollingClock ms={remaining} live={running} />
       </div>
       <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/5">
         <div
-          className={cn('h-full rounded-full', tone === 'warning' ? 'bg-amber-400' : tone === 'finished' ? 'bg-red-500' : 'bg-sky-400')}
+          className={cn('h-full rounded-full transition-[width,background-color] duration-300 ease-linear', tone === 'warning' ? 'bg-amber-400' : tone === 'finished' ? 'bg-red-500' : 'bg-sky-400')}
           style={{ width: `${progress * 100}%` }}
         />
       </div>

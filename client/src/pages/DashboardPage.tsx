@@ -282,7 +282,7 @@ export default function DashboardPage() {
         )}
       </header>
 
-      <main className="grid flex-1 grid-cols-1 gap-4 p-3 sm:p-4 lg:grid-cols-12 [&>*]:min-w-0">
+      <main className="ec-stagger grid flex-1 grid-cols-1 gap-4 p-3 sm:p-4 lg:grid-cols-12 [&>*]:min-w-0">
         {/* ── Program output ─────────────────────────────────────────────────────── */}
         <div className="flex flex-col gap-4 lg:col-span-8">
           <Panel bodyClassName="flex flex-col gap-4">
@@ -529,7 +529,7 @@ function StatusPill({ ok, neutral, label, icon, title }: { ok: boolean; neutral?
         neutral ? 'bg-white/5 text-slate-300 ring-white/10' : ok ? 'bg-emerald-500/10 text-emerald-300 ring-emerald-500/30' : 'bg-red-500/15 text-red-300 ring-red-500/30',
       )}
     >
-      <span className={cn('h-1.5 w-1.5 rounded-full', neutral ? 'bg-slate-400' : ok ? 'bg-emerald-400' : 'animate-pulse-soft bg-red-400')} />
+      <span className={cn('h-1.5 w-1.5 rounded-full', neutral ? 'bg-slate-400' : ok ? 'ec-dot-live bg-emerald-400 text-emerald-400/60' : 'animate-pulse-soft bg-red-400')} />
       {icon}
       {label}
     </span>

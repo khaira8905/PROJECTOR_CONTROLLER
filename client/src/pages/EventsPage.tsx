@@ -69,8 +69,8 @@ export default function EventsPage() {
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-        <div className="mb-8">
-          <h1 className="text-3xl font-semibold tracking-tight text-white">Events</h1>
+        <div className="ec-panel-in mb-8">
+          <h1 className="font-display text-4xl font-bold tracking-tight text-white">Events</h1>
           <p className="mt-1.5 text-slate-400">Open an event to run its presentations, projector display and timer.</p>
         </div>
 
@@ -145,7 +145,7 @@ function EventGrid({
   return (
     <section className="mb-10">
       <h2 className="mb-3 text-xs font-semibold tracking-[0.14em] text-slate-500 uppercase">{title}</h2>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="ec-stagger grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {events.map((event) => (
           <EventCard key={event.id} event={event} onEdit={() => onEdit(event)} onDelete={() => onDelete(event)} />
         ))}
@@ -160,7 +160,7 @@ function EventCard({ event, onEdit, onDelete }: { event: EventSummary; onEdit: (
   const isToday = event.date === todayIso();
 
   return (
-    <article className="group relative flex flex-col rounded-2xl border border-white/[0.06] bg-console-900 p-5 transition-colors hover:border-sky-500/30">
+    <article className="group relative flex flex-col rounded-2xl border border-white/[0.06] bg-console-900 p-5 transition-[border-color,transform,box-shadow] duration-300 ease-out hover:-translate-y-1 hover:border-sky-500/30 hover:shadow-2xl hover:shadow-sky-950/40">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2 text-sm text-slate-400">
           <CalendarDays size={15} />
