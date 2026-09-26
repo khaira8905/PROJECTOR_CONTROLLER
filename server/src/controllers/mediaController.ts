@@ -3,6 +3,7 @@ import { spawn } from 'node:child_process';
 import type { Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
+import { assertEventAccess } from '../services/accounts';
 import { HttpError, badRequest, notFound } from '../lib/errors';
 import { logger } from '../lib/logger';
 import { toMediaDto } from '../lib/dto';
@@ -27,6 +28,7 @@ import { findEventOr404 } from './eventsController';
 async function findMediaOr404(id: string) {
   const media = await prisma.media.findUnique({ where: { id: idParam.parse(id) } });
   if (!media) throw notFound('Media not found.');
+  await assertEventAccess(media.eventId);
   return media;
 }
 

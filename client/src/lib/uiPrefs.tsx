@@ -29,6 +29,10 @@ export interface UiPrefs {
   flowLayout: 'detailed' | 'compact';
   /** Show a Flow item as soon as it is clicked, or only on double-click / Enter (safer). */
   flowActivation: 'click' | 'double';
+  /** Control view: Flow on the left (default), or the script on the left and the Flow on the right. */
+  controlLayout: 'flow' | 'script';
+  /** Reading size of the script. */
+  scriptSize: 'md' | 'lg' | 'xl';
 }
 
 export const DEFAULT_UI_PREFS: UiPrefs = {
@@ -45,6 +49,8 @@ export const DEFAULT_UI_PREFS: UiPrefs = {
   followLive: true,
   flowLayout: 'detailed',
   flowActivation: 'click',
+  controlLayout: 'flow',
+  scriptSize: 'lg',
 };
 
 const KEY = 'ec-ui-prefs';

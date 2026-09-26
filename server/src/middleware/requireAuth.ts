@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import { parseCookies } from '../lib/cookies';
 import { SESSION_COOKIE, authEnabled, verifySessionToken } from '../services/authService';
+import { runAs, userFromSubject } from '../services/accounts';
 
 /**
  * Protects operator API routes. Public exceptions: health, sign-in endpoints and
@@ -14,10 +15,12 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   // Sign-in endpoints accept any method; file downloads are GET only.
   if (/^\/auth\//.test(req.path) || (req.method === 'GET' && PUBLIC.some((re) => re.test(req.path)))) return next();
   const session = await verifySessionToken(parseCookies(req.headers.cookie)[SESSION_COOKIE]);
-  if (!session) {
+  const user = session ? await userFromSubject(session.subject) : null;
+  if (!session || !user) {
     res.status(401).json({ error: 'Please sign in.', code: 'UNAUTHENTICATED' });
     return;
   }
   (req as any).session = session;
-  next();
+  // Everything this request does runs as this user: event queries are scoped to them.
+  runAs(user, () => next());
 }

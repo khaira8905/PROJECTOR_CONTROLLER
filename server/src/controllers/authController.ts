@@ -4,6 +4,12 @@ import { config, googleConfigured } from '../config';
 import { parseCookies } from '../lib/cookies';
 import * as auth from '../services/authService';
 import { cookieOptions } from '../lib/network';
+import { userFromSubject } from '../services/accounts';
+
+async function accountSummary(subject: string) {
+  const u = await userFromSubject(subject);
+  return u ? { email: u.email, name: u.name, plan: u.plan } : null;
+}
 
 const passwordSchema = z.object({ password: z.string().min(1, 'Password is required').max(200) });
 const loginSchema = z.object({ email: z.string().trim().max(200).optional(), password: z.string().min(1, 'Password is required').max(200) });
@@ -22,6 +28,8 @@ export async function status(req: Request, res: Response) {
     configured: await auth.isPasswordConfigured(),
     authenticated: !auth.authEnabled() || !!session,
     user: session?.subject ?? null,
+    // Signed-in account (accounts mode): shown in the console and used for per-person settings.
+    account: session ? await accountSummary(session.subject) : null,
     // "Continue with Google" on the sign-in page.
     google: auth.authEnabled() && googleConfigured() && config.google.allowedEmails.length > 0,
   });

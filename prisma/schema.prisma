@@ -11,8 +11,27 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+/// A person who signs in. With Supabase sign-in, authId is the Supabase Auth user id; with the
+/// single-password mode there is one "local" user. Events belong to exactly one user.
+model User {
+  id          String    @id @default(cuid())
+  authId      String    @unique
+  email       String    @unique
+  name        String    @default("")
+  // Console preferences that follow the person to any computer (theme, shortcuts, layout…).
+  preferences String    @default("{}")
+  // Subscription tier, for later: "free" today.
+  plan        String    @default("free")
+  createdAt   DateTime  @default(now())
+  lastLoginAt DateTime?
+
+  events Event[]
+}
+
 model Event {
   id             String   @id @default(cuid())
+  // Who owns (and alone can run) this event. Null only for events from before accounts.
+  ownerId        String?
   name           String
   date           DateTime
   description    String   @default("")
@@ -40,6 +59,9 @@ model Event {
   screens       Screen[]
   timerState    TimerState?
   displayState  DisplayState?
+  owner         User?          @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+
+  @@index([ownerId])
 }
 
 model Media {
@@ -96,6 +118,8 @@ model QueueItem {
   durationSeconds Int?
   // Operator-only speaker notes. Never sent to display clients.
   notes           String   @default("")
+  // Longer presenter script for this item (script layout). Operator-only, like notes.
+  script          String   @default("")
   createdAt       DateTime @default(now())
 
   event  Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)

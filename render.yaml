@@ -27,6 +27,9 @@ services:
       # The free instance has 512 MB: leave room for LibreOffice converting a PowerPoint.
       - key: NODE_OPTIONS
         value: --max-old-space-size=320
-      # Open access by default: anyone with the link can use it. Set to "local" for a password.
+      # Accounts: people sign in with the email/password you create in Supabase → Authentication
+      # → Users. Each account only sees its own events. ("none" = open to anyone with the link.)
       - key: AUTH_PROVIDER
-        value: none
+        value: supabase
+      - key: SUPABASE_ANON_KEY     # Supabase → Project Settings → API Keys → Publishable key (or legacy anon)
+        sync: false

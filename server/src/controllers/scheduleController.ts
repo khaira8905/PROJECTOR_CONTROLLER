@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
+import { assertEventAccess } from '../services/accounts';
 import { notFound } from '../lib/errors';
 import { toScheduleItemDto } from '../lib/dto';
 import { clockTime, idParam, trimmed } from '../lib/validation';
@@ -18,6 +19,7 @@ const updateSchema = createSchema.partial();
 async function findItemOr404(id: string) {
   const item = await prisma.scheduleItem.findUnique({ where: { id: idParam.parse(id) } });
   if (!item) throw notFound('Schedule item not found.');
+  await assertEventAccess(item.eventId);
   return item;
 }
 

@@ -15,6 +15,7 @@ import * as control from '../controllers/controlController';
 import * as auth from '../controllers/authController';
 import * as screens from '../controllers/screensController';
 import * as status from '../controllers/statusController';
+import * as account from '../controllers/accountController';
 import { requireAuth } from '../middleware/requireAuth';
 
 const upload = multer({
@@ -62,6 +63,9 @@ apiRouter.get('/integrations/google/connect', googleCtl.connect);
 apiRouter.post('/integrations/google/disconnect', googleCtl.disconnect);
 apiRouter.get('/integrations/google/drive', googleCtl.listDrive);
 apiRouter.post('/events/:id/media/drive', googleCtl.importFromDrive);
+
+apiRouter.get('/account', account.get);
+apiRouter.put('/account/preferences', account.savePreferences);
 
 apiRouter.get('/status', status.getStatus);
 

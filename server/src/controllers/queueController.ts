@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
+import { assertEventAccess } from '../services/accounts';
 import { badRequest, notFound } from '../lib/errors';
 import { toQueueItemDto } from '../lib/dto';
 import { idParam, trimmed } from '../lib/validation';
@@ -27,6 +28,7 @@ const addSchema = z
     endPage: pageNumber,
     durationSeconds: duration,
     notes: trimmed(5000).optional(),
+    script: trimmed(20000).optional(),
   })
   .refine((b) => (b.kind === 'screen' ? !!b.screenId : !!b.mediaId), 'mediaId (or screenId for screen items) is required');
 
@@ -38,6 +40,7 @@ const updateSchema = z.object({
   endPage: pageNumber,
   durationSeconds: duration,
   notes: trimmed(5000).optional(),
+  script: trimmed(20000).optional(),
 });
 
 function checkRange(start?: number | null, end?: number | null) {
@@ -62,6 +65,7 @@ async function queueChanged(eventId: string) {
 async function findItemOr404(id: string) {
   const item = await prisma.queueItem.findUnique({ where: { id: idParam.parse(id) } });
   if (!item) throw notFound('Show Flow item not found.');
+  await assertEventAccess(item.eventId);
   return item;
 }
 
@@ -95,6 +99,7 @@ export async function addToQueue(req: Request<{ id: string }>, res: Response) {
       endPage: kind === 'media' ? (body.endPage ?? null) : null,
       durationSeconds: body.durationSeconds ?? null,
       notes: body.notes ?? '',
+      script: body.script ?? '',
     },
     include: { media: true, screen: true },
   });

@@ -1,4 +1,7 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+
+/** Signed in with an account: "this computer" settings are saved to the account instead. */
+const SyncedCtx = createContext(false);
 import {
   Check,
   ExternalLink,
@@ -39,7 +42,7 @@ const SECTIONS: { id: SettingsSection; label: string; icon: LucideIcon; blurb: s
   { id: 'controls', label: 'Controls', icon: Keyboard, blurb: 'Keyboard shortcuts, mouse control and hints on this computer.', parts: ['Keyboard', 'Mouse & hints'] },
   { id: 'files', label: 'Files & integrations', icon: FolderOpen, blurb: 'Where presentations come from, and connected accounts.', parts: ['This computer', 'Google Drive', 'Accounts'] },
   { id: 'appearance', label: 'Appearance', icon: Paintbrush, blurb: 'Theme, animation and presenter mode on this computer.', parts: ['Interface', 'Animations'] },
-  { id: 'event', label: 'Event & sharing', icon: Users, blurb: 'Event details and who can open this console.', parts: ['Details', 'Sharing'] },
+  { id: 'event', label: 'Account & sharing', icon: Users, blurb: 'Your account, this event’s details and who can open it.', parts: ['Account', 'Details', 'Sharing'] },
 ];
 
 export const isSettingsSection = (v: string | null): v is SettingsSection => SECTIONS.some((s) => s.id === v);
@@ -53,6 +56,8 @@ interface SettingsViewProps {
   google: GoogleStatus | null;
   /** No password: anyone with the link can open the console. */
   openAccess: boolean;
+  /** The signed-in account (accounts mode). */
+  account: { email: string; name: string; plan: string } | null;
   signedIn: boolean;
   displayUrl: string;
   consoleUrl: string;
@@ -134,6 +139,7 @@ export function SettingsView(props: SettingsViewProps) {
         </ul>
       </nav>
 
+      <SyncedCtx.Provider value={!!props.account}>
       <div key={section} className="ec-section-in min-w-0">
         <header className="mb-6 flex items-start gap-4 border-b ec-line pb-5">
           <div className="min-w-0 flex-1">
@@ -150,6 +156,7 @@ export function SettingsView(props: SettingsViewProps) {
         {section === 'appearance' && <AppearanceSection />}
         {section === 'event' && <EventSection {...props} />}
       </div>
+      </SyncedCtx.Provider>
     </div>
   );
 }
@@ -209,6 +216,16 @@ function PresentationSection({ prefs, save, media, screens, onCustomizeQuick }: 
       </Block>
 
       <Block id="flow" title="Flow" scope="local">
+        <Row label="Control view" hint="Script layout puts a large script of the item on screen on the left, with Quick Selection under it, and moves the Flow to the right.">
+          <Choice
+            value={ui.controlLayout}
+            onChange={(v) => setUi({ controlLayout: v })}
+            options={[
+              { value: 'flow', label: 'Flow first' },
+              { value: 'script', label: 'Script first' },
+            ]}
+          />
+        </Row>
         <Row label="Layout">
           <Choice
             value={ui.flowLayout}
@@ -618,9 +635,26 @@ function AppearanceSection() {
 
 // ── Event & sharing ────────────────────────────────────────────────────────────
 
-function EventSection({ event, openAccess, signedIn, consoleUrl, displayUrl, onEditEvent, onSignOut, onCopied }: SettingsViewProps) {
+function EventSection({ event, openAccess, account, signedIn, consoleUrl, displayUrl, onEditEvent, onSignOut, onCopied }: SettingsViewProps) {
   return (
     <>
+      {account && (
+        <Block id="account" title="Account" note="Your events, files and these settings belong to your account and follow you to any computer.">
+          <div className="flex flex-wrap items-center gap-4 py-3.5">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sky-500 text-[15px] font-semibold text-[#fff]">
+              {(account.name || account.email).slice(0, 1).toUpperCase()}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[15px] font-semibold text-white">{account.name || account.email}</p>
+              <p className="t-support truncate">{account.email}</p>
+            </div>
+            <span className="rounded-[3px] border border-[var(--line-strong)] px-2 py-0.5 text-[11px] font-semibold tracking-[0.08em] text-slate-400 uppercase">{account.plan} plan</span>
+            <Button size="sm" icon={<LogOut size={13} />} onClick={onSignOut}>
+              Sign out
+            </Button>
+          </div>
+        </Block>
+      )}
       <Block id="details" title="Details" scope="event">
         <Row label={event?.name ?? 'Event'} hint={[event?.venue, event?.date].filter(Boolean).join(' · ') || 'No date or venue yet.'}>
           <Button size="sm" icon={<Pencil size={13} />} onClick={onEditEvent}>
@@ -631,7 +665,13 @@ function EventSection({ event, openAccess, signedIn, consoleUrl, displayUrl, onE
       <Block
         id="sharing"
         title="Sharing"
-        note={openAccess ? 'Anyone with the console link can open and run this event — no password or account needed. Share it with your crew only.' : 'People need to sign in before they can run this event.'}
+        note={
+          openAccess
+            ? 'Anyone with the console link can open and run this event — no password or account needed. Share it with your crew only.'
+            : account
+              ? 'Only you can open and run this event. The projector link shows just the audience picture, so it’s safe to open on the venue computer.'
+              : 'People need to sign in before they can run this event.'
+        }
       >
         <div className="grid gap-4 py-3">
           <div>
@@ -644,7 +684,7 @@ function EventSection({ event, openAccess, signedIn, consoleUrl, displayUrl, onE
             <p className="mt-1.5 text-[12px] text-slate-500">Shows only the audience picture, so it’s safe to open on any screen.</p>
           </div>
         </div>
-        {signedIn && (
+        {signedIn && !account && (
           <Row label="Operator session">
             <Button size="sm" icon={<LogOut size={13} />} onClick={onSignOut}>
               Sign out
@@ -662,11 +702,12 @@ const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(
 
 /** A titled group of settings. `scope` says, once, where its settings are saved. */
 function Block({ id, title, note, scope, children }: { id: string; title: string; note?: string; scope?: 'event' | 'local'; children: ReactNode }) {
+  const synced = useContext(SyncedCtx);
   return (
     <section id={`set-${id}`} className="ec-settings-block mb-9 scroll-mt-4">
       <div className="flex items-baseline gap-3">
         <h3 className="t-section text-[16px]">{title}</h3>
-        {scope && <span className="text-[11px] font-medium text-slate-500">{scope === 'event' ? 'Saved with this event' : 'This computer only'}</span>}
+        {scope && <span className="text-[11px] font-medium text-slate-500">{scope === 'event' ? 'Saved with this event' : synced ? 'Saved to your account' : 'This computer only'}</span>}
       </div>
       {note && <p className="mt-0.5 max-w-2xl text-[13px] text-slate-500">{note}</p>}
       <div className="ec-settings-list mt-2">{children}</div>
@@ -675,12 +716,13 @@ function Block({ id, title, note, scope, children }: { id: string; title: string
 }
 
 function Row({ label, hint, local, children }: { label: string; hint?: string; local?: boolean; children: ReactNode }) {
+  const synced = useContext(SyncedCtx);
   return (
     <div className="ec-settings-row grid gap-2 py-3 sm:grid-cols-[minmax(0,17rem)_minmax(0,1fr)] sm:items-center sm:gap-8">
       <div className="min-w-0">
         <p className="text-sm font-medium text-slate-200">
           {label}
-          {local && <span className="ml-2 text-[11px] font-normal whitespace-nowrap text-slate-500">· this computer</span>}
+          {local && !synced && <span className="ml-2 text-[11px] font-normal whitespace-nowrap text-slate-500">· this computer</span>}
         </p>
         {hint && <p className="mt-0.5 text-[13px] leading-snug text-slate-500">{hint}</p>}
       </div>

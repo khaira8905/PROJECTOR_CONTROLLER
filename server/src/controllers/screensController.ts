@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
+import { assertEventAccess } from '../services/accounts';
 import { badRequest, notFound } from '../lib/errors';
 import { toScreenDto } from '../lib/dto';
 import { idParam, trimmed } from '../lib/validation';
@@ -47,6 +48,7 @@ async function changed(eventId: string) {
 async function findScreenOr404(id: string) {
   const screen = await prisma.screen.findUnique({ where: { id: idParam.parse(id) } });
   if (!screen) throw notFound('Screen not found.');
+  await assertEventAccess(screen.eventId);
   return screen;
 }
 

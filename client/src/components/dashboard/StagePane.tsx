@@ -8,6 +8,9 @@ import { itemDetail, itemLabel, pageWord } from '../../lib/flow';
 import type { DisplaySnapshot, QueueItem, TimerSnapshot } from '../../types';
 
 interface StagePaneProps {
+  /** Flow layout: the picture grows and Quick Selection sits below. Script layout: a fixed
+   *  picture and the Flow below it, taking the remaining height. */
+  layout: 'flow' | 'script';
   display: DisplaySnapshot | null;
   timer: TimerSnapshot | null;
   videoCommand: VideoCommand | null;
@@ -59,7 +62,7 @@ export const StagePane = memo(function StagePane(props: StagePaneProps) {
   const status = !live ? 'offline' : black ? 'black' : 'live';
 
   return (
-    <div className="ec-stage flex flex-col px-[var(--gutter)] py-4 lg:h-full lg:min-h-0">
+    <div className="ec-stage flex flex-col px-[var(--gutter)] py-4 lg:h-full lg:min-h-0" data-layout={props.layout}>
       {/* ── Status ─────────────────────────────── */}
       <header className="ec-stage-status flex items-center gap-3" data-state={status}>
         <span className="ec-status-dot h-2.5 w-2.5 rounded-full" data-state={status === 'offline' ? 'bad' : 'ok'} aria-hidden />

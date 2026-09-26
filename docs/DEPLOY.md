@@ -52,10 +52,37 @@ The site starts with a demo event; create your own events and upload your files 
 
 ---
 
+## Part C — Accounts (logins)
+
+EventControl signs people in with **Supabase Auth**. Each account has its own events, files,
+Flow and settings; several people can run their own shows on the same server at the same time
+without seeing or touching each other's. Only you (the administrator) create accounts.
+
+1. **Stop strangers from signing up.** Supabase → **Authentication → Sign In / Providers** →
+   **Email** → turn **off** *Allow new users to sign up* → *Save*. (Leave the Email provider itself on.)
+2. **Create an account** for yourself and each person: **Authentication → Users → Add user →
+   Create new user** → email + password → tick **Auto Confirm User** → *Create user*.
+   Give each person their email and password.
+3. **Copy the Publishable key:** **Project Settings → API Keys** → the **Publishable key**
+   (`sb_publishable_…`) — or, on the *Legacy API Keys* tab, the **anon** key. (This key is meant
+   to be public; it only allows signing in.)
+4. **Render → eventcontrol → Environment → Add Environment Variable**:
+   `SUPABASE_ANON_KEY` = that key → *Save changes*. Render restarts the service by itself.
+5. Open your site: it now shows **Sign in**. Sign in with **your** account first — the first
+   account to sign in takes over the events that already exist. (Or set `ADMIN_EMAIL` to your
+   email in Render to pick that account explicitly.)
+
+The projector link of each event (`…/display/<event id>`) still opens without signing in, so
+it's easy to use on the venue computer; it only ever shows the audience picture.
+
+To remove someone, delete their user in Supabase → Authentication → Users. To reset a password,
+open the user there → *Send password recovery* or set a new password.
+
+---
+
 ## Using it
 
-- **Share the link** with your crew. No password: anyone with the link can run the show, so
-  don't post it publicly. (Want a password? In Render → *Environment*, set `AUTH_PROVIDER=local`.)
+- **Share the link.** Everyone signs in with their own account (Part C) and sees only their own events.
 - **Projector:** on the projector computer, open the link → the event → **Open display** (or
   *Settings → Event & sharing → Projector link*). Press **F** in it for fullscreen.
 - **Free plan sleeps** after ~15 minutes without visitors; the first visit then takes about a

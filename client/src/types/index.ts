@@ -137,6 +137,8 @@ export interface QueueItem {
   endPage: number | null;
   durationSeconds: number | null;
   notes: string;
+  /** Longer presenter script shown in the script layout (operator-only). */
+  script: string;
   media: Media | null;
   screen: Screen | null;
 }
@@ -226,6 +228,17 @@ export interface AuthStatus {
   user: string | null;
   /** "Continue with Google" is available on the sign-in page. */
   google?: boolean;
+  /** The signed-in account (accounts mode). */
+  account?: { email: string; name: string; plan: string } | null;
+}
+
+export interface Account {
+  id: string;
+  email: string;
+  name: string;
+  plan: string;
+  createdAt: string;
+  preferences: Record<string, unknown>;
 }
 
 export interface GoogleAccount {

@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { config, googleConfigured } from '../config';
 import { deviceId } from '../lib/network';
 import { authEnabled } from '../services/authService';
+import { currentUser } from '../services/accounts';
 import * as google from './google';
 
 /**
@@ -27,11 +28,15 @@ export interface ServiceStatus {
 }
 
 /**
- * Who a connection belongs to. Open access (no sign-in): the browser that connected it, so
- * opening the shared link never exposes someone else's account. Private mode: the
- * installation, shared by its signed-in operators.
+ * Who a connection belongs to. Accounts: the signed-in person. Open access (no sign-in):
+ * the browser that connected it, so opening the shared link never exposes someone else's
+ * account.
  */
-export const connectionOwner = (req: Request, res: Response) => (authEnabled() ? 'installation' : `device:${deviceId(req, res)}`);
+export const connectionOwner = (req: Request, res: Response) => {
+  if (!authEnabled()) return `device:${deviceId(req, res)}`;
+  const user = currentUser();
+  return user ? `user:${user.id}` : 'installation';
+};
 
 export const googleSignInEnabled = () => authEnabled() && googleConfigured() && config.google.allowedEmails.length > 0;
 

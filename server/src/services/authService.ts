@@ -3,6 +3,7 @@ import { config } from '../config';
 import { prisma } from '../lib/prisma';
 import { HttpError } from '../lib/errors';
 import { logger } from '../lib/logger';
+import { upsertUser } from './accounts';
 
 /**
  * Operator authentication.
@@ -177,19 +178,25 @@ export async function changePassword(current: string, next: string) {
   await rotateSecret();
 }
 
-/** Returns the session subject on success. */
+/** Returns the session subject on success ("user:<id>" for accounts, "operator" for the local password). */
 export async function authenticate(credentials: { email?: string; password: string }): Promise<string> {
-  if (config.auth.provider === 'supabase') return authenticateWithSupabase(credentials.email ?? '', credentials.password);
+  if (config.auth.provider === 'supabase') {
+    const identity = await authenticateWithSupabase(credentials.email ?? '', credentials.password);
+    const user = await upsertUser(identity);
+    return `user:${user.id}`;
+  }
   const stored = await getSetting(PASSWORD_KEY);
   if (!stored) throw new HttpError(409, 'No password has been set yet.', 'SETUP_REQUIRED');
   if (!verifyPassword(credentials.password, stored)) throw new HttpError(401, 'Incorrect password.');
   return 'operator';
 }
 
-/** Verifies an email/password against Supabase Auth (GoTrue) and returns the user's email. */
-async function authenticateWithSupabase(email: string, password: string): Promise<string> {
+/** Verifies an email/password against Supabase Auth (GoTrue) and returns who it is. */
+async function authenticateWithSupabase(email: string, password: string): Promise<{ authId: string; email: string; name: string }> {
   const { url, anonKey } = config.supabase;
-  if (!url || !anonKey) throw new HttpError(500, 'Supabase sign-in is not configured (SUPABASE_URL / SUPABASE_ANON_KEY).');
+  if (!url || !anonKey) {
+    throw new HttpError(503, 'Sign-in isn’t set up on this server yet: the administrator needs to add SUPABASE_URL and SUPABASE_ANON_KEY (Render → Environment), then it works.');
+  }
   let res: Response;
   try {
     res = await fetch(`${url}/auth/v1/token?grant_type=password`, {
@@ -202,9 +209,18 @@ async function authenticateWithSupabase(email: string, password: string): Promis
     logger.error('Supabase sign-in request failed:', err);
     throw new HttpError(503, 'Cannot reach the sign-in service. Check the internet connection.');
   }
-  if (!res.ok) throw new HttpError(401, 'Incorrect email or password.');
+  if (!res.ok) {
+    const body: any = await res.json().catch(() => ({}));
+    if (/not confirmed/i.test(String(body?.msg ?? body?.error_description ?? ''))) {
+      throw new HttpError(401, 'This account’s email isn’t confirmed yet. Ask your administrator to confirm it in Supabase.');
+    }
+    throw new HttpError(401, 'Incorrect email or password.');
+  }
   const data: any = await res.json().catch(() => ({}));
-  return String(data?.user?.email ?? email);
+  const u = data?.user ?? {};
+  if (!u.id) throw new HttpError(502, 'The sign-in service returned an unexpected answer. Please try again.');
+  const meta = u.user_metadata ?? {};
+  return { authId: `supabase:${u.id}`, email: String(u.email ?? email), name: String(meta.full_name ?? meta.name ?? '') };
 }
 
 /** Resets local sign-in so the next visit asks for a new password. */

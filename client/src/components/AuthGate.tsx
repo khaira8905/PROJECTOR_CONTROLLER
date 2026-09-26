@@ -5,6 +5,7 @@ import { Button } from './ui/Button';
 import { Pending } from './ui/Pending';
 import { Field, TextInput } from './ui/Field';
 import { api } from '../services/api';
+import { AccountSync } from '../lib/accountSync';
 import type { AuthStatus } from '../types';
 
 interface AuthContextValue {
@@ -60,7 +61,12 @@ export function AuthGate({ children }: { children: ReactNode }) {
       </Centered>
     );
   if (!status.authenticated) return <SignIn status={status} onDone={load} />;
-  return <AuthContext.Provider value={{ status, signOut }}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ status, signOut }}>
+      {status.account && <AccountSync key={status.account.email} />}
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 function Centered({ children }: { children: ReactNode }) {
@@ -111,20 +117,22 @@ function SignIn({ status, onDone }: { status: AuthStatus; onDone: () => Promise<
           <BrandMark />
           <KeyRound size={18} className="text-slate-500" />
         </div>
-        <h1 className="font-display text-2xl font-bold tracking-tight text-white">{setup ? 'Create the operator password' : 'Operator sign-in'}</h1>
-        <p className="mt-1 mb-5 text-sm text-slate-400">
+        <h1 className="t-page">{setup ? 'Create the operator password' : 'Sign in'}</h1>
+        <p className="t-support mt-1.5 mb-5">
           {setup
             ? 'This stops other people on the same Wi-Fi from controlling your projector. You will use it every time you open the dashboard.'
-            : 'Sign in to control the display.'}
+            : supabase
+              ? 'Use the email and password you were given. Your events and settings are private to your account.'
+              : 'Sign in to control the display.'}
         </p>
         <div className="grid gap-3">
           {supabase && (
             <Field label="Email">
-              <TextInput type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" required />
+              <TextInput type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" autoFocus required />
             </Field>
           )}
           <Field label={setup ? 'New password' : 'Password'}>
-            <TextInput type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete={setup ? 'new-password' : 'current-password'} autoFocus required />
+            <TextInput type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete={setup ? 'new-password' : 'current-password'} autoFocus={!supabase} required />
           </Field>
           {setup && (
             <Field label="Repeat password">
@@ -145,6 +153,7 @@ function SignIn({ status, onDone }: { status: AuthStatus; onDone: () => Promise<
               </a>
             </>
           )}
+          {supabase && <p className="t-support">No account yet, or forgot your password? Ask your EventControl administrator.</p>}
           {!setup && status.provider === 'local' && (
             <p className="text-xs text-slate-500">
               Forgot it? Stop the app and run <code className="text-slate-300">npm run reset-password</code>.

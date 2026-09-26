@@ -135,7 +135,8 @@ describe('Google integration', () => {
     expect(status.body).toMatchObject({ configured: true, connected: true, drive: true, account: { email: 'operator@example.edu' } });
     // Tokens never leave the server, and are stored encrypted.
     expect(JSON.stringify(status.body)).not.toContain('refresh-1');
-    const stored = await prisma.setting.findUnique({ where: { key: 'integration.google' } });
+    // Stored per account (the signed-in operator), encrypted.
+    const stored = await prisma.setting.findFirst({ where: { key: { startsWith: 'integration.google' } } });
     expect(stored?.value).not.toContain('refresh-1');
   });
 
@@ -163,9 +164,9 @@ describe('Google integration', () => {
 
   it('asks to reconnect when Google no longer accepts the connection', async () => {
     // Force a refresh by expiring the stored access token.
-    const row = await prisma.setting.findUniqueOrThrow({ where: { key: 'integration.google' } });
+    const row = await prisma.setting.findFirstOrThrow({ where: { key: { startsWith: 'integration.google' } } });
     const account = JSON.parse((await decryptSecret(row.value))!);
-    await prisma.setting.update({ where: { key: 'integration.google' }, data: { value: await encryptSecret(JSON.stringify({ ...account, expiresAt: 0 })) } });
+    await prisma.setting.update({ where: { key: row.key }, data: { value: await encryptSecret(JSON.stringify({ ...account, expiresAt: 0 })) } });
 
     tokenMode = 'invalid_grant';
     const res = await api.get('/api/integrations/google/drive');

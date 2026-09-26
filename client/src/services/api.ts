@@ -1,4 +1,4 @@
-import type { AuthStatus, DriveFile, EventInput, GoogleStatus, PreferencesPatch, EventSummary, Media, QueueItem, ScheduleItem, Screen, ScreenStyle, SystemStatus, UploadResult } from '../types';
+import type { Account, AuthStatus, DriveFile, EventInput, GoogleStatus, PreferencesPatch, EventSummary, Media, QueueItem, ScheduleItem, Screen, ScreenStyle, SystemStatus, UploadResult } from '../types';
 
 export class ApiError extends Error {
   constructor(
@@ -51,6 +51,9 @@ export const api = {
   changePassword: (currentPassword: string, newPassword: string) =>
     request<{ ok: true }>('/api/auth/change-password', { method: 'POST', body: json({ currentPassword, newPassword }) }),
   status: () => request<SystemStatus>('/api/status'),
+  account: () => request<Account>('/api/account'),
+  saveAccountPreferences: (preferences: Record<string, unknown>) =>
+    request<{ ok: true }>('/api/account/preferences', { method: 'PUT', body: json({ preferences }) }),
 
   listEvents: () => request<EventSummary[]>('/api/events'),
   getEvent: (id: string) => request<EventSummary>(`/api/events/${id}`),
@@ -112,7 +115,7 @@ export const api = {
     request<QueueItem[]>(`/api/events/${eventId}/queue`, { method: 'PUT', body: json({ order }) }),
   updateQueueItem: (
     id: string,
-    patch: { title?: string | null; notes?: string; durationSeconds?: number | null; startPage?: number | null; endPage?: number | null },
+    patch: { title?: string | null; notes?: string; script?: string; durationSeconds?: number | null; startPage?: number | null; endPage?: number | null },
   ) =>
     request<QueueItem>(`/api/queue/${id}`, { method: 'PATCH', body: json(patch) }),
   deleteQueueItem: (id: string) => request<void>(`/api/queue/${id}`, { method: 'DELETE' }),

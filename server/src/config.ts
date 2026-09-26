@@ -53,6 +53,8 @@ export const config = {
     // "supabase": optional private mode; operators sign in with a Supabase Auth email + password.
     provider: authProvider(process.env.AUTH_PROVIDER),
     sessionHours: Number(process.env.SESSION_HOURS ?? 24 * 7),
+    // Accounts: this person takes over events created before accounts existed (default: the first account).
+    adminEmail: (process.env.ADMIN_EMAIL ?? '').trim().toLowerCase(),
   },
 
   // Cloud storage for uploaded files. Leave SUPABASE_URL empty to keep files local only.

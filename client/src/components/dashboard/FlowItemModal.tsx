@@ -9,6 +9,7 @@ import type { QueueItem } from '../../types';
 export interface FlowItemPatch {
   title: string | null;
   notes: string;
+  script?: string;
   durationSeconds: number | null;
   startPage?: number | null;
   endPage?: number | null;
@@ -20,10 +21,11 @@ interface Props {
   onSave: (id: string, patch: FlowItemPatch) => Promise<void>;
 }
 
-/** Edit a Show Flow item: title, slide range, planned duration and operator notes. */
+/** Edit a Show Flow item: title, slide range, planned duration, notes and the presenter script. */
 export function FlowItemModal({ item, onClose, onSave }: Props) {
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
+  const [script, setScript] = useState('');
   const [duration, setDuration] = useState('');
   const [start, setStart] = useState('');
   const [end, setEnd] = useState('');
@@ -37,6 +39,7 @@ export function FlowItemModal({ item, onClose, onSave }: Props) {
     if (!item) return;
     setTitle(item.title ?? '');
     setNotes(item.notes);
+    setScript(item.script ?? '');
     setDuration(item.durationSeconds ? formatClock(item.durationSeconds * 1000) : '');
     setStart(item.startPage ? String(item.startPage) : '');
     setEnd(item.endPage ? String(item.endPage) : '');
@@ -57,6 +60,7 @@ export function FlowItemModal({ item, onClose, onSave }: Props) {
       await onSave(item.id, {
         title: title.trim() || null,
         notes,
+        script,
         durationSeconds: ms === null ? null : Math.round(ms / 1000),
         ...(item.kind === 'media' ? { startPage: s, endPage: en } : {}),
       });
@@ -112,6 +116,9 @@ export function FlowItemModal({ item, onClose, onSave }: Props) {
         </Field>
         <Field label="Speaker notes" hint="Operator-only. Never shown on the audience display." className="sm:col-span-2">
           <TextArea value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} maxLength={5000} placeholder="Introduce the ACM student chapter before starting slide 3." />
+        </Field>
+        <Field label="Script" hint="What to say during this item. Shown large in the script layout; never on the audience display." className="sm:col-span-2">
+          <TextArea value={script} onChange={(e) => setScript(e.target.value)} rows={8} maxLength={20000} placeholder={'Good evening, everyone, and welcome to…'} />
         </Field>
         {error && <p className="text-sm text-red-400 sm:col-span-2">{error}</p>}
       </form>

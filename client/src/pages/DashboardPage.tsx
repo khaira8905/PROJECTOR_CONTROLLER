@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, CalendarClock, Cloud, CloudOff, LayoutGrid, Loader2, Maximize2, Minimize2, MonitorPlay, Palette, RefreshCw, WifiOff } from 'lucide-react';
+import { ArrowLeft, CalendarClock, ListVideo, ScrollText, Cloud, CloudOff, LayoutGrid, Loader2, Maximize2, Minimize2, MonitorPlay, Palette, RefreshCw, WifiOff } from 'lucide-react';
 import { EventFormModal } from '../components/EventFormModal';
 import { useAuth } from '../components/AuthGate';
 import { Sidebar, NAV, type DashboardView } from '../components/Sidebar';
@@ -13,6 +13,7 @@ import { useToast } from '../components/ui/Toast';
 import { FlowPane } from '../components/dashboard/FlowPane';
 import { StagePane } from '../components/dashboard/StagePane';
 import { ControlDeck } from '../components/dashboard/ControlDeck';
+import { ScriptPane } from '../components/dashboard/ScriptPane';
 import { DEFAULT_QUICK, QuickSelection, QuickSelectionEditor } from '../components/dashboard/QuickSelection';
 import { TimerStrip } from '../components/dashboard/TimerStrip';
 import { FilePicker } from '../components/dashboard/FilePicker';
@@ -412,14 +413,90 @@ export default function DashboardPage() {
 
   const logo = event?.logoMediaId ? media.find((m) => m.id === event.logoMediaId && !m.missing) : undefined;
   const presenter = ui.presenterMode;
+  const script = ui.controlLayout === 'script';
   const pageCount = display?.mode === 'media' && display.media?.pdfUrl ? (display.media.pageCount ?? null) : null;
-  const signedInOperator = google?.account ? { name: google.account.name, picture: google.account.picture } : auth?.user?.startsWith('google:') ? { name: auth.user.slice(7), picture: null } : null;
+  // The rail shows who is signed in: the account, with the Google picture when connected.
+  const signedInOperator = auth?.account
+    ? { name: auth.account.name || auth.account.email, picture: google?.account?.picture ?? null }
+    : google?.account
+      ? { name: google.account.name, picture: google.account.picture }
+      : null;
 
   const driveButton = (
     <Button size="sm" variant="secondary" icon={<DriveIcon size={15} />} onClick={() => setDriveTarget('library')}>
       Google Drive
     </Button>
   );
+
+  // The Control view's parts, placed by the layout below.
+  const deckEl = (
+    <ControlDeck
+      display={display}
+      live={isLive}
+      currentItem={currentItem}
+      nextItem={nextItem}
+      offFlow={offFlow}
+      canNext={flow.length > 0 && joined && !atEnd}
+      canPrevious={flow.length > 0 && joined}
+      startLabel={startLabel}
+      onStart={start}
+      onNext={() => void run({ type: 'next' })}
+      onPrevious={() => void run({ type: 'previous' })}
+      onResume={() => void run({ type: 'show-current' })}
+      onGoToPage={(page) => void run({ type: 'page', page })}
+      onEditNotes={setEditingItem}
+      keys={{ next: bindings.next[0], previous: bindings.previous[0], resume: bindings.resume[0], black: bindings.black[0] }}
+      position={currentIndex >= 0 ? { index: currentIndex, total: flow.length } : null}
+    />
+  );
+  const flowEl = (
+    <FlowPane
+      className={script ? 'ec-flow-docked mt-5 min-h-[13rem] flex-1' : 'min-h-[14rem] flex-1 max-lg:max-h-[70vh]'}
+      flow={flow}
+      screens={screens}
+      display={display}
+      currentId={display?.queueItemId ?? null}
+      nextId={nextItem?.id ?? null}
+      onAir={showingFlowItem && isLive}
+      // Docked on the right in the script layout: a compact list (slides via the counter).
+      showSlides={script ? false : ui.showSlides}
+      layout={script ? 'compact' : ui.flowLayout}
+      activation={ui.flowActivation}
+      followLive={ui.followLive}
+      thumbSize={ui.thumbSize}
+      focusSignal={flowFocus}
+      loading={data.loading}
+      onShow={showItem}
+      onGoToPage={(page) => void run(showingFlowItem ? { type: 'page', page } : { type: 'show-item', queueItemId: currentItem!.id, page })}
+      onReorder={reorder}
+      onEdit={setEditingItem}
+      onRemove={removeFromFlow}
+      onAddFiles={() => setPickerOpen(true)}
+      onAddScreen={async (s) => {
+        if (!eventId) return;
+        try {
+          await api.addScreenToFlow(eventId, s.id);
+          await data.reloadQueue();
+          toast.success(`Added “${s.title}” to the Flow.`);
+        } catch (err) {
+          toast.error(errorMessage(err, 'Couldn’t add the screen.'));
+        }
+      }}
+    />
+  );
+  const quickEl = (
+    <QuickSelection
+      preferences={prefs}
+      screens={screens}
+      media={media}
+      display={display}
+      disabled={!joined}
+      keys={quickItems.map((_, i) => (i < 8 ? bindings[`quick${i + 1}` as ShortcutAction][0] : undefined))}
+      onTrigger={triggerQuick}
+      onEdit={() => setQuickEditorOpen(true)}
+    />
+  );
+  const timerEl = <TimerStrip timer={timer} send={(cmd) => void run(cmd)} onMore={() => setView('timers')} />;
 
   return (
     <ClockOffsetContext.Provider value={clockOffset}>
@@ -467,6 +544,18 @@ export default function DashboardPage() {
                 )}
               </div>
               <div className="flex items-center gap-1 border-l ec-line pl-3 max-sm:border-l-0 max-sm:pl-0">
+                {(view === 'control' || presenter) && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setUi({ controlLayout: script ? 'flow' : 'script' })}
+                    aria-pressed={script}
+                    aria-label={script ? 'Switch to the Flow layout' : 'Switch to the script layout: script on the left, Flow on the right'}
+                    title={script ? 'Flow layout' : 'Script layout: script on the left, Flow on the right'}
+                  >
+                    {script ? <ListVideo size={18} /> : <ScrollText size={18} />}
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="icon"
@@ -512,64 +601,34 @@ export default function DashboardPage() {
               className="ec-view-in ec-control grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1.22fr)_minmax(400px,1fr)] lg:overflow-hidden"
               style={{ '--preview-h': 'clamp(150px, 30vh, 480px)' } as CSSProperties}
             >
-              {/* Primary column: what's on, the controls, the Flow and the timer under it. */}
+              {/*
+                Two arrangements of the same parts (Settings → Presentation → Layout):
+                Flow layout   — left: controls, Flow, timer · right: picture, Up next, Quick Selection.
+                Script layout — left: controls, script, Quick Selection, timer · right: picture, Up next, Flow.
+              */}
               <div className="ec-primary flex min-h-0 min-w-0 flex-col lg:overflow-x-hidden lg:overflow-y-auto lg:border-r lg:border-[var(--line)]">
-                <ControlDeck
-                  display={display}
-                  live={isLive}
-                  currentItem={currentItem}
-                  nextItem={nextItem}
-                  offFlow={offFlow}
-                  canNext={flow.length > 0 && joined && !atEnd}
-                  canPrevious={flow.length > 0 && joined}
-                  startLabel={startLabel}
-                  onStart={start}
-                  onNext={() => void run({ type: 'next' })}
-                  onPrevious={() => void run({ type: 'previous' })}
-                  onResume={() => void run({ type: 'show-current' })}
-                  onGoToPage={(page) => void run({ type: 'page', page })}
-                  onEditNotes={setEditingItem}
-                  keys={{ next: bindings.next[0], previous: bindings.previous[0], resume: bindings.resume[0], black: bindings.black[0] }}
-                  position={currentIndex >= 0 ? { index: currentIndex, total: flow.length } : null}
-                />
-                <FlowPane
-                  className="min-h-[14rem] flex-1 max-lg:max-h-[70vh]"
-                  flow={flow}
-                  screens={screens}
-                  display={display}
-                  currentId={display?.queueItemId ?? null}
-                  nextId={nextItem?.id ?? null}
-                  onAir={showingFlowItem && isLive}
-                  showSlides={ui.showSlides}
-                  layout={ui.flowLayout}
-                  activation={ui.flowActivation}
-                  followLive={ui.followLive}
-                  thumbSize={ui.thumbSize}
-                  focusSignal={flowFocus}
-                  loading={data.loading}
-                  onShow={showItem}
-                  onGoToPage={(page) => void run(showingFlowItem ? { type: 'page', page } : { type: 'show-item', queueItemId: currentItem!.id, page })}
-                  onReorder={reorder}
-                  onEdit={setEditingItem}
-                  onRemove={removeFromFlow}
-                  onAddFiles={() => setPickerOpen(true)}
-                  onAddScreen={async (s) => {
-                    if (!eventId) return;
-                    try {
-                      await api.addScreenToFlow(eventId, s.id);
-                      await data.reloadQueue();
-                      toast.success(`Added “${s.title}” to the Flow.`);
-                    } catch (err) {
-                      toast.error(errorMessage(err, 'Couldn’t add the screen.'));
-                    }
-                  }}
-                />
-                <TimerStrip timer={timer} send={(cmd) => void run(cmd)} onMore={() => setView('timers')} />
+                {deckEl}
+                {script ? (
+                  <>
+                    <ScriptPane
+                      className="min-h-[12rem] flex-1 max-lg:max-h-[60vh]"
+                      item={currentItem}
+                      next={nextItem}
+                      size={ui.scriptSize}
+                      onSize={(scriptSize) => setUi({ scriptSize })}
+                      onEdit={setEditingItem}
+                    />
+                    <div className="ec-quick-docked shrink-0 border-t ec-line px-[var(--gutter)] py-4">{quickEl}</div>
+                  </>
+                ) : (
+                  flowEl
+                )}
+                {timerEl}
               </div>
 
-              {/* Supporting column: the picture, what's next, quick shortcuts. */}
               <div className="ec-pane-alt ec-secondary scroll-thin min-h-0 min-w-0 lg:overflow-y-auto lg:overflow-x-hidden">
                 <StagePane
+                  layout={ui.controlLayout}
                   display={display}
                   timer={timer}
                   videoCommand={videoCommand}
@@ -595,16 +654,7 @@ export default function DashboardPage() {
                   overlay={{ available: !!event?.overlay.mediaId, visible: !!event?.overlay.visible, hint: bindings.overlay[0] }}
                   onOverlay={toggleOverlay}
                 >
-                  <QuickSelection
-                    preferences={prefs}
-                    screens={screens}
-                    media={media}
-                    display={display}
-                    disabled={!joined}
-                    keys={quickItems.map((_, i) => (i < 8 ? bindings[`quick${i + 1}` as ShortcutAction][0] : undefined))}
-                    onTrigger={triggerQuick}
-                    onEdit={() => setQuickEditorOpen(true)}
-                  />
+                  {script ? flowEl : quickEl}
                 </StagePane>
               </div>
               {/* Hidden "go to slide" target for the G shortcut. */}
@@ -757,6 +807,7 @@ export default function DashboardPage() {
                   screens={screens}
                   google={google}
                   openAccess={!auth?.enabled}
+                  account={auth?.account ?? null}
                   signedIn={!!auth?.enabled}
                   displayUrl={eventId ? `${window.location.origin}/display/${eventId}` : ''}
                   consoleUrl={eventId ? `${window.location.origin}/events/${eventId}` : ''}

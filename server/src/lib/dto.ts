@@ -84,6 +84,7 @@ export function toQueueItemDto(q: QueueItem & { media: Media | null; screen: Scr
     endPage: q.endPage,
     durationSeconds: q.durationSeconds,
     notes: q.notes,
+    script: q.script,
     media: q.media ? toMediaDto(q.media) : null,
     screen: q.screen ? toScreenDto(q.screen) : null,
   };

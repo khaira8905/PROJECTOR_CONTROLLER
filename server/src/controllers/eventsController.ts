@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
+import { currentUser, ownedEvents } from '../services/accounts';
 import { badRequest, notFound } from '../lib/errors';
 import { logger } from '../lib/logger';
 import { toEventDto } from '../lib/dto';
@@ -38,14 +39,15 @@ const updateSchema = z.object({
 
 const withCounts = { _count: { select: { media: true, queueItems: true, scheduleItems: true } } } as const;
 
+/** The event, if the current user may run it (someone else's event is simply "not found"). */
 export async function findEventOr404(id: string) {
-  const event = await prisma.event.findUnique({ where: { id: idParam.parse(id) } });
+  const event = await prisma.event.findFirst({ where: { id: idParam.parse(id), ...ownedEvents() } });
   if (!event) throw notFound('Event not found.');
   return event;
 }
 
 export async function listEvents(_req: Request, res: Response) {
-  const events = await prisma.event.findMany({ orderBy: [{ date: 'asc' }, { createdAt: 'asc' }], include: withCounts });
+  const events = await prisma.event.findMany({ where: ownedEvents(), orderBy: [{ date: 'asc' }, { createdAt: 'asc' }], include: withCounts });
   res.json(events.map(toEventDto));
 }
 
@@ -60,6 +62,7 @@ export async function createEvent(req: Request, res: Response) {
   const event = await prisma.event.create({
     data: {
       ...body,
+      ownerId: currentUser()?.id ?? null,
       waitingMessage: body.waitingMessage || undefined,
       timerState: { create: {} },
       displayState: { create: {} },

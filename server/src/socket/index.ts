@@ -12,6 +12,7 @@ import { emitToOperators, rooms, setIo } from './bus';
 import { parseCookies } from '../lib/cookies';
 import { allowedOrigin } from '../lib/network';
 import { SESSION_COOKIE, authEnabled, verifySessionToken } from '../services/authService';
+import { userFromSubject } from '../services/accounts';
 
 type Role = 'operator' | 'display';
 type Ack = (response: { ok: true; data?: unknown } | { ok: false; error: string; status?: number }) => void;
@@ -71,13 +72,16 @@ export function createSocketServer(httpServer: HttpServer): Server {
       const ack = safeAck(rawAck);
       try {
         const { eventId, role } = joinSchema.parse(payload);
-        const event = await prisma.event.findUnique({ where: { id: eventId }, select: { id: true } });
+        const event = await prisma.event.findUnique({ where: { id: eventId }, select: { id: true, ownerId: true } });
         if (!event) throw new HttpError(404, 'Event not found.');
 
-        // Displays may join freely; controlling the event requires a signed-in operator.
+        // Displays may join freely (read-only); controlling an event requires being signed in
+        // as its owner. Someone else's event looks exactly like a missing one.
         if (role === 'operator' && authEnabled()) {
           const session = await verifySessionToken(parseCookies(socket.handshake.headers.cookie)[SESSION_COOKIE]);
-          if (!session) throw new HttpError(401, 'Please sign in.');
+          const user = session ? await userFromSubject(session.subject) : null;
+          if (!user) throw new HttpError(401, 'Please sign in.');
+          if (event.ownerId !== user.id) throw new HttpError(404, 'Event not found.');
         }
 
         const previous = socket.data.eventId as string | undefined;

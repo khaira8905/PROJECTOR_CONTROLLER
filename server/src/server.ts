@@ -2,7 +2,7 @@ import http from 'node:http';
 import os from 'node:os';
 import fs from 'node:fs';
 import { createApp } from './app';
-import { config } from './config';
+import { cloudStorageEnabled, config } from './config';
 import { logger } from './lib/logger';
 import { prisma } from './lib/prisma';
 import { createSocketServer } from './socket';
@@ -47,7 +47,10 @@ async function main() {
     if (process.env.RENDER && !config.supabase.url) {
       logger.warn('Running on Render without SUPABASE_URL: uploaded files will be lost when the instance restarts.');
     }
-    logger.info(`Cloud storage: ${config.supabase.url ? `Supabase (${config.supabase.bucket})` : 'off (local files only)'}`);
+    if (config.auth.provider === 'supabase' && (!config.supabase.url || !config.supabase.anonKey)) {
+      logger.warn('AUTH_PROVIDER=supabase but SUPABASE_URL / SUPABASE_ANON_KEY is missing: nobody can sign in until both are set.');
+    }
+    logger.info(`Cloud storage: ${cloudStorageEnabled() ? `Supabase (${config.supabase.bucket})` : 'off (local files only)'}`);
   });
 
   const shutdown = async () => {

@@ -6,7 +6,7 @@ export const THEMES: { id: ThemeId; name: string; note: string; swatch: [string,
 ];
 
 const KEY = 'ec-theme';
-const isTheme = (v: unknown): v is ThemeId => THEMES.some((t) => t.id === v);
+export const isTheme = (v: unknown): v is ThemeId => THEMES.some((t) => t.id === v);
 
 export function storedTheme(): ThemeId {
   try {
@@ -30,4 +30,6 @@ export function applyTheme(id: ThemeId, persist = true) {
   } catch {
     /* not critical */
   }
+  // The account sync saves it with the person's other settings.
+  window.dispatchEvent(new CustomEvent('ec:theme', { detail: id }));
 }

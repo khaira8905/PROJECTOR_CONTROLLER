@@ -1046,3 +1046,26 @@ body {
 @media (min-width: 1024px) and (max-height: 820px) {
   .ec-slide-strip > button { width: 108px !important; }
 }
+
+/* ══ Script layout ═════════════════════════════════════════════════════════════════
+ * Left: controls → script (the reading area) → Quick Selection → timer.
+ * Right: picture (fixed height) → display bar → Up next → the Flow, filling the rest. */
+.ec-script { background: var(--surface-900); }
+.ec-script article { font-feature-settings: 'kern' 1; text-wrap: pretty; }
+.ec-script-next { background: color-mix(in oklab, var(--surface-850) 60%, var(--surface-900)); }
+.ec-quick-docked { background: var(--surface-900); }
+.ec-quick-docked .ec-quick-btn { height: clamp(3rem, 5.6vh, 3.75rem); }
+.ec-flow-docked {
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-panel);
+  overflow: hidden;
+  box-shadow: var(--card-shadow);
+}
+@media (min-width: 1024px) {
+  .ec-stage[data-layout='script'] .ec-preview-area { flex: 0 0 auto; height: clamp(170px, 34vh, 400px); min-height: 0; }
+  .ec-stage[data-layout='script'] .ec-upnext { margin-top: var(--space-4); padding-top: var(--space-4); }
+}
+@media (min-width: 1024px) and (max-height: 820px) {
+  .ec-stage[data-layout='script'] .ec-preview-area { height: clamp(140px, 28vh, 260px); }
+  .ec-stage[data-layout='script'] .ec-upnext { display: none; }
+}
