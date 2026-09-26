@@ -545,7 +545,7 @@ function FilesSection({ media, google, openAccess, uploadProgress, onUpload, onM
           {state === 'checking' ? (
             <Loader2 size={16} className="animate-spin text-slate-500" />
           ) : state === 'unconfigured' ? (
-            <a href="https://github.com/khaira8905/PROJECTOR_CONTROLLER#google-drive" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-sm font-medium text-sky-300 hover:underline">
+            <a href="https://github.com/khaira8905/resume-analyzer#google-drive" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-sm font-medium text-sky-300 hover:underline">
               How to set up <ExternalLink size={13} />
             </a>
           ) : state === 'connected' ? (

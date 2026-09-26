@@ -244,7 +244,7 @@ Run EventControl on the internet at no cost: **Render** (free web service) runs 
 ### 2. Render (the server)
 
 1. Sign up at https://render.com with your GitHub account.
-2. **New → Blueprint** → select your `PROJECTOR_CONTROLLER` repository → Render reads `render.yaml` and proposes a free web service called **eventcontrol**.
+2. **New → Blueprint** → select your `resume-analyzer` repository → Render reads `render.yaml` and proposes a free web service called **eventcontrol**.
 3. Fill in the three values it asks for:
    | Key | Value |
    | --- | --- |
