@@ -31,8 +31,8 @@ No credit card needed.
 ## Part B — Render
 
 1. Go to **https://render.com** → *Get started* → sign up with **GitHub**. When GitHub asks which
-   repositories Render may see, allow **resume-analyzer**.
-2. **New +** → **Blueprint** → pick **resume-analyzer** (branch `main`).
+   repositories Render may see, allow **event-projector-controller**.
+2. **New +** → **Blueprint** → pick **event-projector-controller** (branch `main`).
    Render reads `render.yaml` and proposes a free web service called **eventcontrol**.
 3. Fill in the three values from Part A:
 
