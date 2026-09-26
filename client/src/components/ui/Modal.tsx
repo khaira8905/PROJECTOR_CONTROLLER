@@ -47,7 +47,7 @@ export function Modal({ open, onClose, title, children, footer, size = 'md' }: M
         aria-modal="true"
         tabIndex={-1}
         className={cn(
-          'ec-card ec-card-raised ec-modal-in relative flex max-h-[90vh] w-full flex-col rounded-2xl shadow-2xl outline-none',
+          'ec-card ec-card-raised ec-modal-in relative flex max-h-[90vh] w-full flex-col rounded-lg shadow-2xl outline-none',
           size === 'sm' ? 'max-w-md' : size === 'lg' ? 'max-w-3xl' : 'max-w-xl',
         )}
       >

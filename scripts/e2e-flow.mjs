@@ -55,29 +55,28 @@ try {
 
   console.log(`Event ${event.id}`);
   await op.goto(`${BASE}/events/${event.id}`);
-  await op.getByText('Live Preview').waitFor();
+  await op.getByRole('heading', { name: 'Flow' }).waitFor();
   ok('1-2. dashboard opened');
 
+  // Flow → Add → Presentations & files…: upload from this computer, then pick both.
+  await op.getByRole('button', { name: 'Add presentations' }).click();
   await op.locator('input[type=file]').setInputFiles([path.join(assets, 'Welcome.png'), path.join(assets, 'Speaker Presentation.pdf')]);
   await op.getByText('Uploaded 2 files.').waitFor();
   ok('3. uploaded image + PDF');
 
-  for (const name of ['Welcome.png', 'Speaker Presentation.pdf']) {
-    await op.getByPlaceholder('Search files…').fill(name);
-    await op.getByRole('button', { name: `Add ${name} to the show flow` }).click();
-    await op.getByText(`Added "${name}" to the show flow.`).waitFor();
-  }
-  ok('4. added both to the show flow');
+  for (const name of ['Welcome.png', 'Speaker Presentation.pdf']) await op.getByRole('option', { name: new RegExp(name) }).click();
+  await op.getByRole('button', { name: 'Add 2 to Flow' }).click();
+  await op.getByText('Added 2 files to the Flow.').waitFor();
+  ok('4. added both to the Flow');
 
   const display = await ctx.newPage();
   display.on('pageerror', (e) => errors.push(e.message));
   await display.goto(`${BASE}/display/${event.id}`);
   await display.getByRole('heading', { name: 'Please Wait' }).waitFor();
-  await op.getByText('Display Connected', { exact: true }).waitFor();
-  ok('5. display connected (top bar shows Display Connected)');
+  await op.getByText('Projector connected', { exact: true }).waitFor();
+  ok('5. display connected (top bar shows Projector connected)');
 
-  await op.locator('ol li', { hasText: 'Welcome.png' }).hover();
-  await op.getByRole('button', { name: 'Show Welcome.png on display' }).click();
+  await op.getByRole('button', { name: /^Show Welcome\.png/ }).click();
   await display.locator('img[alt="Welcome.png"]').waitFor();
   ok('6-7. selected item appears on the display');
 
@@ -86,7 +85,7 @@ try {
   await op.keyboard.press('ArrowRight');
   await display.locator('canvas:not(.invisible)').waitFor();
   await op.keyboard.press('ArrowRight');
-  await op.getByText(/Page 2 of 4/).waitFor();
+  await op.waitForFunction(() => document.querySelector('select[aria-label="Go to page"]')?.value === '2');
   ok('8-9. NEXT shows the PDF, then its next page');
 
   const t0 = Date.now();

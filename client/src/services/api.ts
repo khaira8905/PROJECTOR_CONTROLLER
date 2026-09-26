@@ -1,4 +1,4 @@
-import type { AuthStatus, EventInput, EventSummary, Media, QueueItem, ScheduleItem, Screen, ScreenStyle, SystemStatus, UploadResult } from '../types';
+import type { AuthStatus, DriveFile, EventInput, GoogleStatus, EventPreferences, EventSummary, Media, QueueItem, ScheduleItem, Screen, ScreenStyle, SystemStatus, UploadResult } from '../types';
 
 export class ApiError extends Error {
   constructor(
@@ -48,6 +48,8 @@ export const api = {
   createEvent: (input: EventInput) => request<EventSummary>('/api/events', { method: 'POST', body: json(input) }),
   updateEvent: (id: string, input: Partial<EventInput>) =>
     request<EventSummary>(`/api/events/${id}`, { method: 'PUT', body: json(input) }),
+  updatePreferences: (id: string, preferences: Partial<EventPreferences>) =>
+    request<EventSummary>(`/api/events/${id}`, { method: 'PUT', body: json({ preferences }) }),
   deleteEvent: (id: string) => request<void>(`/api/events/${id}`, { method: 'DELETE' }),
 
   listMedia: (eventId: string) => request<Media[]>(`/api/events/${eventId}/media`),
@@ -58,6 +60,17 @@ export const api = {
   openMediaExternally: (id: string) => request<{ ok: true }>(`/api/media/${id}/open`, { method: 'POST' }),
 
   /** Upload with progress reporting (fetch has no upload progress, so use XHR). */
+  googleStatus: () => request<GoogleStatus>('/api/integrations/google'),
+  googleDisconnect: () => request<GoogleStatus>('/api/integrations/google/disconnect', { method: 'POST' }),
+  /** Full-page navigation: Google's consent screen, then back to `returnTo`. */
+  googleConnectUrl: (returnTo: string) => `/api/integrations/google/connect?returnTo=${encodeURIComponent(returnTo)}`,
+  googleSignInUrl: () => '/api/auth/google/start',
+  driveList: (opts: { q?: string; folderId?: string; pageToken?: string }) => {
+    const params = new URLSearchParams(Object.entries(opts).filter(([, v]) => !!v) as [string, string][]);
+    return request<{ files: DriveFile[]; nextPageToken: string | null }>(`/api/integrations/google/drive?${params}`);
+  },
+  importFromDrive: (eventId: string, fileIds: string[], folder = '') =>
+    request<UploadResult>(`/api/events/${eventId}/media/drive`, { method: 'POST', body: json({ fileIds, folder }) }),
   uploadMedia: (eventId: string, files: File[], onProgress?: (fraction: number) => void, folder = '') =>
     new Promise<UploadResult>((resolve, reject) => {
       const form = new FormData();

@@ -5,15 +5,27 @@ import type { PDFDocumentProxy } from 'pdfjs-dist';
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
-// Loaded documents are kept, so page flips and thumbnails are instant.
+// Recently used documents stay loaded so page flips and thumbnails are instant. Older ones
+// are released: switching between many decks during a long event must not grow memory forever.
+const MAX_DOCUMENTS = 8;
 const documents = new Map<string, Promise<PDFDocumentProxy>>();
 
 export function loadDocument(url: string): Promise<PDFDocumentProxy> {
   let doc = documents.get(url);
-  if (!doc) {
-    doc = pdfjs.getDocument({ url }).promise;
-    doc.catch(() => documents.delete(url));
+  if (doc) {
+    // Map order doubles as recency: move this one to the end.
+    documents.delete(url);
     documents.set(url, doc);
+    return doc;
+  }
+  doc = pdfjs.getDocument({ url }).promise;
+  doc.catch(() => documents.delete(url));
+  documents.set(url, doc);
+  while (documents.size > MAX_DOCUMENTS) {
+    const [oldest, stale] = documents.entries().next().value!;
+    documents.delete(oldest);
+    // Give anything still drawing from it a moment to finish.
+    window.setTimeout(() => void stale.then((d) => d.destroy()).catch(() => undefined), 5000);
   }
   return doc;
 }

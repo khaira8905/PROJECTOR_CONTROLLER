@@ -67,7 +67,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             key={t.id}
             role={t.tone === 'error' ? 'alert' : 'status'}
             className={cn(
-              'ec-card ec-card-raised pointer-events-auto relative flex items-start gap-3 overflow-hidden rounded-xl px-4 py-3 text-sm text-slate-100 shadow-xl',
+              'ec-card ec-card-raised pointer-events-auto relative flex items-start gap-3 overflow-hidden rounded-md px-4 py-3 text-sm text-slate-100 shadow-xl',
               t.tone === 'error' ? 'ring-1 ring-red-500/30' : t.tone === 'warning' ? 'ring-1 ring-amber-500/30' : '',
               t.leaving ? 'ec-toast-out' : 'ec-toast-in',
             )}

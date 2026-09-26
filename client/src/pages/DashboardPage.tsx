@@ -1,19 +1,22 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, CalendarClock, Cloud, CloudOff, Keyboard, LayoutGrid, LogOut, Maximize, MonitorPlay, Palette, Pencil, Server, Settings } from 'lucide-react';
+import { ArrowLeft, CalendarClock, Cloud, CloudOff, LayoutGrid, Loader2, Maximize2, Minimize2, MonitorPlay, Palette, RefreshCw, WifiOff } from 'lucide-react';
 import { EventFormModal } from '../components/EventFormModal';
 import { useAuth } from '../components/AuthGate';
 import { Sidebar, NAV, type DashboardView } from '../components/Sidebar';
-import { ThemePicker, ThemeSwitcher } from '../components/ThemeSwitcher';
+import { ThemeSwitcher } from '../components/ThemeSwitcher';
+import { DriveIcon } from '../components/DriveIcon';
 import { Button } from '../components/ui/Button';
 import { Panel } from '../components/ui/Panel';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { useToast } from '../components/ui/Toast';
-import { LivePreview } from '../components/dashboard/LivePreview';
-import { LibraryTable } from '../components/dashboard/LibraryTable';
-import { LiveControls, QuickScreens } from '../components/dashboard/LiveControls';
-import { UpNextCard } from '../components/dashboard/UpNextCard';
-import { ShowFlowPanel } from '../components/dashboard/ShowFlowPanel';
+import { FlowPane } from '../components/dashboard/FlowPane';
+import { StagePane } from '../components/dashboard/StagePane';
+import { QuickSelection, QuickSelectionEditor } from '../components/dashboard/QuickSelection';
+import { TimerStrip } from '../components/dashboard/TimerStrip';
+import { FilePicker } from '../components/dashboard/FilePicker';
+import { DriveBrowser } from '../components/dashboard/DriveBrowser';
+import { SettingsView } from '../components/dashboard/SettingsView';
 import { FlowItemModal } from '../components/dashboard/FlowItemModal';
 import { PresentationLibrary } from '../components/dashboard/PresentationLibrary';
 import { PreviewModal } from '../components/dashboard/PreviewModal';
@@ -25,21 +28,24 @@ import { ShortcutsHelp } from '../components/dashboard/ShortcutsHelp';
 import type { VideoCommand } from '../components/display/DisplayStage';
 import { useEventData } from '../hooks/useEventData';
 import { useEventSocket } from '../hooks/useEventSocket';
-import { useTimerRemaining } from '../hooks/useTimerRemaining';
+import { ClockOffsetContext } from '../hooks/useLiveRemaining';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useSystemStatus } from '../hooks/useSystemStatus';
-import { api } from '../services/api';
+import { useUiPrefs } from '../lib/uiPrefs';
+import { ApiError, api } from '../services/api';
 import { cn } from '../lib/cn';
 import { itemLabel } from '../lib/flow';
-import { formatEventDate } from '../lib/format';
-import { timerOvertime } from '../lib/timer';
-import type { ControlCommand, Media, QueueItem } from '../types';
+import type { ControlCommand, EventPreferences, GoogleStatus, Media, QueueItem, QuickItem, UploadResult } from '../types';
+
+const errorMessage = (err: unknown, fallback: string) => (err instanceof Error ? err.message : fallback);
 
 /** The open section lives in the URL (?view=…), so a refresh keeps you where you were. */
 function useDashboardView(): [DashboardView, (v: DashboardView) => void] {
   const [params, setParams] = useSearchParams();
   const raw = params.get('view');
-  const view = NAV.some((n) => n.id === raw) ? (raw as DashboardView) : 'control';
+  // Older links: the separate Presentations / Media / Show Flow pages are now Files and Control.
+  const legacy: Record<string, DashboardView> = { presentations: 'files', media: 'files', flow: 'control' };
+  const view = NAV.some((n) => n.id === raw) ? (raw as DashboardView) : (legacy[raw ?? ''] ?? 'control');
   const set = useCallback(
     (v: DashboardView) =>
       setParams(
@@ -56,9 +62,6 @@ function useDashboardView(): [DashboardView, (v: DashboardView) => void] {
   return [view, set];
 }
 
-const errorMessage = (err: unknown, fallback: string) => (err instanceof Error ? err.message : fallback);
-
-
 export default function DashboardPage() {
   const { eventId } = useParams();
   const navigate = useNavigate();
@@ -67,6 +70,7 @@ export default function DashboardPage() {
   const data = useEventData(eventId);
   const { event, media, queue: flow, schedule, screens, setQueue } = data;
   const { status: system, reachable } = useSystemStatus();
+  const { prefs: ui, set: setUi } = useUiPrefs();
 
   const [videoCommand, setVideoCommand] = useState<VideoCommand | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
@@ -75,7 +79,13 @@ export default function DashboardPage() {
   const [deletingMedia, setDeletingMedia] = useState<Media | null>(null);
   const [editEventOpen, setEditEventOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [quickEditorOpen, setQuickEditorOpen] = useState(false);
+  /** Where Drive imports go: straight into the Flow (from "Add"), or just into the library. */
+  const [driveTarget, setDriveTarget] = useState<'flow' | 'library' | null>(null);
+  const [google, setGoogle] = useState<GoogleStatus | null>(null);
   const [view, setView] = useDashboardView();
+  const [params, setParams] = useSearchParams();
   const videoNonce = useRef(0);
   const jumpRef = useRef<HTMLInputElement>(null);
 
@@ -87,14 +97,15 @@ export default function DashboardPage() {
     onScheduleChanged: () => void quiet(data.reloadSchedule()),
     onScreensChanged: () => void quiet(Promise.all([data.reloadScreens(), data.reloadQueue()])),
     onEventChanged: () => void quiet(data.reloadEvent()),
+    // Back after a disconnect or a sleeping tab: whatever changed meanwhile was missed.
+    onResync: () => void quiet(data.reloadAll()),
     onEventDeleted: () => {
-      toast.warning('This event was deleted.');
+      toast.warning('This event was deleted in another window.');
       navigate('/');
     },
     onFullscreenResult: (ok) =>
-      ok ? toast.success('Display is now fullscreen.') : toast.warning('The display blocked fullscreen. Click once on the display window (or press F there).'),
+      ok ? toast.success('The projector is now fullscreen.') : toast.warning('The projector window blocked fullscreen. Click once inside it, or press F there.'),
   });
-  const remaining = useTimerRemaining(timer, clockOffset);
 
   /** Sends a control command and surfaces any error as a toast. */
   const run = useCallback(
@@ -115,21 +126,61 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!presence) return;
     const prev = previousDisplays.current;
-    if (prev !== null && prev > 0 && presence.displays === 0) toast.error('Display connection lost.');
-    if (prev === 0 && presence.displays > 0) toast.success('Display connected.');
+    if (prev !== null && prev > 0 && presence.displays === 0) toast.error('The projector window disconnected. Check its Wi-Fi, or open the display window again.');
+    if (prev === 0 && presence.displays > 0) toast.success('Projector connected.');
     previousDisplays.current = presence.displays;
   }, [presence, toast]);
 
-  // Current / next are derived from the server's Show Flow cursor.
+  // ---- Google account ----------------------------------------------------------------
+  const refreshGoogle = useCallback(() => void api.googleStatus().then(setGoogle, () => undefined), []);
+  useEffect(refreshGoogle, [refreshGoogle]);
+  // Back from Google's consent screen: say what happened, then tidy the address bar.
+  useEffect(() => {
+    const result = params.get('google');
+    if (!result) return;
+    if (result === 'connected') toast.success('Google Drive connected. You can now import presentations from it.');
+    else if (result === 'cancelled') toast.info('Google Drive wasn’t connected: access was not granted.');
+    else toast.error(params.get('message') ?? 'Connecting Google didn’t work. Please try again.');
+    if (result === 'connected' && params.get('drive') === 'open') setDriveTarget('library');
+    refreshGoogle();
+    setParams(
+      (p) => {
+        const next = new URLSearchParams(p);
+        ['google', 'message', 'drive'].forEach((k) => next.delete(k));
+        return next;
+      },
+      { replace: true },
+    );
+  }, [params, setParams, toast, refreshGoogle]);
+
+  // ---- What is on screen ---------------------------------------------------------------
   const currentIndex = display?.queueItemId ? flow.findIndex((q) => q.id === display.queueItemId) : -1;
   const currentItem = currentIndex >= 0 ? flow[currentIndex] : null;
   const nextItem = currentIndex === -1 ? (flow[0] ?? null) : (flow[currentIndex + 1] ?? null);
-  const onAir = (display?.mode === 'media' || display?.mode === 'screen') && !display.adHocMediaId && !!currentItem;
+  // The Flow item itself is on screen (not black, a quick screen or a file from the library).
+  const showingFlowItem =
+    !!currentItem &&
+    !!display &&
+    ((display.mode === 'media' && !display.adHocMediaId && currentItem.kind === 'media') ||
+      (display.mode === 'screen' && currentItem.kind === 'screen' && display.screenId === currentItem.screenId));
+  const offFlow = !!currentItem && !!display && !showingFlowItem;
+  const isLive = (presence?.displays ?? 0) > 0;
   const flowMediaIds = useMemo(() => new Set(flow.map((q) => q.mediaId).filter((id): id is string => !!id)), [flow]);
   const images = useMemo(() => media.filter((m) => m.kind === 'image'), [media]);
-  const isLive = (presence?.displays ?? 0) > 0;
   const cloudEnabled = !!system && system.storage.provider !== 'local';
   const atEnd = !!currentItem && currentIndex === flow.length - 1 && (!display?.range || display.page >= display.range.end) && !display?.adHocMediaId;
+  const prefs = event?.preferences ?? null;
+
+  // "Start": nothing from the Flow has been on screen yet.
+  const defaultDeck = prefs?.defaultMediaId ? media.find((m) => m.id === prefs.defaultMediaId && !m.missing) : undefined;
+  const startLabel = !currentItem && (defaultDeck || flow.length) ? `Start: ${defaultDeck ? defaultDeck.name : itemLabel(flow[0])}` : null;
+  const start = () => {
+    if (defaultDeck) {
+      const inFlow = flow.find((q) => q.mediaId === defaultDeck.id);
+      const page = prefs?.defaultStartPage ?? undefined;
+      void run(inFlow ? { type: 'show-item', queueItemId: inFlow.id, page } : { type: 'show-media', mediaId: defaultDeck.id, page });
+    } else if (flow[0]) void run({ type: 'show-item', queueItemId: flow[0].id });
+  };
 
   const videoAction = (action: VideoCommand['action']) => {
     setVideoCommand({ action, nonce: ++videoNonce.current });
@@ -139,12 +190,38 @@ export default function DashboardPage() {
   const openDisplayWindow = () => {
     if (!eventId) return;
     const win = window.open(`/display/${eventId}`, `eventcontrol-display-${eventId}`, 'popup,width=1280,height=720');
-    if (!win) toast.warning('The browser blocked the pop-up. Allow pop-ups or open the display link manually.');
+    if (!win) toast.warning('The browser blocked the pop-up. Allow pop-ups for this site, or copy the display link from Settings → Projector.');
   };
 
   const toggleOverlay = () => {
-    if (!event?.overlay.mediaId) return toast.info('Choose a logo in the Branding tab first.');
+    if (!event?.overlay.mediaId) return toast.info('Choose an overlay logo in Branding first.');
     void run({ type: 'overlay', visible: !event.overlay.visible });
+  };
+
+  const triggerQuick = (item: QuickItem) => {
+    switch (item.kind) {
+      case 'screen':
+        return void run(item.screenId ? { type: 'show-screen', screenId: item.screenId } : { type: 'show-screen', key: item.screenKey as 'please-wait' });
+      case 'media':
+        return item.mediaId && void run({ type: 'show-media', mediaId: item.mediaId, page: item.page });
+      case 'black':
+        return void run({ type: 'black' });
+      case 'logo':
+        return void run({ type: 'logo' });
+      case 'current':
+        return void run({ type: 'show-current' });
+    }
+  };
+
+  const savePreferences = async (patch: Partial<EventPreferences>) => {
+    if (!eventId) return;
+    try {
+      await api.updatePreferences(eventId, patch);
+      await data.reloadEvent();
+    } catch (err) {
+      toast.error(errorMessage(err, 'Couldn’t save the setting. Check the connection and try again.'));
+      throw err;
+    }
   };
 
   useKeyboardShortcuts(
@@ -169,33 +246,55 @@ export default function DashboardPage() {
     !!eventId,
   );
 
-  // ---- Library / flow actions ----------------------------------------------------------
+  // ---- Files & Flow ------------------------------------------------------------------
 
-  const upload = async (files: File[], folder: string) => {
-    if (!eventId) return;
+  /** One place that turns an upload/import result into clear messages. */
+  const reportFiles = (result: UploadResult, verb: 'Uploaded' | 'Imported') => {
+    const n = result.uploaded.length;
+    if (n) toast.success(n === 1 ? `${verb} “${result.uploaded[0].name}”.` : `${verb} ${n} files.`);
+    if (result.uploaded.some((m) => m.kind === 'presentation')) toast.info('Turning the PowerPoint into slides in the background — usually under a minute.');
+    if (result.duplicates.length) toast.info(`${result.duplicates.map((d) => `“${d.name}”`).join(', ')} ${result.duplicates.length === 1 ? 'is' : 'are'} already in this event — kept the existing copy.`);
+    result.rejected.forEach((r) => toast.error(`${r.name}: ${r.error}`));
+  };
+
+  const upload = async (files: File[], folder = ''): Promise<UploadResult | null> => {
+    if (!eventId) return null;
     setUploadProgress(0);
     try {
       const result = await api.uploadMedia(eventId, files, setUploadProgress, folder);
-      if (result.uploaded.length) toast.success(result.uploaded.length === 1 ? `Uploaded "${result.uploaded[0].name}".` : `Uploaded ${result.uploaded.length} files.`);
-      if (result.uploaded.some((m) => m.kind === 'presentation')) toast.info('Converting PowerPoint slides in the background…');
-      if (result.duplicates.length) toast.info(`${result.duplicates.map((d) => `"${d.name}"`).join(', ')} already in the library — skipped.`);
-      result.rejected.forEach((r) => toast.error(`${r.name}: ${r.error}`));
+      reportFiles(result, 'Uploaded');
       await data.reloadMedia();
+      return result;
     } catch (err) {
-      toast.error(errorMessage(err, 'Unable to upload file.'));
+      toast.error(err instanceof ApiError && err.status === 0 ? 'The upload couldn’t reach the EventControl server. Is the black window still running?' : errorMessage(err, 'The upload failed. Please try again.'));
+      return null;
     } finally {
       setUploadProgress(null);
     }
   };
 
-  const addToFlow = async (m: Media, startPage: number | null = null, endPage: number | null = null) => {
+  const addToFlow = async (items: Media[], startPage: number | null = null, endPage: number | null = null) => {
+    if (!eventId || !items.length) return;
+    try {
+      for (const m of items) await api.addToQueue(eventId, m.id, { startPage, endPage });
+      await data.reloadQueue();
+      toast.success(items.length === 1 ? `Added “${items[0].name}” to the Flow.` : `Added ${items.length} files to the Flow.`);
+    } catch (err) {
+      toast.error(errorMessage(err, 'Couldn’t add to the Flow. Please try again.'));
+    }
+  };
+
+  const importFromDrive = async (fileIds: string[]) => {
     if (!eventId) return;
     try {
-      await api.addToQueue(eventId, m.id, { startPage, endPage });
-      await data.reloadQueue();
-      toast.success(`Added "${m.name}" to the show flow.`);
+      const result = await api.importFromDrive(eventId, fileIds);
+      reportFiles(result, 'Imported');
+      await data.reloadMedia();
+      if (driveTarget === 'flow') await addToFlow([...result.uploaded, ...result.duplicates]);
     } catch (err) {
-      toast.error(errorMessage(err, 'Unable to add to the show flow.'));
+      if (err instanceof ApiError && err.code === 'GOOGLE_RECONNECT') refreshGoogle();
+      toast.error(errorMessage(err, 'The import from Google Drive failed. Please try again.'));
+      throw err;
     }
   };
 
@@ -205,7 +304,7 @@ export default function DashboardPage() {
     try {
       setQueue(await api.reorderQueue(eventId, next.map((q) => q.id)));
     } catch (err) {
-      toast.error(errorMessage(err, 'Unable to reorder the show flow.'));
+      toast.error(errorMessage(err, 'Couldn’t save the new order. It has been put back.'));
       await quiet(data.reloadQueue());
     }
   };
@@ -214,9 +313,9 @@ export default function DashboardPage() {
     try {
       await api.deleteQueueItem(item.id);
       await data.reloadQueue();
-      toast.info(`Removed "${itemLabel(item)}" from the show flow.`);
+      toast.info(`Removed “${itemLabel(item)}” from the Flow. The file is still in Files.`);
     } catch (err) {
-      toast.error(errorMessage(err, 'Unable to remove item.'));
+      toast.error(errorMessage(err, 'Couldn’t remove the item. Please try again.'));
     }
   };
 
@@ -227,9 +326,9 @@ export default function DashboardPage() {
     }
     try {
       await api.openMediaExternally(m.id);
-      toast.success(`Opening "${m.name}" in PowerPoint on the server machine…`);
+      toast.success(`Opening “${m.name}” in PowerPoint on the EventControl computer…`);
     } catch (err) {
-      toast.error(errorMessage(err, 'Unable to start presentation.'));
+      toast.error(errorMessage(err, 'Couldn’t open PowerPoint here, so the file is downloading instead.'));
       window.open(`${m.url}?download=1`, '_blank', 'noopener');
     }
   };
@@ -241,207 +340,176 @@ export default function DashboardPage() {
       await data.reloadEvent();
       toast.success(message);
     } catch (err) {
-      toast.error(errorMessage(err, 'Unable to update the event.'));
+      toast.error(errorMessage(err, 'Couldn’t update the event.'));
     }
   };
 
-  if (data.error || joinError) {
+  // ---- Fatal states ------------------------------------------------------------------
+
+  if (joinError || (data.error && !event)) {
     return (
-      <div className="flex min-h-dvh flex-col items-center justify-center gap-4 p-8 text-center">
-        <h1 className="text-xl font-semibold text-white">Unable to open event</h1>
-        <p className="text-slate-400">{data.error ?? joinError}</p>
-        <Link to="/" className="text-sky-400 hover:underline">
-          Back to events
-        </Link>
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-3 p-8 text-center">
+        <h1 className="text-xl font-semibold text-white">{joinError ? 'This event no longer exists' : 'The event couldn’t be loaded'}</h1>
+        <p className="max-w-md text-slate-400">{joinError ? 'It may have been deleted in another window.' : data.error}</p>
+        <div className="mt-2 flex gap-2">
+          {!joinError && (
+            <Button variant="primary" icon={<RefreshCw size={15} />} onClick={() => void data.reloadAll()}>
+              Try again
+            </Button>
+          )}
+          <Link to="/" className="ec-btn ec-btn-secondary inline-flex h-10 items-center rounded-md px-4 text-sm font-medium">
+            All events
+          </Link>
+        </div>
       </div>
     );
   }
 
   const logo = event?.logoMediaId ? media.find((m) => m.id === event.logoMediaId && !m.missing) : undefined;
+  const presenter = ui.presenterMode;
   const pageCount = display?.mode === 'media' && display.media?.pdfUrl ? (display.media.pageCount ?? null) : null;
-  const previousItem = currentIndex > 0 ? flow[currentIndex - 1] : null;
+  const signedInOperator = google?.account ? { name: google.account.name, picture: google.account.picture } : auth?.user?.startsWith('google:') ? { name: auth.user.slice(7), picture: null } : null;
 
-  const library = (kinds: Media['kind'][], title: string) => (
-    <PresentationLibrary
-      className="min-h-[70dvh]"
-      title={title}
-      kinds={kinds}
-      media={media}
-      logoMediaId={event?.logoMediaId ?? null}
-      overlayMediaId={event?.overlay.mediaId ?? null}
-      flowMediaIds={flowMediaIds}
-      cloudEnabled={cloudEnabled}
-      uploadProgress={uploadProgress}
-      onUpload={upload}
-      onPreview={setPreviewing}
-      onAddToFlow={(m) => void addToFlow(m)}
-      onShowNow={(m) => void run({ type: 'show-media', mediaId: m.id })}
-      onOpen={openMedia}
-      onRename={async (m, name) => {
-        try {
-          await api.renameMedia(m.id, name);
-          await Promise.all([data.reloadMedia(), data.reloadQueue()]);
-        } catch (err) {
-          toast.error(errorMessage(err, 'Unable to rename file.'));
-        }
-      }}
-      onMove={async (m, folder) => {
-        try {
-          await api.moveMedia(m.id, folder);
-          await data.reloadMedia();
-          toast.success(folder ? `Moved "${m.name}" to ${folder}.` : `"${m.name}" is now unfiled.`);
-        } catch (err) {
-          toast.error(errorMessage(err, 'Unable to move file.'));
-        }
-      }}
-      onSetLogo={(m) => void setEventField({ logoMediaId: m?.id ?? null }, m ? `"${m.name}" is now the full-screen logo.` : 'Full-screen logo removed.')}
-      onSetOverlay={(m) => {
-        void run({ type: 'overlay', mediaId: m.id });
-        toast.success(`"${m.name}" is the overlay logo. Use "Show logo overlay" (or O) to display it.`);
-      }}
-      onReconvert={async (m) => {
-        try {
-          await api.reconvertMedia(m.id);
-          toast.info(`Converting "${m.name}"…`);
-        } catch (err) {
-          toast.error(errorMessage(err, 'Unable to convert.'));
-        }
-      }}
-      onDelete={setDeletingMedia}
-    />
-  );
-
-  const showFlow = (className: string) => (
-    <ShowFlowPanel
-      className={className}
-      flow={flow}
-      screens={screens}
-      currentId={display?.queueItemId ?? null}
-      nextId={nextItem?.id ?? null}
-      onAir={onAir}
-      onReorder={reorder}
-      onShow={(item) => void run({ type: 'show-item', queueItemId: item.id })}
-      onEdit={setEditingItem}
-      onRemove={removeFromFlow}
-      onAddFile={() => setView('presentations')}
-      onAddScreen={async (s) => {
-        if (!eventId) return;
-        try {
-          await api.addScreenToFlow(eventId, s.id);
-          await data.reloadQueue();
-          toast.success(`Added "${s.title}" to the show flow.`);
-        } catch (err) {
-          toast.error(errorMessage(err, 'Unable to add the screen.'));
-        }
-      }}
-    />
-  );
-
-  const timerPanel = (className?: string) => (
-    <TimerPanel className={className} timer={timer} remaining={remaining} overtime={timer ? timerOvertime(timer, clockOffset) : 0} send={(cmd) => void run(cmd)} />
+  const driveButton = (
+    <Button size="sm" variant="secondary" icon={<DriveIcon size={15} />} onClick={() => setDriveTarget('library')}>
+      Google Drive
+    </Button>
   );
 
   return (
-    <div className="flex min-h-dvh">
-      <Sidebar
-        view={view}
-        onView={setView}
-        logoUrl={logo?.url ?? null}
-        eventName={event?.name ?? 'EventControl'}
-        venue={event?.venue ?? ''}
-        disk={system?.disk}
-        signedIn={!!auth?.enabled}
-        onSignOut={signOut}
-      />
+    <ClockOffsetContext.Provider value={clockOffset}>
+      <div className="flex min-h-dvh lg:h-dvh">
+        {!presenter && (
+          <Sidebar
+            view={view}
+            onView={setView}
+            logoUrl={logo?.url ?? null}
+            eventName={event?.name ?? 'EventControl'}
+            disk={system?.disk}
+            signedIn={!!auth?.enabled}
+            operator={signedInOperator}
+            onSignOut={signOut}
+          />
+        )}
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        {/* ── Top bar ───────────────────────────────────────────────────────────── */}
-        <header className="sticky top-0 z-30 border-b border-[var(--line)] bg-console-900">
-          <div className="flex min-h-[72px] flex-wrap items-center gap-x-5 gap-y-2 px-4 py-2 sm:px-6">
-            <Link to="/" className="rounded-md p-1 text-slate-400 hover:text-white lg:hidden" aria-label="All events">
-              <ArrowLeft size={20} />
-            </Link>
-            <div className="min-w-0 flex-1">
-              <h1 className="truncate text-[21px] leading-tight font-bold tracking-[-0.015em] text-white">{event?.name ?? 'Loading…'}</h1>
-              <p className="text-sm text-slate-500">Event Control</p>
-            </div>
-            <div className="flex flex-wrap items-center">
-              <TopStatus
-                tone={isLive ? 'ok' : 'bad'}
-                icon={<span className={cn('h-2.5 w-2.5 rounded-full', isLive ? 'ec-dot-live bg-emerald-500 text-emerald-500/50' : 'animate-pulse-soft bg-red-500')} />}
-                title={isLive ? 'Display Connected' : 'Display Offline'}
-                detail={isLive ? (presence!.displays > 1 ? `${presence!.displays} projector windows` : 'Projector window open') : 'Open the display window'}
-              />
-              {system && (
+        <div className="flex min-w-0 flex-1 flex-col lg:min-h-0">
+          {/* ── Top bar ─────────────────────────────────────────────────────────── */}
+          <header className="z-30 border-b ec-line bg-console-900 max-lg:sticky max-lg:top-0">
+            <div className="flex min-h-[60px] flex-wrap items-center gap-x-5 gap-y-2 px-4 py-2 sm:px-5">
+              <Link to="/" className="rounded-md p-1 text-slate-400 hover:text-white lg:hidden" aria-label="All events">
+                <ArrowLeft size={20} />
+              </Link>
+              <div className="min-w-0 flex-1">
+                <h1 className="truncate text-[18px] leading-tight font-semibold tracking-[-0.015em] text-white">{event?.name ?? 'Loading…'}</h1>
+                <p className="truncate text-[13px] text-slate-500">{presenter ? 'Presenter mode' : view === 'control' ? 'Control' : NAV.find((n) => n.id === view)?.label}</p>
+              </div>
+              <div className="flex flex-wrap items-center">
                 <TopStatus
-                  tone={!cloudEnabled ? 'neutral' : system.storage.ok ? 'ok' : 'bad'}
-                  icon={system.storage.ok ? <Cloud size={20} /> : <CloudOff size={20} />}
-                  title={cloudEnabled ? (system.storage.ok ? (system.storage.pending ? 'Cloud Syncing' : 'Cloud Synced') : 'Cloud Offline') : 'Local Storage'}
-                  detail={
-                    uploadProgress !== null
-                      ? `Uploading ${Math.round(uploadProgress * 100)}%`
-                      : cloudEnabled
-                        ? system.storage.pending
-                          ? `${system.storage.pending} file${system.storage.pending > 1 ? 's' : ''} uploading`
-                          : 'All files backed up'
-                        : 'Files kept on this computer'
-                  }
-                  hint={system.storage.message}
+                  tone={isLive ? 'ok' : 'bad'}
+                  icon={<span className={cn('h-2.5 w-2.5 rounded-full', isLive ? 'ec-dot-live bg-emerald-500 text-emerald-500/50' : 'bg-red-500')} />}
+                  title={isLive ? 'Projector connected' : 'Projector offline'}
+                  detail={isLive ? (presence!.displays > 1 ? `${presence!.displays} display windows` : 'Display window open') : 'Open the display window'}
+                  onClick={isLive ? undefined : openDisplayWindow}
                 />
-              )}
-              {!(connected && reachable) && <TopStatus tone="bad" icon={<Server size={20} />} title="Server Offline" detail="Reconnecting…" />}
+                {system && !presenter && (
+                  <TopStatus
+                    tone={!cloudEnabled ? 'neutral' : system.storage.ok ? 'ok' : 'bad'}
+                    icon={uploadProgress !== null ? <Loader2 size={18} className="animate-spin" /> : system.storage.ok ? <Cloud size={18} /> : <CloudOff size={18} />}
+                    title={uploadProgress !== null ? `Uploading ${Math.round(uploadProgress * 100)}%` : cloudEnabled ? (system.storage.ok ? 'Cloud backup on' : 'Cloud offline') : 'Files on this computer'}
+                    detail={cloudEnabled ? (system.storage.pending ? `${system.storage.pending} still uploading` : 'All files backed up') : 'Works without internet'}
+                    hint={system.storage.message}
+                  />
+                )}
+              </div>
+              <div className="flex items-center gap-1 border-l ec-line pl-3 max-sm:border-l-0 max-sm:pl-0">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setUi({ presenterMode: !presenter })}
+                  aria-pressed={presenter}
+                  aria-label={presenter ? 'Leave presenter mode' : 'Presenter mode: only the Flow and the controls'}
+                  title={presenter ? 'Leave presenter mode' : 'Presenter mode: only the Flow and the controls'}
+                >
+                  {presenter ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+                </Button>
+                <ThemeSwitcher />
+                <Button variant="primary" icon={<MonitorPlay size={16} />} onClick={openDisplayWindow} className="ml-1">
+                  <span className="max-sm:hidden">Open display</span>
+                </Button>
+              </div>
             </div>
-            <div className="flex items-center gap-1 border-l border-[var(--line)] pl-4 max-sm:border-l-0 max-sm:pl-0">
-              <ThemeSwitcher />
-              <Button variant="ghost" icon={<Settings size={18} />} onClick={() => setView('settings')} className="max-xl:hidden">
-                Settings
-              </Button>
-              <Button variant="primary" icon={<MonitorPlay size={16} />} onClick={openDisplayWindow} className="ml-1">
-                <span className="max-sm:hidden">Open Display</span>
-              </Button>
-            </div>
-          </div>
-          {!connected && !data.loading && (
-            <div className="border-t border-amber-500/30 bg-amber-400/15 px-4 py-1.5 text-center text-xs text-amber-200">
-              Connection to the EventControl server lost — reconnecting automatically. The display keeps showing the last content.
-            </div>
-          )}
-          {/* Sections, for screens too narrow for the sidebar. */}
-          <nav className="scroll-thin flex gap-1 overflow-x-auto border-t border-[var(--line)] px-3 py-1.5 lg:hidden" aria-label="Console sections">
-            {NAV.map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                onClick={() => setView(id)}
-                aria-current={view === id ? 'page' : undefined}
-                className={cn('flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm', view === id ? 'bg-sky-500/12 font-semibold text-sky-300' : 'text-slate-400')}
-              >
-                <Icon size={15} /> {label}
-              </button>
-            ))}
-          </nav>
-        </header>
+            {(!connected || (connected && !joined)) && !data.loading && (
+              <div className="flex items-center justify-center gap-2 border-t border-amber-500/30 bg-amber-400/15 px-4 py-1.5 text-[13px] text-amber-200" role="status">
+                <WifiOff size={14} />
+                {!reachable || !connected
+                  ? 'Reconnecting to the EventControl server… The projector keeps showing the last picture. Buttons work again as soon as this bar disappears.'
+                  : 'Reconnecting to the event…'}
+              </div>
+            )}
+            {!presenter && (
+              <nav className="scroll-thin flex gap-1 overflow-x-auto border-t ec-line px-3 py-1.5 lg:hidden" aria-label="Console sections">
+                {NAV.map(({ id, label, icon: Icon }) => (
+                  <button
+                    key={id}
+                    onClick={() => setView(id)}
+                    aria-current={view === id ? 'page' : undefined}
+                    className={cn('flex shrink-0 items-center gap-1.5 rounded-[5px] px-2.5 py-1.5 text-sm', view === id ? 'bg-sky-500/12 font-semibold text-sky-300' : 'text-slate-400')}
+                  >
+                    <Icon size={15} /> {label}
+                  </button>
+                ))}
+              </nav>
+            )}
+          </header>
 
-        <main key={view} className="ec-page-in min-w-0 flex-1 p-3 sm:p-4">
-          {view === 'control' && (
-            <div
-              className="grid gap-4 lg:h-[calc(100dvh-72px-2rem)] lg:grid-cols-[minmax(0,1fr)_minmax(360px,420px)] 2xl:grid-cols-[minmax(0,1fr)_452px]"
-              style={{ '--preview-h': 'clamp(200px, calc(100dvh - 590px), 640px)' } as CSSProperties}
+          {view === 'control' || presenter ? (
+            <main
+              className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1.3fr)_minmax(400px,1fr)] lg:overflow-hidden"
+              style={{ '--preview-h': 'clamp(170px, 34vh, 520px)' } as CSSProperties}
             >
-              <div className="scroll-thin flex min-h-0 min-w-0 flex-col gap-4 lg:overflow-y-auto [&>*]:shrink-0">
-                <LivePreview
+              <FlowPane
+                className="border-[var(--line)] max-lg:order-2 max-lg:max-h-[80vh] max-lg:border-t lg:border-r"
+                flow={flow}
+                screens={screens}
+                display={display}
+                currentId={display?.queueItemId ?? null}
+                nextId={nextItem?.id ?? null}
+                onAir={showingFlowItem && isLive}
+                showSlides={ui.showSlides}
+                onShow={(item) => void run({ type: 'show-item', queueItemId: item.id })}
+                onGoToPage={(page) => void run(showingFlowItem ? { type: 'page', page } : { type: 'show-item', queueItemId: currentItem!.id, page })}
+                onReorder={reorder}
+                onEdit={setEditingItem}
+                onRemove={removeFromFlow}
+                onAddFiles={() => setPickerOpen(true)}
+                onAddScreen={async (s) => {
+                  if (!eventId) return;
+                  try {
+                    await api.addScreenToFlow(eventId, s.id);
+                    await data.reloadQueue();
+                    toast.success(`Added “${s.title}” to the Flow.`);
+                  } catch (err) {
+                    toast.error(errorMessage(err, 'Couldn’t add the screen.'));
+                  }
+                }}
+              />
+              <div className="ec-pane-alt scroll-thin min-h-0 max-lg:order-1 lg:overflow-y-auto">
+                <StagePane
                   display={display}
                   timer={timer}
-                  timerRemaining={remaining}
+                  offFlow={offFlow}
                   videoCommand={videoCommand}
                   live={isLive}
+                  showPreview={ui.showPreview}
                   currentItem={currentItem}
                   nextItem={nextItem}
-                  previousItem={previousItem}
                   canNext={flow.length > 0 && joined && !atEnd}
                   canPrevious={flow.length > 0 && joined}
+                  startLabel={startLabel}
+                  onStart={start}
                   onNext={() => void run({ type: 'next' })}
                   onPrevious={() => void run({ type: 'previous' })}
-                  onShowItem={(item) => void run({ type: 'show-item', queueItemId: item.id })}
+                  onResume={() => void run({ type: 'show-current' })}
                   onGoToPage={(page) => void run({ type: 'page', page })}
                   onVideo={videoAction}
                   onFullscreen={() => void run({ type: 'fullscreen' })}
@@ -450,275 +518,266 @@ export default function DashboardPage() {
                     const m = media.find((x) => x.id === id);
                     if (m) void openMedia(m);
                   }}
-                />
-                <LibraryTable
-                  className="min-h-[220px] flex-1"
+                >
+                  <QuickSelection preferences={prefs} screens={screens} media={media} display={display} disabled={!joined} onTrigger={triggerQuick} onEdit={() => setQuickEditorOpen(true)} />
+                  <TimerStrip timer={timer} send={(cmd) => void run(cmd)} onMore={() => setView('timers')} />
+                  {/* Hidden "go to slide" target for the G shortcut. */}
+                  {pageCount && (
+                    <input
+                      ref={jumpRef}
+                      className="sr-only"
+                      aria-label="Go to slide number"
+                      inputMode="numeric"
+                      onKeyDown={(e) => {
+                        if (e.key !== 'Enter') return;
+                        const n = Number(e.currentTarget.value);
+                        if (Number.isInteger(n) && n >= 1 && n <= pageCount) void run({ type: 'page', page: n });
+                        e.currentTarget.value = '';
+                        e.currentTarget.blur();
+                      }}
+                    />
+                  )}
+                </StagePane>
+              </div>
+            </main>
+          ) : (
+            <main key={view} className="ec-page-in scroll-thin min-w-0 flex-1 p-4 sm:p-6 lg:overflow-y-auto">
+              {view === 'files' && (
+                <PresentationLibrary
+                  className="mx-auto min-h-[70dvh] max-w-7xl"
+                  title="Files"
+                  extraActions={driveButton}
                   media={media}
+                  logoMediaId={event?.logoMediaId ?? null}
+                  overlayMediaId={event?.overlay.mediaId ?? null}
                   flowMediaIds={flowMediaIds}
+                  cloudEnabled={cloudEnabled}
                   uploadProgress={uploadProgress}
-                  onUpload={(files) => void upload(files, '')}
+                  onUpload={(files, folder) => void upload(files, folder)}
                   onPreview={setPreviewing}
+                  onAddToFlow={(m) => void addToFlow([m])}
                   onShowNow={(m) => void run({ type: 'show-media', mediaId: m.id })}
-                  onAddToFlow={(m) => void addToFlow(m)}
                   onOpen={openMedia}
-                  onDelete={setDeletingMedia}
-                  onManage={() => setView('presentations')}
-                />
-              </div>
-              <div className="scroll-thin flex min-h-0 min-w-0 flex-col gap-4 lg:overflow-y-auto [&>*]:shrink-0">
-                <LiveControls
-                  display={display}
-                  disabled={!joined}
-                  canNext={flow.length > 0 && !atEnd}
-                  canPrevious={flow.length > 0}
-                  pageCount={pageCount}
-                  jumpRef={jumpRef}
-                  onResume={() => void run({ type: 'show-current' })}
-                  onNext={() => void run({ type: 'next' })}
-                  onPrevious={() => void run({ type: 'previous' })}
-                  onGoToPage={(page) => void run({ type: 'page', page })}
-                  onShortcuts={() => setHelpOpen(true)}
-                />
-                <QuickScreens
-                  display={display}
-                  disabled={!joined}
-                  onPleaseWait={() => void run({ type: 'show-screen', key: 'please-wait' })}
-                  onTechnical={() => void run({ type: 'show-screen', key: 'technical' })}
-                  onBlack={() => void run({ type: 'black' })}
-                  onLogo={() => void run({ type: 'logo' })}
-                />
-                {timerPanel()}
-                {showFlow('min-h-[240px] flex-1')}
-              </div>
-            </div>
-          )}
-
-          {view === 'presentations' && library(['presentation', 'pdf'], 'Presentations')}
-          {view === 'media' && library(['image', 'video'], 'Media Library')}
-
-          {view === 'flow' && (
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
-              {showFlow('min-h-[70dvh]')}
-              <div className="flex flex-col gap-4">
-                <UpNextCard current={currentItem} next={nextItem} onEditNotes={setEditingItem} />
-                <p className="px-1 text-sm text-slate-500">
-                  Drag the handles to reorder. Double-click an item to put it on the display. Press <b className="text-slate-300">Edit</b> to change slide ranges, durations and notes.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {view === 'screens' && (
-            <Panel title="Screens" icon={<LayoutGrid size={20} />} className="mx-auto max-w-3xl">
-              <ScreensPanel
-                screens={screens}
-                display={display}
-                media={media}
-                onShow={(s, timerMs) => void run({ type: 'show-screen', screenId: s.id, timerMs })}
-                onAddToFlow={async (s) => {
-                  if (!eventId) return;
-                  await quiet(api.addScreenToFlow(eventId, s.id));
-                  await data.reloadQueue();
-                  toast.success(`Added "${s.title}" to the show flow.`);
-                }}
-                onSave={async (s, input) => {
-                  if (!eventId) return;
-                  if (s) await api.updateScreen(s.id, input);
-                  else await api.createScreen(eventId, input);
-                  await data.reloadScreens();
-                  toast.success('Screen saved.');
-                }}
-                onDelete={async (s) => {
-                  try {
-                    await api.deleteScreen(s.id);
-                    await Promise.all([data.reloadScreens(), data.reloadQueue()]);
-                  } catch (err) {
-                    toast.error(errorMessage(err, 'Unable to delete the screen.'));
-                  }
-                }}
-              />
-            </Panel>
-          )}
-
-          {view === 'branding' && (
-            <Panel title="Branding" icon={<Palette size={20} />} className="mx-auto max-w-2xl">
-              <BrandingPanel event={event} images={images} onChange={(patch) => void run({ type: 'overlay', ...patch })} />
-            </Panel>
-          )}
-
-          {view === 'timers' && (
-            <div className="mx-auto grid max-w-5xl gap-4 lg:grid-cols-2">
-              {timerPanel()}
-              <Panel title="Schedule" icon={<CalendarClock size={20} />}>
-                <SchedulePanel
-                  embedded
-                  schedule={schedule}
-                  onAdd={async (item) => {
-                    if (!eventId) return;
-                    await api.addScheduleItem(eventId, { ...item, description: '', durationMinutes: null });
-                    await data.reloadSchedule();
-                  }}
-                  onDelete={async (item) => {
+                  onRename={async (m, name) => {
                     try {
-                      await api.deleteScheduleItem(item.id);
-                      await data.reloadSchedule();
+                      await api.renameMedia(m.id, name);
+                      await Promise.all([data.reloadMedia(), data.reloadQueue()]);
                     } catch (err) {
-                      toast.error(errorMessage(err, 'Unable to delete schedule item.'));
+                      toast.error(errorMessage(err, 'Couldn’t rename the file.'));
                     }
                   }}
+                  onMove={async (m, folder) => {
+                    try {
+                      await api.moveMedia(m.id, folder);
+                      await data.reloadMedia();
+                      toast.success(folder ? `Moved “${m.name}” to ${folder}.` : `“${m.name}” is now unfiled.`);
+                    } catch (err) {
+                      toast.error(errorMessage(err, 'Couldn’t move the file.'));
+                    }
+                  }}
+                  onSetLogo={(m) => void setEventField({ logoMediaId: m?.id ?? null }, m ? `“${m.name}” is now the full-screen logo.` : 'Full-screen logo removed.')}
+                  onSetOverlay={(m) => {
+                    void run({ type: 'overlay', mediaId: m.id });
+                    toast.success(`“${m.name}” is the overlay logo. Show it from Branding (or press O).`);
+                  }}
+                  onReconvert={async (m) => {
+                    try {
+                      await api.reconvertMedia(m.id);
+                      toast.info(`Converting “${m.name}”…`);
+                    } catch (err) {
+                      toast.error(errorMessage(err, 'Couldn’t start the conversion.'));
+                    }
+                  }}
+                  onDelete={setDeletingMedia}
                 />
-              </Panel>
-            </div>
-          )}
+              )}
 
-          {view === 'settings' && (
-            <SettingsView
-              eventName={event?.name ?? ''}
-              eventMeta={[event?.venue, event?.date ? formatEventDate(event.date) : null].filter(Boolean).join(' · ')}
-              displayUrl={eventId ? `${window.location.origin}/display/${eventId}` : ''}
-              signedIn={!!auth?.enabled}
-              onEditEvent={() => setEditEventOpen(true)}
-              onOpenDisplay={openDisplayWindow}
-              onFullscreen={() => void run({ type: 'fullscreen' })}
-              onShortcuts={() => setHelpOpen(true)}
-              onSignOut={signOut}
-              onCopied={() => toast.success('Display link copied.')}
-            />
-          )}
-        </main>
-      </div>
+              {view === 'screens' && (
+                <Panel title="Screens" icon={<LayoutGrid size={19} />} className="mx-auto max-w-3xl">
+                  <ScreensPanel
+                    screens={screens}
+                    display={display}
+                    media={media}
+                    onShow={(s, timerMs) => void run({ type: 'show-screen', screenId: s.id, timerMs })}
+                    onAddToFlow={async (s) => {
+                      if (!eventId) return;
+                      await quiet(api.addScreenToFlow(eventId, s.id));
+                      await data.reloadQueue();
+                      toast.success(`Added “${s.title}” to the Flow.`);
+                    }}
+                    onSave={async (s, input) => {
+                      if (!eventId) return;
+                      if (s) await api.updateScreen(s.id, input);
+                      else await api.createScreen(eventId, input);
+                      await data.reloadScreens();
+                      toast.success('Screen saved.');
+                    }}
+                    onDelete={async (s) => {
+                      try {
+                        await api.deleteScreen(s.id);
+                        await Promise.all([data.reloadScreens(), data.reloadQueue()]);
+                      } catch (err) {
+                        toast.error(errorMessage(err, 'Couldn’t delete the screen.'));
+                      }
+                    }}
+                  />
+                </Panel>
+              )}
 
-      <FlowItemModal
-        item={editingItem}
-        onClose={() => setEditingItem(null)}
-        onSave={async (id, patch) => {
-          await api.updateQueueItem(id, patch);
-          await data.reloadQueue();
-          toast.success('Show flow item updated.');
-        }}
-      />
-      <PreviewModal
-        media={previewing}
-        onClose={() => setPreviewing(null)}
-        onShowPage={(m, page) => void run({ type: 'show-media', mediaId: m.id, page: m.pdfUrl ? page : undefined })}
-        onAddToFlow={(m, start, end) => void addToFlow(m, start, end)}
-      />
-      <EventFormModal
-        open={editEventOpen}
-        event={event}
-        logoOptions={images}
-        onClose={() => setEditEventOpen(false)}
-        onSubmit={async (input) => {
-          if (!eventId) return;
-          await api.updateEvent(eventId, input);
-          await data.reloadEvent();
-          toast.success('Event updated.');
-        }}
-      />
-      <ConfirmDialog
-        open={!!deletingMedia}
-        title="Delete file?"
-        message={
-          <>
-            <b className="text-white">{deletingMedia?.name}</b> will be deleted{cloudEnabled ? ' from this computer and the cloud' : ''}
-            {deletingMedia && flowMediaIds.has(deletingMedia.id) ? ' and removed from the show flow' : ''}. This cannot be undone.
-          </>
-        }
-        onClose={() => setDeletingMedia(null)}
-        onConfirm={async () => {
-          if (!deletingMedia) return;
-          try {
-            await api.deleteMedia(deletingMedia.id);
-            await Promise.all([data.reloadMedia(), data.reloadQueue(), data.reloadEvent()]);
-            toast.success('File deleted.');
-          } catch (err) {
-            toast.error(errorMessage(err, 'Unable to delete file.'));
+              {view === 'branding' && (
+                <Panel title="Branding" icon={<Palette size={19} />} className="mx-auto max-w-2xl">
+                  <BrandingPanel event={event} images={images} onChange={(patch) => void run({ type: 'overlay', ...patch })} />
+                </Panel>
+              )}
+
+              {view === 'timers' && (
+                <div className="mx-auto grid max-w-5xl gap-4 lg:grid-cols-2">
+                  <TimerPanel timer={timer} send={(cmd) => void run(cmd)} />
+                  <Panel title="Schedule" icon={<CalendarClock size={19} />}>
+                    <SchedulePanel
+                      embedded
+                      schedule={schedule}
+                      onAdd={async (item) => {
+                        if (!eventId) return;
+                        await api.addScheduleItem(eventId, { ...item, description: '', durationMinutes: null });
+                        await data.reloadSchedule();
+                      }}
+                      onDelete={async (item) => {
+                        try {
+                          await api.deleteScheduleItem(item.id);
+                          await data.reloadSchedule();
+                        } catch (err) {
+                          toast.error(errorMessage(err, 'Couldn’t delete the schedule item.'));
+                        }
+                      }}
+                    />
+                  </Panel>
+                </div>
+              )}
+
+              {view === 'settings' && (
+                <SettingsView
+                  event={event}
+                  media={media}
+                  screens={screens}
+                  google={google}
+                  signedIn={!!auth?.enabled}
+                  displayUrl={eventId ? `${window.location.origin}/display/${eventId}` : ''}
+                  uploadProgress={uploadProgress}
+                  onPreferences={(patch) => void savePreferences(patch).then(() => toast.success('Saved.'), () => undefined)}
+                  onCustomizeQuick={() => setQuickEditorOpen(true)}
+                  onUpload={(files) => void upload(files)}
+                  onBrowseDrive={() => setDriveTarget('library')}
+                  onDisconnectGoogle={async () => {
+                    try {
+                      setGoogle(await api.googleDisconnect());
+                      toast.info('Google disconnected. Files you already imported stay in your events.');
+                    } catch (err) {
+                      toast.error(errorMessage(err, 'Couldn’t disconnect Google.'));
+                    }
+                  }}
+                  onEditEvent={() => setEditEventOpen(true)}
+                  onOpenDisplay={openDisplayWindow}
+                  onFullscreen={() => void run({ type: 'fullscreen' })}
+                  onShortcuts={() => setHelpOpen(true)}
+                  onSignOut={signOut}
+                  onCopied={() => toast.success('Display link copied.')}
+                />
+              )}
+            </main>
+          )}
+        </div>
+
+        <FilePicker
+          open={pickerOpen}
+          media={media}
+          flowMediaIds={flowMediaIds}
+          uploadProgress={uploadProgress}
+          driveAvailable={!!google?.connected}
+          onClose={() => setPickerOpen(false)}
+          onAdd={(files) => addToFlow(files)}
+          onUpload={(files) => void upload(files)}
+          onDrive={() => {
+            setPickerOpen(false);
+            setDriveTarget('flow');
+          }}
+        />
+        <DriveBrowser open={driveTarget !== null} status={google} onClose={() => setDriveTarget(null)} onImport={importFromDrive} onStatusChange={refreshGoogle} />
+        <QuickSelectionEditor
+          open={quickEditorOpen}
+          preferences={prefs}
+          screens={screens}
+          media={media}
+          onClose={() => setQuickEditorOpen(false)}
+          onSave={async (items) => {
+            await savePreferences({ quickSelection: items });
+            toast.success('Quick Selection saved.');
+          }}
+        />
+        <FlowItemModal
+          item={editingItem}
+          onClose={() => setEditingItem(null)}
+          onSave={async (id, patch) => {
+            await api.updateQueueItem(id, patch);
+            await data.reloadQueue();
+            toast.success('Flow item updated.');
+          }}
+        />
+        <PreviewModal
+          media={previewing}
+          onClose={() => setPreviewing(null)}
+          onShowPage={(m, page) => void run({ type: 'show-media', mediaId: m.id, page: m.pdfUrl ? page : undefined })}
+          onAddToFlow={(m, start, end) => void addToFlow([m], start, end)}
+        />
+        <EventFormModal
+          open={editEventOpen}
+          event={event}
+          logoOptions={images}
+          onClose={() => setEditEventOpen(false)}
+          onSubmit={async (input) => {
+            if (!eventId) return;
+            await api.updateEvent(eventId, input);
+            await data.reloadEvent();
+            toast.success('Event updated.');
+          }}
+        />
+        <ConfirmDialog
+          open={!!deletingMedia}
+          title="Delete file?"
+          message={
+            <>
+              <b className="text-white">{deletingMedia?.name}</b> will be deleted{cloudEnabled ? ' from this computer and the cloud' : ''}
+              {deletingMedia && flowMediaIds.has(deletingMedia.id) ? ' and removed from the Flow' : ''}. This can’t be undone.
+            </>
           }
-        }}
-      />
-      <ShortcutsHelp open={helpOpen} onClose={() => setHelpOpen(false)} />
-    </div>
+          onClose={() => setDeletingMedia(null)}
+          onConfirm={async () => {
+            if (!deletingMedia) return;
+            try {
+              await api.deleteMedia(deletingMedia.id);
+              await Promise.all([data.reloadMedia(), data.reloadQueue(), data.reloadEvent()]);
+              toast.success('File deleted.');
+            } catch (err) {
+              toast.error(errorMessage(err, 'Couldn’t delete the file.'));
+            }
+          }}
+        />
+        <ShortcutsHelp open={helpOpen} onClose={() => setHelpOpen(false)} />
+      </div>
+    </ClockOffsetContext.Provider>
   );
 }
 
 /** One status in the top bar: a coloured signal, a title and a quieter detail line. */
-function TopStatus({ tone, icon, title, detail, hint }: { tone: 'ok' | 'bad' | 'neutral'; icon: ReactNode; title: string; detail: string; hint?: string }) {
+function TopStatus({ tone, icon, title, detail, hint, onClick }: { tone: 'ok' | 'bad' | 'neutral'; icon: ReactNode; title: string; detail: string; hint?: string; onClick?: () => void }) {
+  const Tag = onClick ? 'button' : 'div';
   return (
-    <div className="flex items-center gap-3 border-l border-[var(--line)] px-4 first:border-l-0" title={hint}>
-      <span className={cn('flex shrink-0 items-center', tone === 'bad' ? 'text-red-400' : tone === 'ok' ? 'text-slate-400' : 'text-slate-400')}>{icon}</span>
-      <div className="leading-tight">
-        <p className={cn('text-[13px] font-semibold', tone === 'bad' ? 'text-red-400' : 'text-white')}>{title}</p>
-        <p className="text-xs text-slate-500 max-md:hidden">{detail}</p>
-      </div>
-    </div>
-  );
-}
-
-function SettingsView({
-  eventName,
-  eventMeta,
-  displayUrl,
-  signedIn,
-  onEditEvent,
-  onOpenDisplay,
-  onFullscreen,
-  onShortcuts,
-  onSignOut,
-  onCopied,
-}: {
-  eventName: string;
-  eventMeta: string;
-  displayUrl: string;
-  signedIn: boolean;
-  onEditEvent: () => void;
-  onOpenDisplay: () => void;
-  onFullscreen: () => void;
-  onShortcuts: () => void;
-  onSignOut: () => void;
-  onCopied: () => void;
-}) {
-  return (
-    <div className="mx-auto grid max-w-3xl gap-4">
-      <Panel title="Event" icon={<Pencil size={18} />} actions={<Button size="sm" variant="secondary" onClick={onEditEvent}>Edit details</Button>}>
-        <p className="text-[15px] font-semibold text-white">{eventName}</p>
-        <p className="text-sm text-slate-500">{eventMeta || 'No date or venue yet.'}</p>
-      </Panel>
-      <Panel title="Appearance" icon={<Palette size={18} />}>
-        <p className="mb-3 text-sm text-slate-500">Colours of this console. The projector output is not affected.</p>
-        <ThemePicker />
-      </Panel>
-      <Panel title="Projector" icon={<MonitorPlay size={18} />} bodyClassName="grid gap-3">
-        <p className="text-sm text-slate-500">
-          Open the display on the computer connected to the projector (or drag this window there), then press <b className="text-slate-300">F</b> in it for fullscreen.
-        </p>
-        <div className="flex overflow-hidden rounded-lg border border-[var(--line-strong)]">
-          <input readOnly value={displayUrl} className="min-w-0 flex-1 bg-console-850 px-3 font-mono text-[13px] text-slate-300 focus:outline-none" onFocus={(e) => e.target.select()} aria-label="Display link" />
-          <button
-            className="border-l border-[var(--line-strong)] px-3 text-sm font-medium text-slate-200 hover:bg-console-700"
-            onClick={() => void navigator.clipboard?.writeText(displayUrl).then(onCopied, () => undefined)}
-          >
-            Copy link
-          </button>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="primary" icon={<MonitorPlay size={16} />} onClick={onOpenDisplay}>
-            Open display window
-          </Button>
-          <Button icon={<Maximize size={15} />} onClick={onFullscreen}>
-            Make display fullscreen
-          </Button>
-        </div>
-      </Panel>
-      <Panel title="Keyboard & account" icon={<Keyboard size={18} />} bodyClassName="flex flex-wrap gap-2">
-        <Button icon={<Keyboard size={15} />} onClick={onShortcuts}>
-          Keyboard shortcuts
-        </Button>
-        {signedIn && (
-          <Button icon={<LogOut size={15} />} onClick={onSignOut}>
-            Sign out
-          </Button>
-        )}
-      </Panel>
-    </div>
+    <Tag onClick={onClick} className={cn('flex items-center gap-2.5 border-l ec-line px-4 text-left first:border-l-0', onClick && 'rounded-sm hover:bg-console-700')} title={hint}>
+      <span className={cn('flex shrink-0 items-center', tone === 'bad' ? 'text-red-400' : 'text-slate-400')}>{icon}</span>
+      <span className="leading-tight">
+        <span className={cn('block text-[13px] font-semibold', tone === 'bad' ? 'text-red-400' : 'text-white')}>{title}</span>
+        <span className={cn('block text-xs max-md:hidden', onClick ? 'text-sky-300' : 'text-slate-500')}>{detail}</span>
+      </span>
+    </Tag>
   );
 }

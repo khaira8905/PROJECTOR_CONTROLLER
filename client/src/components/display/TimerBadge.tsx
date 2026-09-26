@@ -1,10 +1,12 @@
+import { useLiveRemaining } from '../../hooks/useLiveRemaining';
 import { timerTone } from '../../lib/timer';
 import { cn } from '../../lib/cn';
 import type { TimerSnapshot } from '../../types';
 import { RollingClock } from './motion';
 
 /** Corner countdown over slides (only when the operator enables "Show timer on display"). */
-export function TimerBadge({ timer, remaining }: { timer: TimerSnapshot; remaining: number }) {
+export function TimerBadge({ timer }: { timer: TimerSnapshot }) {
+  const remaining = useLiveRemaining(timer);
   const tone = timerTone(timer, remaining);
   const fraction = timer.durationMs > 0 ? Math.max(0, Math.min(1, remaining / timer.durationMs)) : 0;
   return (

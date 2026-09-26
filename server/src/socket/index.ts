@@ -12,7 +12,7 @@ import { parseCookies } from '../lib/cookies';
 import { SESSION_COOKIE, authEnabled, verifySessionToken } from '../services/authService';
 
 type Role = 'operator' | 'display';
-type Ack = (response: { ok: true; data?: unknown } | { ok: false; error: string }) => void;
+type Ack = (response: { ok: true; data?: unknown } | { ok: false; error: string; status?: number }) => void;
 
 const joinSchema = z.object({
   eventId: z.string().min(1).max(64),
@@ -92,7 +92,8 @@ export function createSocketServer(httpServer: HttpServer): Server {
         void broadcastPresence(io, eventId);
         logger.info(`${role} joined event ${eventId} (${socket.id})`);
       } catch (err) {
-        ack({ ok: false, error: errorMessage(err) });
+        // The status tells the client whether retrying makes sense (404/401 won't fix themselves).
+        ack({ ok: false, error: errorMessage(err), status: err instanceof HttpError ? err.status : 500 });
       }
     });
 

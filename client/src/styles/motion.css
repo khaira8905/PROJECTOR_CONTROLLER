@@ -305,6 +305,18 @@
 
 /* ───────────────────────── Reduced motion ───────────────────────── */
 
+/* The console's own "Animations: Off" setting (the projector output keeps its motion). */
+:root[data-motion='off'] .ec-shell [class*='ec-'],
+:root[data-motion='off'] .ec-shell [class*='ec-']::before,
+:root[data-motion='off'] .ec-shell [class*='ec-'] > * {
+  animation: none !important;
+  transition: none !important;
+}
+:root[data-motion='reduced'] .ec-shell [class*='ec-'] {
+  animation-duration: 1ms !important;
+  animation-iteration-count: 1 !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   [class*='ec-'],
   [class*='ec-']::before,

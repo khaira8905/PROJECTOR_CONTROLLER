@@ -86,7 +86,7 @@ export default function EventsPage() {
         </div>
 
         {loadError && (
-          <div className="mb-6 flex items-center justify-between rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          <div className="mb-6 flex items-center justify-between rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
             {loadError}
             <Button size="sm" onClick={load}>
               Retry
@@ -97,15 +97,15 @@ export default function EventsPage() {
         {events === null && !loadError && (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {[0, 1, 2].map((i) => (
-              <div key={i} className="ec-card h-52 animate-pulse rounded-2xl" style={{ animationDelay: `${i * 150}ms` }} />
+              <div key={i} className="ec-card h-52 animate-pulse rounded-lg" style={{ animationDelay: `${i * 150}ms` }} />
             ))}
           </div>
         )}
 
         {events && events.length === 0 && (
-          <div className="ec-card ec-panel-in flex flex-col items-center rounded-3xl px-6 py-20 text-center">
-            <span className="ec-bob relative flex h-20 w-20 items-center justify-center rounded-2xl bg-sky-500/10 text-sky-300 ring-1 ring-sky-400/25 ring-inset">
-              <span className="absolute inset-0 rounded-2xl bg-sky-500/20 blur-2xl" />
+          <div className="ec-card ec-panel-in flex flex-col items-center rounded-lg px-6 py-20 text-center">
+            <span className="ec-bob relative flex h-20 w-20 items-center justify-center rounded-lg bg-sky-500/10 text-sky-300 ring-1 ring-sky-400/25 ring-inset">
+              <span className="absolute inset-0 rounded-lg bg-sky-500/20 blur-2xl" />
               <MonitorPlay size={36} className="relative" />
             </span>
             <h2 className="mt-6 font-display text-2xl font-semibold text-white">No events yet</h2>
@@ -187,10 +187,10 @@ function EventCard({ event, onEdit, onDelete }: { event: EventSummary; onEdit: (
       onClick={(e) => {
         if (!(e.target as HTMLElement).closest('button, a')) open();
       }}
-      className="ec-card ec-spot group flex cursor-pointer flex-col rounded-2xl p-5 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1.5"
+      className="ec-card ec-spot group flex cursor-pointer flex-col rounded-lg p-5 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1.5"
     >
       <div className="flex items-start gap-4">
-        <div className="flex h-16 w-14 shrink-0 flex-col items-center justify-center rounded-xl bg-white/[0.04] ring-1 ring-white/[0.08] ring-inset transition-colors duration-300 group-hover:bg-sky-500/15 group-hover:ring-sky-400/30">
+        <div className="flex h-16 w-14 shrink-0 flex-col items-center justify-center rounded-md bg-white/[0.04] ring-1 ring-white/[0.08] ring-inset transition-colors duration-300 group-hover:bg-sky-500/15 group-hover:ring-sky-400/30">
           <span className="font-mono text-[10px] font-semibold tracking-[0.18em] text-sky-300 uppercase">{month}</span>
           <span className="font-display text-2xl leading-none font-bold text-white">{date.getDate()}</span>
         </div>
@@ -217,7 +217,7 @@ function EventCard({ event, onEdit, onDelete }: { event: EventSummary; onEdit: (
           {menuOpen && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-              <div className="ec-card ec-card-raised ec-pop-in absolute right-0 z-20 mt-1 w-36 origin-top-right overflow-hidden rounded-xl py-1">
+              <div className="ec-card ec-card-raised ec-pop-in absolute right-0 z-20 mt-1 w-36 origin-top-right overflow-hidden rounded-md py-1">
                 <button className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-white/5" onClick={() => (setMenuOpen(false), onEdit())}>
                   <Pencil size={14} /> Edit
                 </button>

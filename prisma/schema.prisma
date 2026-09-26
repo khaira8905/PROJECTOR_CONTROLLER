@@ -29,6 +29,8 @@ model Event {
   // 0-100
   overlayOpacity Int      @default(90)
   overlayVisible Boolean  @default(false)
+  // Operator preferences for this event as JSON: Quick Selection, default presentation…
+  preferences    String   @default("{}")
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -63,6 +65,9 @@ model Media {
   // none | pending | ready | failed | unavailable
   conversionStatus String @default("none")
   conversionError  String?
+  // Where the file came from: "upload" or "drive" (sourceRef = Google Drive file id).
+  source           String   @default("upload")
+  sourceRef        String?
   // local | pending | synced | error  (cloud storage copy)
   cloudStatus  String   @default("local")
   cloudError   String?

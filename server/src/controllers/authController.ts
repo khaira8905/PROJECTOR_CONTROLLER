@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import { z } from 'zod';
-import { config } from '../config';
+import { config, googleConfigured } from '../config';
 import { parseCookies } from '../lib/cookies';
 import * as auth from '../services/authService';
 
@@ -8,7 +8,7 @@ const passwordSchema = z.object({ password: z.string().min(1, 'Password is requi
 const loginSchema = z.object({ email: z.string().trim().max(200).optional(), password: z.string().min(1, 'Password is required').max(200) });
 const changeSchema = z.object({ currentPassword: z.string().min(1).max(200), newPassword: z.string().min(1).max(200) });
 
-async function startSession(req: Request, res: Response, subject: string) {
+export async function startSession(req: Request, res: Response, subject: string) {
   const { token, maxAgeMs } = await auth.createSessionToken(subject);
   res.cookie(auth.SESSION_COOKIE, token, {
     httpOnly: true,
@@ -27,6 +27,8 @@ export async function status(req: Request, res: Response) {
     configured: await auth.isPasswordConfigured(),
     authenticated: !auth.authEnabled() || !!session,
     user: session?.subject ?? null,
+    // "Continue with Google" on the sign-in page.
+    google: googleConfigured() && config.google.allowedEmails.length > 0,
   });
 }
 

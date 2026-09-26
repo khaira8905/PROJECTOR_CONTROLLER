@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from 're
 import { useParams } from 'react-router-dom';
 import { DisplayStage, type VideoCommand } from '../components/display/DisplayStage';
 import { useEventSocket } from '../hooks/useEventSocket';
-import { useTimerRemaining } from '../hooks/useTimerRemaining';
+import { ClockOffsetContext } from '../hooks/useLiveRemaining';
 
 /**
  * The audience-facing projector output. No navigation, no operator controls:
@@ -33,7 +33,6 @@ export default function DisplayPage() {
     },
     onEventDeleted: () => window.location.reload(),
   });
-  const remaining = useTimerRemaining(timer, clockOffset);
 
   // The first click/keypress enables fullscreen and audio (browsers require a user gesture).
   useEffect(() => {
@@ -56,6 +55,30 @@ export default function DisplayPage() {
       window.clearTimeout(hideHint);
     };
   }, [activated, requestFullscreen]);
+
+  // Keep the projector laptop awake: no screen saver or sleep in the middle of a talk.
+  // Browsers drop the lock when the tab is hidden, so take it again when it comes back.
+  useEffect(() => {
+    type WakeLock = { release: () => Promise<void> };
+    const nav = navigator as Navigator & { wakeLock?: { request: (type: 'screen') => Promise<WakeLock> } };
+    if (!nav.wakeLock) return;
+    let lock: WakeLock | null = null;
+    let disposed = false;
+    const acquire = () => {
+      if (document.hidden || disposed) return;
+      nav.wakeLock!.request('screen').then(
+        (l) => (disposed ? void l.release() : (lock = l)),
+        () => undefined, // not allowed (e.g. battery saver): the display still works
+      );
+    };
+    acquire();
+    document.addEventListener('visibilitychange', acquire);
+    return () => {
+      disposed = true;
+      document.removeEventListener('visibilitychange', acquire);
+      void lock?.release().catch(() => undefined);
+    };
+  }, []);
 
   // Hide the mouse cursor when idle so it never floats over the projected content.
   useEffect(() => {
@@ -90,7 +113,9 @@ export default function DisplayPage() {
     <div className="fixed inset-0 bg-black select-none" style={{ cursor: cursorHidden ? 'none' : 'default', '--color-white': '#fff', colorScheme: 'dark' } as CSSProperties}>
       {/* The last known state stays on screen while reconnecting: the display never blanks on a network blip. */}
       {display ? (
-        <DisplayStage display={display} timer={timer} timerRemaining={remaining} variant="display" videoCommand={videoCommand} />
+        <ClockOffsetContext.Provider value={clockOffset}>
+          <DisplayStage display={display} timer={timer} variant="display" videoCommand={videoCommand} />
+        </ClockOffsetContext.Provider>
       ) : joinError ? (
         <div className="flex h-full items-center justify-center text-center text-lg text-slate-500">
           <div>

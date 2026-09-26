@@ -11,7 +11,8 @@ export default defineConfig({
     // Listen on the LAN so a projector laptop can open /display/:eventId.
     host: true,
     proxy: {
-      '/api': { target: API_TARGET, changeOrigin: true },
+      // xfwd: the server sees the address the browser used (needed for the Google OAuth callback URL).
+      '/api': { target: API_TARGET, changeOrigin: true, xfwd: true },
       '/socket.io': { target: API_TARGET, ws: true, changeOrigin: true },
     },
   },

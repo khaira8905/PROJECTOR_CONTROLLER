@@ -12,9 +12,11 @@ import './index.css';
 import './styles/motion.css';
 import './styles/console.css';
 import { applyTheme, storedTheme } from './lib/theme';
+import { applyStoredUiPrefs } from './lib/uiPrefs';
 
 // Before the first paint, so the console never flashes the wrong colours.
 applyTheme(storedTheme(), false);
+applyStoredUiPrefs();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -11,6 +11,7 @@ import * as timer from '../services/timerService';
 import { emitToEvent } from '../socket/bus';
 import { OVERLAY_POSITIONS } from '../services/controlService';
 import { ensureBuiltinScreens, forgetScreens } from '../services/screenService';
+import { parsePreferences, preferencesPatchSchema } from '../services/preferences';
 
 const createSchema = z.object({
   name: trimmed(120).min(1, 'Event name is required'),
@@ -32,6 +33,7 @@ const updateSchema = z.object({
   overlaySize: z.number().int().min(2).max(60).optional(),
   overlayOpacity: z.number().int().min(0).max(100).optional(),
   overlayVisible: z.boolean().optional(),
+  preferences: preferencesPatchSchema.optional(),
 });
 
 const withCounts = { _count: { select: { media: true, queueItems: true, scheduleItems: true } } } as const;
@@ -81,7 +83,13 @@ export async function updateEvent(req: Request<{ id: string }>, res: Response) {
     const media = await prisma.media.findFirst({ where: { id: body.overlayMediaId, eventId: existing.id } });
     if (!media || media.kind !== 'image') throw badRequest('The overlay logo must be an image from this event.');
   }
-  const event = await prisma.event.update({ where: { id: existing.id }, data: body, include: withCounts });
+  const { preferences: prefsPatch, ...fields } = body;
+  const data: typeof fields & { preferences?: string } = { ...fields };
+  if (prefsPatch) {
+    // Merge into what is stored, so one screen can change Quick Selection without touching the rest.
+    data.preferences = JSON.stringify({ ...parsePreferences(existing.preferences), ...prefsPatch });
+  }
+  const event = await prisma.event.update({ where: { id: existing.id }, data, include: withCounts });
   const dto = toEventDto(event);
   emitToEvent(event.id, 'event:changed', dto);
   await display.refresh(event.id);

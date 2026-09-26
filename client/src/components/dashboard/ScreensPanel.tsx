@@ -7,7 +7,7 @@ import { cn } from '../../lib/cn';
 import { formatClock, parseClock } from '../../lib/format';
 import type { ScreenInput } from '../../services/api';
 import type { DisplaySnapshot, Media, Screen, ScreenStyle } from '../../types';
-import { ScreenDot } from './ShowFlowPanel';
+import { ScreenDot } from './ScreenDot';
 
 interface Props {
   screens: Screen[];

@@ -2,6 +2,7 @@ import { Suspense, lazy } from 'react';
 import { Route, Routes, useLocation } from 'react-router-dom';
 import { ToastProvider } from './components/ui/Toast';
 import { AuthGate } from './components/AuthGate';
+import { UiPrefsProvider } from './lib/uiPrefs';
 
 const EventsPage = lazy(() => import('./pages/EventsPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
@@ -17,6 +18,7 @@ export default function App() {
       <Route
         path="*"
         element={
+          <UiPrefsProvider>
           <ToastProvider>
             <div className="ec-shell min-h-full">
               <AuthGate>
@@ -24,6 +26,7 @@ export default function App() {
               </AuthGate>
             </div>
           </ToastProvider>
+          </UiPrefsProvider>
         }
       />
     </Routes>

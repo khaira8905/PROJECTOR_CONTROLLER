@@ -14,9 +14,33 @@ export interface EventSummary {
   waitingMessage: string;
   logoMediaId: string | null;
   overlay: { mediaId: string | null; position: OverlayPosition; size: number; opacity: number; visible: boolean };
+  preferences: EventPreferences;
   createdAt: string;
   updatedAt: string;
   counts?: { media: number; queueItems: number; scheduleItems: number };
+}
+
+export type QuickKind = 'screen' | 'media' | 'black' | 'logo' | 'current';
+export type QuickTone = 'amber' | 'red' | 'blue' | 'neutral';
+
+/** One button in Quick Selection. */
+export interface QuickItem {
+  id: string;
+  kind: QuickKind;
+  screenId?: string;
+  screenKey?: string;
+  mediaId?: string;
+  page?: number;
+  label?: string;
+  tone?: QuickTone;
+}
+
+/** Operator preferences stored with the event (shared by every console). */
+export interface EventPreferences {
+  quickSelection: QuickItem[];
+  defaultMediaId: string | null;
+  defaultStartPage: number | null;
+  confirmBlack: boolean;
 }
 
 export interface EventInput {
@@ -45,6 +69,8 @@ export interface Media {
   conversionError: string | null;
   cloudStatus: CloudStatus;
   cloudError: string | null;
+  /** Where the file came from. */
+  source?: 'upload' | 'drive';
   createdAt: string;
   url: string;
   /** Browser-renderable PDF (PDFs, and PPT/PPTX once converted). */
@@ -165,6 +191,37 @@ export interface AuthStatus {
   configured: boolean;
   authenticated: boolean;
   user: string | null;
+  /** "Continue with Google" is available on the sign-in page. */
+  google?: boolean;
+}
+
+export interface GoogleAccount {
+  email: string;
+  name: string;
+  picture: string | null;
+  scopes: string[];
+  connectedAt: number;
+}
+
+export interface GoogleStatus {
+  /** The server has a Google OAuth client configured. */
+  configured: boolean;
+  connected: boolean;
+  account: GoogleAccount | null;
+  /** The connection includes read access to Drive. */
+  drive: boolean;
+  signInEnabled: boolean;
+}
+
+export interface DriveFile {
+  id: string;
+  name: string;
+  mimeType: string;
+  kind: 'folder' | 'presentation' | 'slides' | 'pdf';
+  size: number | null;
+  modifiedTime: string | null;
+  thumbnailLink: string | null;
+  iconLink: string | null;
 }
 
 export interface SystemStatus {

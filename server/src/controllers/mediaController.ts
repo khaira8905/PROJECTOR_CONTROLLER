@@ -72,53 +72,11 @@ export async function uploadMedia(req: Request<{ id: string }>, res: Response) {
   const seenHashes = new Set<string>();
 
   for (const file of files) {
-    const name = displayNameFrom(file.originalname);
-    try {
-      const type = getFileType(file.originalname);
-      if (!type) {
-        rejected.push({ name, error: 'File type not supported.' });
-        continue;
-      }
-      if (file.size === 0) {
-        rejected.push({ name, error: 'File is empty.' });
-        continue;
-      }
-      const head = await readFileHead(file.path);
-      if (!type.signature(head)) {
-        rejected.push({ name, error: 'File contents do not match its extension.' });
-        continue;
-      }
-      const hash = await hashFile(file.path);
-      const existing = await prisma.media.findUnique({ where: { eventId_hash: { eventId: event.id, hash } } });
-      if (existing || seenHashes.has(hash)) {
-        if (existing) duplicates.push(toMediaDto(existing));
-        continue;
-      }
-      seenHashes.add(hash);
-      const storagePath = await storeFile(file.path, event.id, file.originalname);
-      const media = await prisma.media.create({
-        data: {
-          eventId: event.id,
-          name,
-          originalName: name,
-          storagePath,
-          kind: type.kind,
-          mimeType: type.mimeType,
-          size: file.size,
-          hash,
-          folder,
-          conversionStatus: type.kind === 'presentation' ? 'pending' : 'none',
-        },
-      });
-      // Page counting / PowerPoint conversion and the cloud copy happen in the background.
-      await processNewMedia(media.id);
-      enqueueCloudUpload(media.id);
-      uploaded.push(toMediaDto((await prisma.media.findUnique({ where: { id: media.id } }))!));
-      logger.info(`Uploaded "${name}" (${type.kind}, ${file.size} bytes) to event ${event.id}`);
-    } catch (err) {
-      logger.error(`Upload of "${name}" failed:`, err);
-      rejected.push({ name, error: 'Unable to upload file.' });
-    }
+    const result = await ingestFile({ eventId: event.id, tmpPath: file.path, originalName: file.originalname, size: file.size, folder }, seenHashes);
+    if (result.status === 'uploaded') uploaded.push(result.media);
+    else if (result.status === 'duplicate') {
+      if (result.media) duplicates.push(result.media);
+    } else rejected.push({ name: result.name, error: result.error });
   }
   await cleanup();
 
@@ -133,7 +91,62 @@ export async function uploadMedia(req: Request<{ id: string }>, res: Response) {
   });
 }
 
-const folderSchema = z
+export type IngestResult =
+  | { status: 'uploaded'; media: ReturnType<typeof toMediaDto> }
+  | { status: 'duplicate'; media: ReturnType<typeof toMediaDto> | null }
+  | { status: 'rejected'; name: string; error: string };
+
+/**
+ * One file into the library: check the type and that the contents really are that type,
+ * skip duplicates, move it into uploads/<event>/, then convert and back it up in the
+ * background. Used by uploads and by imports (Google Drive), so both get the same checks.
+ */
+export async function ingestFile(
+  input: { eventId: string; tmpPath: string; originalName: string; size: number; folder: string; source?: string; sourceRef?: string | null },
+  seenHashes = new Set<string>(),
+): Promise<IngestResult> {
+  const name = displayNameFrom(input.originalName);
+  try {
+    const type = getFileType(input.originalName);
+    if (!type) return { status: 'rejected', name, error: 'This file type isn’t supported. Use PowerPoint (.pptx, .ppt), PDF, images (PNG, JPG, WEBP) or videos (MP4, WEBM, MOV).' };
+    if (input.size === 0) return { status: 'rejected', name, error: 'The file is empty (0 bytes). Check that it finished downloading, then try again.' };
+    const head = await readFileHead(input.tmpPath);
+    if (!type.signature(head)) {
+      return { status: 'rejected', name, error: `This doesn’t look like a real ${input.originalName.split('.').pop()?.toUpperCase()} file — it may be damaged or renamed. Open it on your computer, save it again, then upload.` };
+    }
+    const hash = await hashFile(input.tmpPath);
+    const existing = await prisma.media.findUnique({ where: { eventId_hash: { eventId: input.eventId, hash } } });
+    if (existing || seenHashes.has(hash)) return { status: 'duplicate', media: existing ? toMediaDto(existing) : null };
+    seenHashes.add(hash);
+    const storagePath = await storeFile(input.tmpPath, input.eventId, input.originalName);
+    const media = await prisma.media.create({
+      data: {
+        eventId: input.eventId,
+        name,
+        originalName: name,
+        storagePath,
+        kind: type.kind,
+        mimeType: type.mimeType,
+        size: input.size,
+        hash,
+        folder: input.folder,
+        source: input.source ?? 'upload',
+        sourceRef: input.sourceRef ?? null,
+        conversionStatus: type.kind === 'presentation' ? 'pending' : 'none',
+      },
+    });
+    // Page counting / PowerPoint conversion and the cloud copy happen in the background.
+    await processNewMedia(media.id);
+    enqueueCloudUpload(media.id);
+    logger.info(`Added "${name}" (${type.kind}, ${input.size} bytes, ${input.source ?? 'upload'}) to event ${input.eventId}`);
+    return { status: 'uploaded', media: toMediaDto((await prisma.media.findUnique({ where: { id: media.id } }))!) };
+  } catch (err) {
+    logger.error(`Adding "${name}" failed:`, err);
+    return { status: 'rejected', name, error: 'The file could not be saved on this computer. Check there is free disk space, then try again.' };
+  }
+}
+
+export const folderSchema = z
   .string()
   .trim()
   .max(60)

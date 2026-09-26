@@ -57,8 +57,10 @@ export function PdfView({ url, page, onPageCount, fallback }: PdfViewProps) {
     let task: RenderTask | null = null;
     let cancelled = false;
     const pageNumber = Math.min(Math.max(1, page), doc.numPages);
-    doc
-      .getPage(pageNumber)
+    // Ask the cache again rather than reusing `doc`: it marks this deck as in use, and returns
+    // a fresh copy if an old one was released while other decks' thumbnails were loading.
+    loadDocument(url)
+      .then((d) => d.getPage(pageNumber))
       .then((p) => {
         if (cancelled) return;
         const base = p.getViewport({ scale: 1 });
@@ -93,7 +95,7 @@ export function PdfView({ url, page, onPageCount, fallback }: PdfViewProps) {
       cancelled = true;
       task?.cancel();
     };
-  }, [doc, page, size]);
+  }, [doc, url, page, size]);
 
   return (
     <div ref={containerRef} className="absolute inset-0 flex items-center justify-center">

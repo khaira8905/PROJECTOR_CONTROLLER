@@ -4,6 +4,7 @@ import { timerTone } from '../../lib/timer';
 import { formatEventDate } from '../../lib/format';
 import { cn } from '../../lib/cn';
 import { Confetti } from './Confetti';
+import { useLiveRemaining } from '../../hooks/useLiveRemaining';
 import { Grain, RevealText, RollingClock, Squiggle, Vignette, revealEnd } from './motion';
 
 /**
@@ -46,12 +47,11 @@ export interface ScreenSceneProps {
   hideLogo?: boolean;
   /** Countdown to show on the screen (null = none). */
   timer?: TimerSnapshot | null;
-  remaining?: number;
   /** Small note for the operator preview only. */
   note?: ReactNode;
 }
 
-export function ScreenScene({ screen, eventName, eventDate, logo, hideLogo, timer, remaining = 0, note }: ScreenSceneProps) {
+export function ScreenScene({ screen, eventName, eventDate, logo, hideLogo, timer, note }: ScreenSceneProps) {
   const style = THEMES[screen.style] ? screen.style : 'custom';
   const theme = THEMES[style];
   const bg = screen.background && !screen.background.missing ? screen.background : null;
@@ -60,13 +60,13 @@ export function ScreenScene({ screen, eventName, eventDate, logo, hideLogo, time
   return (
     <div className="absolute inset-0 overflow-hidden text-white" style={{ background: theme.base }}>
       <Atmosphere theme={theme} background={bg} />
-      {!bg && <Motif style={style} theme={theme} timer={timer} remaining={remaining} />}
+      {!bg && <Motif style={style} theme={theme} timer={timer} />}
       <Vignette />
 
       {style === 'break' ? (
-        <SplitLayout screen={screen} theme={theme} eventName={eventName} logo={showLogo ? logo : null} timer={timer} remaining={remaining} />
+        <SplitLayout screen={screen} theme={theme} eventName={eventName} logo={showLogo ? logo : null} timer={timer} />
       ) : style === 'coming-up' ? (
-        <ComingUpLayout screen={screen} theme={theme} eventName={eventName} logo={showLogo ? logo : null} timer={timer} remaining={remaining} />
+        <ComingUpLayout screen={screen} theme={theme} eventName={eventName} logo={showLogo ? logo : null} timer={timer} />
       ) : (
         <CenteredLayout
           screen={screen}
@@ -75,7 +75,7 @@ export function ScreenScene({ screen, eventName, eventDate, logo, hideLogo, time
           eventDate={eventDate}
           logo={showLogo ? logo : null}
           timer={timer}
-          remaining={remaining}
+         
           glitch={style === 'technical'}
           underline={style === 'thanks' || style === 'custom' || style === 'please-wait'}
         />
@@ -142,19 +142,18 @@ const COUNTDOWN_LABEL: Record<string, string> = {
 
 function Countdown({
   timer,
-  remaining,
   theme,
   delay = 0,
   compact,
   label,
 }: {
   timer: TimerSnapshot;
-  remaining: number;
   theme: Theme;
   delay?: number;
   compact?: boolean;
   label?: string;
 }) {
+  const remaining = useLiveRemaining(timer);
   const tone = timerTone(timer, remaining);
   const fraction = timer.durationMs > 0 ? Math.max(0, Math.min(1, remaining / timer.durationMs)) : 0;
   const color = tone === 'finished' ? '#fca5a5' : tone === 'warning' ? '#fcd34d' : '#ffffff';
@@ -187,12 +186,11 @@ interface LayoutProps {
   eventDate?: string;
   logo: PublicMedia | null | undefined;
   timer?: TimerSnapshot | null;
-  remaining: number;
 }
 
 /* ───────────────────────── Layouts ───────────────────────── */
 
-function CenteredLayout({ screen, theme, eventName, logo, timer, remaining, glitch, underline }: LayoutProps & { glitch?: boolean; underline?: boolean }) {
+function CenteredLayout({ screen, theme, eventName, logo, timer, glitch, underline }: LayoutProps & { glitch?: boolean; underline?: boolean }) {
   const titleDelay = 380;
   const after = revealEnd(screen.title, titleDelay);
   return (
@@ -210,7 +208,7 @@ function CenteredLayout({ screen, theme, eventName, logo, timer, remaining, glit
       )}
       {timer && (
         <div className="mt-[4.5cqh]">
-          <Countdown timer={timer} remaining={remaining} theme={theme} delay={after + 260} label={COUNTDOWN_LABEL[screen.style]} />
+          <Countdown timer={timer} theme={theme} delay={after + 260} label={COUNTDOWN_LABEL[screen.style]} />
         </div>
       )}
     </div>
@@ -218,7 +216,7 @@ function CenteredLayout({ screen, theme, eventName, logo, timer, remaining, glit
 }
 
 /** Break: text on the left, a steaming cup on the right. */
-function SplitLayout({ screen, theme, eventName, logo, timer, remaining }: LayoutProps) {
+function SplitLayout({ screen, theme, eventName, logo, timer }: LayoutProps) {
   const titleDelay = 360;
   const after = revealEnd(screen.title, titleDelay);
   return (
@@ -234,7 +232,7 @@ function SplitLayout({ screen, theme, eventName, logo, timer, remaining }: Layou
         )}
         {timer && (
           <div className="mt-[4cqh]">
-            <Countdown timer={timer} remaining={remaining} theme={theme} delay={after + 260} compact label={COUNTDOWN_LABEL.break} />
+            <Countdown timer={timer} theme={theme} delay={after + 260} compact label={COUNTDOWN_LABEL.break} />
           </div>
         )}
       </div>
@@ -244,7 +242,7 @@ function SplitLayout({ screen, theme, eventName, logo, timer, remaining }: Layou
 }
 
 /** Coming up next: a small eyebrow, the next item huge, chevrons pulling forward. */
-function ComingUpLayout({ screen, theme, eventName, logo, timer, remaining }: LayoutProps) {
+function ComingUpLayout({ screen, theme, eventName, logo, timer }: LayoutProps) {
   const hero = screen.subtitle || screen.title;
   const eyebrow = screen.subtitle ? screen.title : 'Coming up next';
   const titleDelay = 420;
@@ -271,7 +269,7 @@ function ComingUpLayout({ screen, theme, eventName, logo, timer, remaining }: La
       </div>
       {timer && (
         <div className="mt-[4cqh]">
-          <Countdown timer={timer} remaining={remaining} theme={theme} delay={after + 200} compact label={COUNTDOWN_LABEL['coming-up']} />
+          <Countdown timer={timer} theme={theme} delay={after + 200} compact label={COUNTDOWN_LABEL['coming-up']} />
         </div>
       )}
     </div>
@@ -280,14 +278,14 @@ function ComingUpLayout({ screen, theme, eventName, logo, timer, remaining }: La
 
 /* ───────────────────────── Motifs ───────────────────────── */
 
-function Motif({ style, theme, timer, remaining }: { style: string; theme: Theme; timer?: TimerSnapshot | null; remaining: number }) {
+function Motif({ style, theme, timer }: { style: string; theme: Theme; timer?: TimerSnapshot | null }) {
   switch (style) {
     case 'please-wait':
       return <Ripples color={theme.accent} />;
     case 'technical':
       return <ColourBars />;
     case 'starting':
-      return <ClockRing color={theme.accent} timer={timer} remaining={remaining} />;
+      return <ClockRing color={theme.accent} timer={timer} />;
     case 'thanks':
       return <Confetti colors={CONFETTI} />;
     case 'custom':
@@ -334,7 +332,8 @@ function ColourBars() {
 }
 
 /** A thin clock ring: ticks, a sweeping second hand, and the countdown's progress arc. */
-function ClockRing({ color, timer, remaining }: { color: string; timer?: TimerSnapshot | null; remaining: number }) {
+function ClockRing({ color, timer }: { color: string; timer?: TimerSnapshot | null }) {
+  const remaining = useLiveRemaining(timer);
   const fraction = timer && timer.durationMs > 0 ? Math.max(0, Math.min(1, remaining / timer.durationMs)) : null;
   const r = 46;
   const circumference = 2 * Math.PI * r;

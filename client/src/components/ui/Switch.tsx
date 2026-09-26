@@ -1,7 +1,7 @@
 import { cn } from '../../lib/cn';
 
 /** An on/off switch whose knob glides across; keyboard and screen readers see a checkbox. */
-export function Switch({ checked, onChange, label, className, compact }: { checked: boolean; onChange: (v: boolean) => void; label: string; className?: string; compact?: boolean }) {
+export function Switch({ checked, onChange, label, className, compact, hideLabel }: { checked: boolean; onChange: (v: boolean) => void; label: string; className?: string; compact?: boolean; hideLabel?: boolean }) {
   return (
     <label
       className={cn(
@@ -10,7 +10,7 @@ export function Switch({ checked, onChange, label, className, compact }: { check
         className,
       )}
     >
-      <span className={compact ? 'text-[13px] text-slate-400' : 'text-slate-300'}>{label}</span>
+      <span className={hideLabel ? 'sr-only' : compact ? 'text-[13px] text-slate-400' : 'text-slate-300'}>{label}</span>
       <input type="checkbox" className="peer sr-only" checked={checked} onChange={(e) => onChange(e.target.checked)} />
       <span
         aria-hidden

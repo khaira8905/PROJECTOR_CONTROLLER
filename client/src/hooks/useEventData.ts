@@ -29,14 +29,22 @@ export function useEventData(eventId: string | undefined) {
     if (eventId) setScreens(await api.listScreens(eventId));
   }, [eventId]);
 
+  /** Reloads everything; used on first load, after a reconnect and when the tab comes back. */
+  const reloadAll = useCallback(async () => {
+    if (!eventId) return;
+    try {
+      await Promise.all([reloadEvent(), reloadMedia(), reloadQueue(), reloadSchedule(), reloadScreens()]);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to load event.');
+    }
+  }, [eventId, reloadEvent, reloadMedia, reloadQueue, reloadSchedule, reloadScreens]);
+
   useEffect(() => {
     if (!eventId) return;
     setLoading(true);
-    Promise.all([reloadEvent(), reloadMedia(), reloadQueue(), reloadSchedule(), reloadScreens()])
-      .then(() => setError(null))
-      .catch((err) => setError(err instanceof Error ? err.message : 'Unable to load event.'))
-      .finally(() => setLoading(false));
-  }, [eventId, reloadEvent, reloadMedia, reloadQueue, reloadSchedule, reloadScreens]);
+    void reloadAll().finally(() => setLoading(false));
+  }, [eventId, reloadAll]);
 
-  return { event, media, queue, schedule, screens, setQueue, error, loading, reloadEvent, reloadMedia, reloadQueue, reloadSchedule, reloadScreens };
+  return { event, media, queue, schedule, screens, setQueue, error, loading, reloadAll, reloadEvent, reloadMedia, reloadQueue, reloadSchedule, reloadScreens };
 }

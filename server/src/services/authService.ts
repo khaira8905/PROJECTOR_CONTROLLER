@@ -39,6 +39,63 @@ async function sessionSecret(): Promise<string> {
   return secret;
 }
 
+/** Signs a small payload (base64url JSON) so it can travel through a browser untouched. */
+export async function signPayload(data: unknown): Promise<string> {
+  const payload = Buffer.from(JSON.stringify(data)).toString('base64url');
+  const sig = crypto.createHmac('sha256', await sessionSecret()).update(`signed:${payload}`).digest('base64url');
+  return `${payload}.${sig}`;
+}
+
+export async function verifyPayload<T>(token: string | undefined): Promise<T | null> {
+  if (!token) return null;
+  const [payload, sig] = token.split('.');
+  if (!payload || !sig) return null;
+  const expected = crypto.createHmac('sha256', await sessionSecret()).update(`signed:${payload}`).digest();
+  const actual = Buffer.from(sig, 'base64url');
+  if (actual.length !== expected.length || !crypto.timingSafeEqual(actual, expected)) return null;
+  try {
+    return JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as T;
+  } catch {
+    return null;
+  }
+}
+
+// Third-party tokens (e.g. Google) are stored encrypted with a key derived from a dedicated
+// secret, so a copy of the database alone does not hand out access to someone's Drive.
+const TOKEN_KEY = 'token_encryption_key';
+let cachedTokenKey: Buffer | null = null;
+async function tokenKey(): Promise<Buffer> {
+  if (cachedTokenKey) return cachedTokenKey;
+  let hex = process.env.TOKEN_ENCRYPTION_KEY || (await getSetting(TOKEN_KEY));
+  if (!hex) {
+    hex = crypto.randomBytes(32).toString('hex');
+    await setSetting(TOKEN_KEY, hex);
+  }
+  cachedTokenKey = crypto.createHash('sha256').update(hex).digest();
+  return cachedTokenKey;
+}
+
+export async function encryptSecret(plain: string): Promise<string> {
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', await tokenKey(), iv);
+  const data = Buffer.concat([cipher.update(plain, 'utf8'), cipher.final()]);
+  return ['v1', iv.toString('base64url'), cipher.getAuthTag().toString('base64url'), data.toString('base64url')].join('.');
+}
+
+export async function decryptSecret(sealed: string): Promise<string | null> {
+  const [v, iv, tag, data] = sealed.split('.');
+  if (v !== 'v1' || !iv || !tag || !data) return null;
+  try {
+    const decipher = crypto.createDecipheriv('aes-256-gcm', await tokenKey(), Buffer.from(iv, 'base64url'));
+    decipher.setAuthTag(Buffer.from(tag, 'base64url'));
+    return Buffer.concat([decipher.update(Buffer.from(data, 'base64url')), decipher.final()]).toString('utf8');
+  } catch {
+    return null;
+  }
+}
+
+export { getSetting, setSetting };
+
 async function rotateSecret() {
   cachedSecret = crypto.randomBytes(32).toString('hex');
   await setSetting(SECRET_KEY, cachedSecret);

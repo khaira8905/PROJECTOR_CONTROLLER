@@ -36,6 +36,8 @@ interface Props {
   /** Only these kinds of file (all when omitted). */
   kinds?: MediaKind[];
   title?: string;
+  /** Extra header buttons (e.g. Google Drive import). */
+  extraActions?: React.ReactNode;
   className?: string;
 }
 
@@ -92,6 +94,7 @@ export function PresentationLibrary(props: Props) {
       bodyClassName="scroll-thin overflow-y-auto"
       actions={
         <>
+          {props.extraActions}
           <Button size="sm" variant="primary" icon={<UploadCloud size={14} />} onClick={() => inputRef.current?.click()} disabled={uploadProgress !== null}>
             {uploadProgress !== null ? `Uploading ${Math.round(uploadProgress * 100)}%` : 'Upload'}
           </Button>
@@ -134,7 +137,7 @@ export function PresentationLibrary(props: Props) {
         }}
         onDragOver={(e) => e.preventDefault()}
         onDrop={onDrop}
-        className={cn('relative min-h-32 rounded-xl transition-colors', dragging && 'bg-sky-500/5 ring-2 ring-sky-400/60 ring-dashed')}
+        className={cn('relative min-h-32 rounded-md transition-colors', dragging && 'bg-sky-500/5 ring-2 ring-sky-400/60 ring-dashed')}
       >
         {uploadProgress !== null && (
           <div className="mb-3 h-1 overflow-hidden rounded-full bg-white/5">
@@ -144,7 +147,7 @@ export function PresentationLibrary(props: Props) {
         {sorted.length === 0 ? (
           <button
             onClick={() => inputRef.current?.click()}
-            className="flex w-full flex-col items-center justify-center rounded-xl border border-dashed border-white/10 px-4 py-10 text-center text-sm text-slate-500 hover:border-sky-400/40 hover:text-slate-300"
+            className="flex w-full flex-col items-center justify-center rounded-md border border-dashed border-white/10 px-4 py-10 text-center text-sm text-slate-500 hover:border-sky-400/40 hover:text-slate-300"
           >
             <UploadCloud size={28} className="mb-2" />
             Drop files here or click to upload{folder !== ALL && folder ? ` to "${folder}"` : ''}
@@ -158,7 +161,7 @@ export function PresentationLibrary(props: Props) {
           </ul>
         )}
         {dragging && (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-xl bg-console-950/70 text-sm font-medium text-sky-300">
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-md bg-console-950/70 text-sm font-medium text-sky-300">
             Drop to upload{uploadFolder ? ` to "${uploadFolder}"` : ''}
           </div>
         )}
@@ -227,7 +230,7 @@ function PresentationCard({
   else if (media.kind === 'presentation' && media.conversionStatus === 'pending') detail = 'Converting slides…';
 
   return (
-    <li className="ec-card ec-card-raised ec-spot group flex flex-col overflow-hidden rounded-xl transition-[translate,box-shadow] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1 hover:shadow-[0_24px_40px_-20px_rgba(0,0,0,0.8)]">
+    <li className="ec-card ec-card-raised ec-spot group flex flex-col overflow-hidden rounded-md transition-[translate,box-shadow] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1 hover:shadow-[0_24px_40px_-20px_rgba(0,0,0,0.8)]">
       <button onClick={() => onPreview(media)} className="relative flex aspect-video items-center justify-center overflow-hidden bg-black/50" title="Preview">
         <span className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-1/3 bg-gradient-to-t from-black/50 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" aria-hidden />
         <span className="flex h-full w-full items-center justify-center transition-transform duration-500 ease-out group-hover:scale-[1.04]">
@@ -275,7 +278,7 @@ function PresentationCard({
             {menuOpen && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-                <div className="ec-card ec-card-raised ec-pop-in absolute right-0 bottom-full z-20 mb-1 w-52 origin-bottom-right overflow-hidden rounded-xl py-1 text-sm" onClick={() => setMenuOpen(false)}>
+                <div className="ec-card ec-card-raised ec-pop-in absolute right-0 bottom-full z-20 mb-1 w-52 origin-bottom-right overflow-hidden rounded-md py-1 text-sm" onClick={() => setMenuOpen(false)}>
                   <MenuItem icon={<ExternalLink size={14} />} onClick={() => onOpen(media)}>
                     {media.kind === 'presentation' ? 'Open in PowerPoint' : 'Open in new tab'}
                   </MenuItem>

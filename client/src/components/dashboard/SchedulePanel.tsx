@@ -50,12 +50,12 @@ export function SchedulePanel({ schedule, onAdd, onDelete, className, embedded }
   const content = (
     <>
       <div className="grid grid-cols-2 gap-2">
-        <div className="rounded-xl bg-emerald-500/[0.07] p-3 ring-1 ring-emerald-500/20">
+        <div className="rounded-md bg-emerald-500/[0.07] p-3 ring-1 ring-emerald-500/20">
           <p className="text-[10px] font-semibold tracking-[0.14em] text-emerald-300 uppercase">Now</p>
           <p className="mt-1 truncate text-sm font-semibold text-white">{status.current?.title ?? '—'}</p>
           <p className="font-mono text-xs text-slate-500">{status.current?.time ?? ''}</p>
         </div>
-        <div className="rounded-xl bg-console-850 p-3 ring-1 ring-white/[0.06]">
+        <div className="rounded-md bg-console-850 p-3 ring-1 ring-white/[0.06]">
           <p className="text-[10px] font-semibold tracking-[0.14em] text-sky-300 uppercase">Next</p>
           <p className="mt-1 truncate text-sm font-semibold text-white">{status.next?.title ?? '—'}</p>
           <p className="font-mono text-xs text-slate-500">

@@ -13,7 +13,7 @@ interface PanelProps {
 /** A titled card used for every dashboard section. */
 export function Panel({ title, icon, actions, children, className, bodyClassName }: PanelProps) {
   return (
-    <section className={cn('ec-card flex min-h-0 flex-col rounded-2xl', className)}>
+    <section className={cn('ec-card flex min-h-0 flex-col rounded-lg', className)}>
       {(title || actions) && (
         <header className="flex min-h-12 items-center justify-between gap-3 px-4 py-2">
           <h2 className="flex min-w-0 items-center gap-2.5 text-[17px] font-semibold tracking-[-0.01em] text-white">

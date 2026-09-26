@@ -40,17 +40,67 @@ body {
 
 /* ── Buttons ──────────────────────────────────────────────────────────────────────── */
 
+/* Every button: quick colour change, a 1px lift on hover, sinks when pressed. */
+.ec-btn {
+  position: relative;
+  border: 1px solid transparent;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease,
+    box-shadow 160ms ease,
+    transform 160ms var(--ease-out-quart);
+}
+.ec-btn:not(:disabled):hover { transform: translateY(-1px); }
+.ec-btn:not(:disabled):active {
+  transform: translateY(0.5px) scale(0.985);
+  transition-duration: 60ms;
+}
+.ec-btn:disabled { cursor: not-allowed; opacity: 0.45; filter: saturate(0.4); }
+.ec-btn svg { transition: transform 160ms var(--ease-out-quart); }
+
 .ec-btn-primary {
   color: var(--on-accent);
-  background: var(--accent-500);
-  box-shadow: inset 0 -1px 0 rgb(0 0 0 / 0.12), 0 1px 2px rgb(16 24 40 / 0.12);
+  background: linear-gradient(180deg, color-mix(in oklab, var(--accent-500) 88%, #fff), var(--accent-500) 55%);
+  border-color: color-mix(in oklab, var(--accent-500) 70%, #000);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.22), 0 1px 2px rgb(16 24 40 / 0.18);
 }
-.ec-btn-primary:hover {
-  background: var(--accent-600);
+.ec-btn-primary:not(:disabled):hover {
+  background: linear-gradient(180deg, color-mix(in oklab, var(--accent-600) 88%, #fff), var(--accent-600) 55%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.22), 0 4px 10px -4px color-mix(in oklab, var(--accent-500) 70%, transparent);
 }
-.ec-btn-primary:active {
-  background: var(--accent-700);
+.ec-btn-primary:not(:disabled):active { box-shadow: inset 0 2px 3px rgb(0 0 0 / 0.2); }
+
+.ec-btn-secondary {
+  color: var(--ink-200);
+  background: linear-gradient(180deg, var(--btn-top), var(--btn-bottom));
+  border-color: var(--line-strong);
+  box-shadow: 0 1px 0 var(--btn-edge);
 }
+.ec-btn-secondary:not(:disabled):hover {
+  color: var(--contrast);
+  border-color: var(--btn-hover-border);
+  box-shadow: 0 3px 8px -4px rgb(16 24 40 / 0.25);
+}
+.ec-btn-secondary:not(:disabled):active { background: var(--surface-700); box-shadow: inset 0 1px 2px rgb(16 24 40 / 0.14); }
+.ec-btn-secondary[aria-pressed='true'] {
+  color: var(--accent-300);
+  border-color: color-mix(in oklab, var(--accent-500) 55%, transparent);
+  background: color-mix(in oklab, var(--accent-500) 10%, var(--surface-900));
+}
+
+.ec-btn-ghost { color: var(--ink-300); }
+.ec-btn-ghost:not(:disabled):hover { color: var(--contrast); background: var(--surface-700); }
+.ec-btn-ghost:not(:disabled):active { background: var(--surface-600); }
+.ec-btn-ghost[aria-pressed='true'] { color: var(--accent-300); background: color-mix(in oklab, var(--accent-500) 10%, transparent); }
+
+.ec-btn-danger { color: #fff; background: linear-gradient(180deg, #ef4444, #dc2626 60%); border-color: #b91c1c; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.2); }
+.ec-btn-success { color: #fff; background: linear-gradient(180deg, #16a34a, #15803d 60%); border-color: #166534; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.2); }
+.ec-btn-warning { color: #2b1700; background: linear-gradient(180deg, #fbbf24, #f59e0b 60%); border-color: #d97706; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35); }
+
+/* Arrow icons nudge the way they point. */
+.ec-btn:not(:disabled):hover .ec-nudge-right { transform: translateX(2px); }
+.ec-btn:not(:disabled):hover .ec-nudge-left { transform: translateX(-2px); }
 
 .ec-gradient-text {
   color: var(--accent-400);
@@ -231,3 +281,120 @@ body {
 }
 .ec-quick-amber.ec-quick-idle:hover { filter: brightness(0.97) saturate(1.1); }
 .ec-quick-red.ec-quick-idle:hover { filter: brightness(0.97) saturate(1.1); }
+
+/* ── Panes (the console is split into areas, not stacked cards) ──────────────────── */
+
+.ec-pane { background: var(--surface-900); }
+.ec-pane-alt { background: var(--pane-alt); }
+.ec-line { border-color: var(--line); }
+
+/* Small section labels inside a pane. */
+.ec-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-500);
+}
+
+/* The program monitor: a black screen set into a bezel. */
+.ec-monitor {
+  background: #000;
+  border-radius: 6px;
+  box-shadow:
+    0 0 0 1px var(--monitor-edge),
+    0 0 0 5px var(--monitor-bezel),
+    0 0 0 6px var(--line),
+    0 18px 30px -18px rgb(0 0 0 / 0.55);
+}
+
+/* ── Flow ─────────────────────────────────────────────────────────────────────────── */
+
+.ec-flow-list {
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
+  scrollbar-gutter: stable;
+}
+.ec-flow-row {
+  position: relative;
+  border-bottom: 1px solid var(--line);
+  transition: background-color 120ms ease;
+}
+.ec-flow-row:hover { background: var(--row-hover); }
+.ec-flow-row[data-state='current'] { background: var(--row-active); }
+.ec-flow-row[data-state='current'][data-onair='true'] { background: var(--row-live); }
+.ec-flow-row::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: transparent;
+  transition: background-color 160ms ease;
+}
+.ec-flow-row[data-state='current']::before { background: var(--accent-500); }
+.ec-flow-row[data-state='current'][data-onair='true']::before { background: #e5484d; }
+.ec-flow-row[data-state='next']::before { background: color-mix(in oklab, var(--accent-500) 35%, transparent); }
+
+/* The whole row is the "show this" target; it answers the press immediately. */
+.ec-flow-hit { transition: transform 120ms var(--ease-out-quart); }
+.ec-flow-hit:active { transform: scale(0.995); }
+
+@keyframes ec-flow-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+.ec-flow-in { animation: ec-flow-in 280ms var(--ease-out-quart) both; }
+
+/* Density: compact trims padding on the busiest lists. */
+:root[data-density='compact'] .ec-flow-row .ec-flow-hit { padding-top: 0.35rem; padding-bottom: 0.35rem; }
+:root[data-density='compact'] .ec-flow-thumb { width: 88px; height: 50px; }
+
+/* ── Quick Selection ───────────────────────────────────────────────────────────────── */
+
+.ec-quick-btn {
+  border: 1px solid var(--line-strong);
+  background: linear-gradient(180deg, var(--btn-top), var(--btn-bottom));
+  box-shadow: 0 1px 0 var(--btn-edge);
+  border-left-width: 3px;
+}
+.ec-quick-btn[data-tone='amber'] { border-left-color: #f59e0b; }
+.ec-quick-btn[data-tone='red'] { border-left-color: #e5484d; }
+.ec-quick-btn[data-tone='blue'] { border-left-color: var(--accent-500); }
+.ec-quick-btn[data-tone='neutral'] { border-left-color: var(--ink-600); }
+.ec-quick-btn[aria-pressed='true'][data-tone='amber'] { background: #f59e0b; border-color: #d97706; color: #1f1300; }
+.ec-quick-btn[aria-pressed='true'][data-tone='red'] { background: #dc2626; border-color: #b91c1c; color: #fff; }
+.ec-quick-btn[aria-pressed='true'][data-tone='blue'] { background: var(--accent-500); border-color: var(--accent-600); color: #fff; }
+.ec-quick-btn[aria-pressed='true'][data-tone='neutral'] { background: #111827; border-color: #000; color: #fff; }
+
+/* ── Navigation rail ──────────────────────────────────────────────────────────────── */
+
+.ec-rail-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  border-radius: 6px;
+  padding: 0.6rem 0.25rem 0.5rem;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--sidebar-text);
+  transition: background-color 120ms ease, color 120ms ease;
+}
+.ec-rail-item svg { transition: transform 160ms var(--ease-out-quart); }
+.ec-rail-item:hover { background: var(--sidebar-hover); color: var(--sidebar-strong); }
+.ec-rail-item:hover svg { transform: translateY(-1px); }
+.ec-rail-item[aria-current='page'] { background: var(--sidebar-active); color: var(--sidebar-strong); font-weight: 600; }
+.ec-rail-item[aria-current='page']::before {
+  content: '';
+  position: absolute;
+  left: -0.5rem;
+  top: 0.6rem;
+  bottom: 0.6rem;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: #6ea2ff;
+  animation: ec-nav-bar 260ms var(--ease-out-expo) both;
+}

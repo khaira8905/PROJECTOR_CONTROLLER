@@ -1,4 +1,5 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useContext, useEffect, useState, type FormEvent } from 'react';
+import { ClockOffsetContext, useLiveRemaining } from '../../hooks/useLiveRemaining';
 import { Minus, Pause, Play, Plus, RotateCcw, Settings2, Timer } from 'lucide-react';
 import { Panel } from '../ui/Panel';
 import { Button } from '../ui/Button';
@@ -6,16 +7,13 @@ import { TextInput } from '../ui/Field';
 import { formatClock, parseClock } from '../../lib/format';
 import { RollingClock, RollingDigits } from '../display/motion';
 import { Segmented } from '../ui/Segmented';
-import { timerTone } from '../../lib/timer';
+import { timerOvertime, timerTone } from '../../lib/timer';
 import { Switch } from '../ui/Switch';
 import { cn } from '../../lib/cn';
 import type { ControlCommand, TimerSnapshot } from '../../types';
 
 interface TimerPanelProps {
   timer: TimerSnapshot | null;
-  remaining: number;
-  /** How long a finished countdown has been over time. */
-  overtime?: number;
   send: (cmd: ControlCommand) => void;
   className?: string;
 }
@@ -24,7 +22,11 @@ const PRESETS = [5, 10, 15, 20, 30];
 
 type TimerMode = 'countdown' | 'clock';
 
-export function TimerPanel({ timer, remaining, overtime = 0, send, className }: TimerPanelProps) {
+export function TimerPanel({ timer, send, className }: TimerPanelProps) {
+  // The tick lives here (not in the page), so only the timer re-renders while it runs.
+  const remaining = useLiveRemaining(timer);
+  const offset = useContext(ClockOffsetContext);
+  const overtime = timer ? timerOvertime(timer, offset) : 0;
   const [editing, setEditing] = useState(false);
   const [duration, setDuration] = useState('');
   const [warning, setWarning] = useState('');

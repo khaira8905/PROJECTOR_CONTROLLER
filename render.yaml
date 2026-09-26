@@ -17,3 +17,9 @@ services:
         sync: false
       - key: SUPABASE_BUCKET
         value: eventcontrol
+      - key: GOOGLE_CLIENT_ID      # optional: Google Drive import (README → Google Drive)
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_ALLOWED_EMAILS # optional: "Sign in with Google" for these accounts
+        sync: false

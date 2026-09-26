@@ -16,17 +16,17 @@ export function createSocket(): Socket {
   });
 }
 
-export type AckResponse<T = unknown> = { ok: true; data?: T } | { ok: false; error: string };
+export type AckResponse<T = unknown> = { ok: true; data?: T } | { ok: false; error: string; status?: number };
 
 /** Emits with an acknowledgement and a timeout, resolving to a uniform result. */
 export function emitWithAck<T = unknown>(socket: Socket, event: string, payload: unknown, timeoutMs = 4000): Promise<AckResponse<T>> {
   return new Promise((resolve) => {
     if (!socket.connected) {
-      resolve({ ok: false, error: 'Not connected to the server.' });
+      resolve({ ok: false, error: 'Not connected to the EventControl server. It reconnects on its own — try again in a moment.' });
       return;
     }
     socket.timeout(timeoutMs).emit(event, payload, (err: Error | null, response: AckResponse<T>) => {
-      if (err) resolve({ ok: false, error: 'The server did not respond in time.' });
+      if (err) resolve({ ok: false, error: 'The server did not answer in time. Check that the EventControl window is still running, then try again.' });
       else resolve(response ?? { ok: false, error: 'No response from server.' });
     });
   });

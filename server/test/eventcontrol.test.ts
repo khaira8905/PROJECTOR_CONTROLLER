@@ -139,7 +139,7 @@ describe('media uploads', () => {
     expect(res.body.uploaded.map((m: any) => m.kind).sort()).toEqual(['image', 'pdf']);
     expect(res.body.rejected).toHaveLength(2);
     expect(res.body.rejected.map((r: any) => r.error).join(' ')).toMatch(/not supported/);
-    expect(res.body.rejected.map((r: any) => r.error).join(' ')).toMatch(/do not match/);
+    expect(res.body.rejected.map((r: any) => r.error).join(' ')).toMatch(/doesn’t look like/);
     // Paths are never exposed to clients.
     expect(JSON.stringify(res.body)).not.toContain('storagePath');
 

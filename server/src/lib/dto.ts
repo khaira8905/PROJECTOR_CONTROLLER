@@ -1,3 +1,4 @@
+import { parsePreferences } from '../services/preferences';
 import type { Event, Media, QueueItem, ScheduleItem, Screen } from '@prisma/client';
 import { storedFileExists } from '../services/mediaStorage';
 
@@ -27,6 +28,7 @@ export function toMediaDto(m: Media) {
     conversionError: m.conversionError,
     cloudStatus: m.cloudStatus,
     cloudError: m.cloudError,
+    source: m.source,
     createdAt: m.createdAt,
     url: `/api/media/${m.id}/file`,
     pdfUrl: pdfUrlFor(m),
@@ -99,6 +101,7 @@ export function toEventDto(e: Event & { _count?: { media: number; queueItems: nu
       opacity: e.overlayOpacity,
       visible: e.overlayVisible,
     },
+    preferences: parsePreferences(e.preferences),
     createdAt: e.createdAt,
     updatedAt: e.updatedAt,
     counts: e._count,

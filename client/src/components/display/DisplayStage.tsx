@@ -17,7 +17,6 @@ export interface VideoCommand {
 interface DisplayStageProps {
   display: DisplaySnapshot;
   timer?: TimerSnapshot | null;
-  timerRemaining?: number;
   /** "display" = the real projector output; "preview" = the operator's program monitor. */
   variant: 'display' | 'preview';
   videoCommand?: VideoCommand | null;
@@ -28,7 +27,7 @@ interface DisplayStageProps {
  * powers the projector page and the dashboard preview; all sizes use container query
  * units, so it scales from a thumbnail to a 4K projector identically — animations included.
  */
-export function DisplayStage({ display, timer, timerRemaining = 0, variant, videoCommand }: DisplayStageProps) {
+export function DisplayStage({ display, timer, variant, videoCommand }: DisplayStageProps) {
   // The countdown is visible when the operator enables "Show timer on display":
   // large on special screens, as a corner badge over slides.
   const timerVisible = !!timer && timer.status !== 'idle' && timer.showOnDisplay;
@@ -63,7 +62,6 @@ export function DisplayStage({ display, timer, timerRemaining = 0, variant, vide
             logo={display.logo}
             hideLogo={overlayOn}
             timer={screenShowsTimer ? timer : null}
-            remaining={timerRemaining}
           />
         ) : display.mode === 'logo' ? (
           <LogoScene logo={display.logo} eventName={display.eventName} eventDate={display.eventDate} />
@@ -96,7 +94,7 @@ export function DisplayStage({ display, timer, timerRemaining = 0, variant, vide
 
       {cornerTimer.mounted && timer && (
         <div className={cn('absolute right-[2.5cqw] bottom-[2.5cqw]', cornerTimer.leaving ? 'ec-overlay-out' : 'ec-badge-in')}>
-          <TimerBadge timer={timer} remaining={timerRemaining} />
+          <TimerBadge timer={timer} />
         </div>
       )}
     </div>

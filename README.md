@@ -35,19 +35,19 @@ Keep the black window open while you use EventControl, and close it to stop the 
 
 | Area | Features |
 | --- | --- |
-| **Presentations library** | Upload PPT, PPTX, PDF, images (PNG/JPG/WEBP) and videos (MP4/WEBM/MOV) by drag-and-drop. Each file is a card with a thumbnail, slide/page count, upload date and status. Files are organised in **folders** (Main Presentation, Speaker 1, Speaker 2, Sponsors, Break Screens, Emergency Screens, Logos, Event Branding, or your own). You can **preview** a file privately, **show** it (optionally a specific slide), add it to the flow, rename, move, download or delete it. Duplicate uploads are detected and skipped. |
+| **Files** | Upload PPT, PPTX, PDF, images (PNG/JPG/WEBP) and videos (MP4/WEBM/MOV) by drag-and-drop, from this computer, or **import from Google Drive** (PowerPoint, Google Slides and PDF). Each file shows a thumbnail, slide/page count and status. Organise files in **folders**, **preview** privately, **show** a file now, add it to the Flow, rename, move, download or delete it. Duplicates are detected and skipped. |
 | **PowerPoint handling** | PPT/PPTX files are converted to PDF in the background with LibreOffice. The **original file is kept** and the converted version is what the display renders, which gives real slide-by-slide control. "Open in PowerPoint" launches the original if you need animations or embedded media. |
-| **Show Flow (Run of Show)** | Prepare the whole event beforehand: `01 Starting Soon → 02 Opening (slides 1–8) → 03 Please Wait (30 sec) → 04 Speaker 1 → …`. Items are presentations (with an optional **slide range**) or screens. Reorder them by drag-and-drop. **Next** walks through the slides of the current item, then moves on to the next item and file. Playback is always manual. |
-| **Control screen** | Everything for running the show on one screen, with no page scrolling on a 1080p laptop: a large **Live Preview** of the projector, **Next Slide** (hover it to see exactly what comes next), skip to the previous/next item, a slide picker (**"Slide 3 of 24"**), readable **slide thumbnails** with the next one marked, speaker notes, **Live Controls** (Resume, Previous/Next, Go to Slide), **Quick Screens**, the **Timer** and the **Show Flow**. The sidebar opens the other sections: Presentations, Show Flow, Screens, Media Library, Branding, Timers and Settings. |
+| **Flow (the main workspace)** | The running order of the event, taking most of the Control screen: `01 Starting Soon → 02 Opening (slides 1–8) → 03 Please Wait → 04 Speaker 1 → …`. **Click an item to put it on the projector.** The item on screen opens up to show its slides; click a slide to jump to it. **Add** presentations (several at once, straight from upload or Drive) and screens; **Edit** to change slide ranges, durations, speaker notes or remove items; drag the handle to reorder. It scrolls smoothly however many items there are. **Next** walks through the slides of the current item, then on to the next item. |
+| **Control screen** | Flow on the left; on the right, what the audience sees: the projector picture, big **Previous / Next** buttons (Next says what it will do — *Slide 4* or the next item — and shows a preview on hover), a slide picker, a quiet **Up next** line, **Quick Selection** and the **Timer**. **Start** appears before the show begins; **Back to …** appears whenever a quick screen, black or a library file is on instead of the Flow. **Presenter mode** hides everything else. |
 | **Special screens** | Built-in **Please Wait, Technical Difficulty, We'll Be Back Shortly, Session Starting Soon, Coming Up Next** (announces the next item automatically) and **Thank You**. Each has its own hand-built animation: slow ripples, TV colour bars with a signal glitch, a steaming coffee cup, a sweeping clock ring, chevrons pulling toward what's next, and falling paper confetti. You can edit their text and create **custom screens** (title, subtitle, colour, image/video background). Any screen can be shown **with a countdown** ("Please Wait — 05:00") whose digits roll as they change. |
-| **Quick actions** | 🟢 Resume · 🟡 Please Wait · 🟠 Technical Difficulty · 🔴 **Black screen**. The Black button needs a second click to confirm; the `B` key acts instantly. Plus Logo and Fullscreen. |
+| **Quick Selection** | Your own shortcut buttons (default: Please Wait, Technical Difficulty, Black Screen, Show Logo). **Customize** to add screens, files or actions, remove them, reorder them, rename them and pick a colour. Saved with the event, so every console sees the same set. Black needs a second click (configurable); the `B` key acts at once. |
 | **Branding** | A logo overlay (university, event or sponsor logo) drawn over slides and screens. Choose the position (4 corners or centre), size, opacity and show/hide. There's also a separate full-screen logo mode. |
 | **Timer** | A server-authoritative countdown (start/pause/reset, ±1 min, warning threshold, show/hide on display), shown large on special screens and as a corner badge over slides. When time runs out, the console keeps counting the **overtime in red** (+01:25) while the audience still sees 00:00. A **Clock** tab shows the current time. |
-| **Top bar** | Display connected / offline, cloud or local storage, upload progress, free disk space (in the sidebar), theme switch, Settings and Open Display. |
+| **Top bar & rail** | Projector connected / offline (click to open the display window), storage status and upload progress, presenter mode, theme and **Open display**. The narrow rail on the left has labelled sections: Control, Files, Screens, Branding, Timers and Settings, plus free disk space and the operator. |
 | **Schedule** | A time-based run sheet (NOW / NEXT) as an operator reference. |
-| **Themes** | **White** (the default, for bright rooms) and **Blue** (a dark navy console for dark halls). Switch with the sun/moon button in the top bar or under Settings; the choice is remembered in that browser. Themes only change the operator console, never what the audience sees. |
+| **Settings** | **Presentation** (default presentation and starting slide for *Start*, Black confirmation), **Quick Selection**, **Interface** for this computer (White or Blue theme, comfortable/compact density, animations full/reduced/off, show or hide the projector picture and the slide thumbnails, presenter mode), **File sources** (this computer, Google Drive connect/browse/disconnect), **Projector** (display link, open, fullscreen) and **Event & account**. |
 | **Motion** | Everything on the projector cross-fades: no flash of black between items, slides turn with a soft directional drift, and the logo overlay and corner timer fade in and out. Headlines rise word by word and underlines draw themselves in. The console keeps its motion small and useful: a red on-air frame around the preview while the projector is live, a peek at the next slide, sliding tabs, sections that fade in, rolling timer digits, toasts that count down, a shaking Black button when it's armed, and a LIVE equaliser. People who turn on "reduce motion" in their OS get a calm, static version. |
-| **Reliability** | The display keeps the last content if the network drops, reconnects on its own and restores the exact state (slide, screen, overlay, timer). State survives server restarts. Files are always served from a local copy, so everything works offline. |
+| **Reliability** | The display keeps the last content if the network drops, reconnects on its own and restores the exact state (slide, screen, overlay, timer). The console survives long pauses too: after a reconnect, a server restart or a tab the browser put to sleep, it re-joins, reloads the Flow and files it may have missed, and reconnects immediately when you come back to the tab. The projector laptop is kept awake while the display is open. Files are always served from a local copy, so everything works offline. |
 
 ### Keyboard shortcuts
 
@@ -89,8 +89,8 @@ event-control/
 ├── client/src/
 │   ├── pages/           EventsPage, DashboardPage (operator console), DisplayPage (projector)
 │   ├── components/
-│   │   ├── dashboard/   LivePreview, LiveControls (+ QuickScreens), LibraryTable, ShowFlowPanel, TimerPanel,
-│   │   │                PresentationLibrary, PreviewModal, ScreensPanel, BrandingPanel, SchedulePanel, FlowItemModal…
+│   │   ├── dashboard/   FlowPane (the Flow), StagePane (picture + transport), QuickSelection (+ editor), TimerStrip,
+│   │   │                FilePicker, DriveBrowser, SettingsView, PresentationLibrary, ScreensPanel, BrandingPanel…
 │   │   ├── display/     DisplayStage (renders any state, used by display + live preview), PdfView,
 │   │   │                ScreenScene (special screens + their motifs), motion (crossfades, rolling digits), Confetti
 │   │   └── AuthGate     first-run password / sign-in
@@ -99,6 +99,7 @@ event-control/
 │   ├── hooks/           useEventSocket (realtime state), useTimerRemaining, useKeyboardShortcuts, useSystemStatus
 │   └── lib/             pdf.js loader & thumbnails, flow helpers, formatting
 ├── server/src/
+│   ├── integrations/    google (OAuth, encrypted tokens, Drive browse/import)
 │   ├── controllers/     events, media, queue (Show Flow), screens, schedule, control, auth, status
 │   ├── services/
 │   │   ├── displayService    what is on screen + Next/Previous across slides & files
@@ -222,6 +223,22 @@ Every push to `main` redeploys automatically. Events and files survive restarts 
 
 **Other Docker hosts:** the same `Dockerfile` runs anywhere (Railway, Fly.io, a VPS, a Raspberry Pi…). Set `DATABASE_URL` (Postgres, or `file:/data/eventcontrol.db` on a persistent volume), and optionally `SUPABASE_*` for file storage.
 
+### Google Drive
+
+Import presentations straight from Google Drive (Settings → File sources → Google Drive → **Connect**, or **Add → Presentations & files → Google Drive** in the Flow). It is optional and needs a free Google OAuth client, set up once:
+
+1. Open [Google Cloud Console](https://console.cloud.google.com/) → create a project → **APIs & Services → Library** → enable **Google Drive API**.
+2. **APIs & Services → OAuth consent screen**: choose *External*, fill in the app name and your email, and add yourself (and other operators) as **test users**.
+3. **Credentials → Create credentials → OAuth client ID → Web application**. Under *Authorized redirect URIs* add `http://localhost:5173/api/auth/google/callback` (and your hosted address, e.g. `https://your-app.onrender.com/api/auth/google/callback`).
+4. Put the client ID and secret in `.env` (or Render's environment settings) and restart:
+   ```
+   GOOGLE_CLIENT_ID=…apps.googleusercontent.com
+   GOOGLE_CLIENT_SECRET=…
+   ```
+5. Optional: `GOOGLE_ALLOWED_EMAILS=you@college.edu,colleague@college.edu` adds **Continue with Google** to the sign-in page for those accounts only.
+
+How it works: the server does the OAuth exchange, so the client secret and the tokens never reach the browser; tokens are stored encrypted. EventControl asks for **read-only** Drive access. Imported files are copied onto this computer (they have to be, to turn PowerPoint into slides and keep the show running if the venue Wi-Fi drops); duplicates are recognised. Disconnecting revokes the access at Google. While the consent screen is in *testing*, Google may show an "unverified app" notice to test users — that is expected for a private tool.
+
 ### Installing LibreOffice (PowerPoint slides)
 
 - **Windows / macOS:** install from https://www.libreoffice.org. EventControl finds it automatically.
@@ -236,9 +253,9 @@ Decks uploaded before LibreOffice was installed are converted automatically on t
 1. **Create / open the event** (← Events → **Create Event**).
 2. **Upload** decks, PDFs, logos and videos into folders. PowerPoint files show *Converting slides…* for a few seconds, then *24 slides*.
 3. **Preview** a file (👁) to check it privately. From the preview you can add a slide range (e.g. slides 1–8) to the flow or put a slide live.
-4. **Build the Show Flow**: **+ Flow** on presentations, **+ Screen** for Please Wait / Break / Thank You… Drag to reorder, ✎ to set slide ranges, durations and speaker notes.
-5. **Connect the projector:** set the display to *Extend*, click **Open Display**, drag the window to the projector and click it once (fullscreen, and it allows video sound). The status bar shows **DISPLAY CONNECTED**. From another computer, open `http://<laptop-ip>:5173/display/<eventId>` (or `:4000` in production); the IP is printed when the server starts.
-6. **Run the show** with `→`/`Space`. Use `W` / `T` / `B` for emergencies and `Esc` to return to the exact slide. Use `O` for the logo overlay, and the Screens tab (⏱) for "Please Wait — 05:00" countdowns.
+4. **Build the Flow** on the Control screen: **Add → Presentations & files** (tick several, or upload/import them right there) and **Add → a screen** for Please Wait / Break / Thank You… Drag the handles to reorder; **Edit** to set slide ranges, durations and speaker notes.
+5. **Connect the projector:** set the display to *Extend*, click **Open Display**, drag the window to the projector and click it once (fullscreen, and it allows video sound). The top bar shows **Projector connected**. From another computer, open `http://<laptop-ip>:5173/display/<eventId>` (or `:4000` in production); the IP is printed when the server starts.
+6. **Run the show**: press **Start**, then `→`/`Space` or **Next**, or click any Flow item or slide. Use Quick Selection (or `W` / `T` / `B`) for interruptions and **Back to …** / `Esc` to return to the exact slide. Use `O` for the logo overlay and Screens for "Please Wait — 05:00" countdowns. Turn on **presenter mode** to hide everything else.
 
 ![Show flow and live control](docs/screenshots/show-flow.png)
 
@@ -303,13 +320,20 @@ All routes except sign-in, health and media file downloads require the operator 
 | GET/POST, PATCH/DELETE | `/api/events/:id/schedule`, `/api/schedule/:id` | Run sheet |
 | GET | `/api/events/:id/state` | Current display + timer + presence |
 | POST | `/api/events/:id/control` | Any control command |
+| PUT | `/api/events/:id` with `{ preferences }` | Quick Selection, default presentation/slide, Black confirmation (merged) |
+| GET · POST | `/api/integrations/google` · `/disconnect` | Google connection status · disconnect and revoke |
+| GET | `/api/integrations/google/connect?returnTo=` | Start connecting Google Drive (redirects to Google) |
+| GET | `/api/integrations/google/drive?q=&folderId=&pageToken=` | Browse / search presentations and PDFs in Drive |
+| POST | `/api/events/:id/media/drive` | Import Drive files (`{ fileIds: [...] }`) |
+| GET | `/api/auth/google/start` · `/callback` | Sign in with Google (allow-listed accounts) · OAuth callback |
 
 ---
 
 ## Security & reliability
 
-- **Sign-in:** scrypt-hashed operator password (or Supabase Auth), HMAC-signed HttpOnly `SameSite=Strict` session cookie, rate-limited sign-in, and a password change signs out other sessions. Operator REST routes and socket control require a session; displays are read-only.
+- **Sign-in:** scrypt-hashed operator password (or Supabase Auth, or Google for allow-listed accounts), HMAC-signed HttpOnly `SameSite=Strict` session cookie, rate-limited sign-in, and a password change signs out other sessions. Operator REST routes and socket control require a session; displays are read-only.
 - **Uploads:** extension allowlist and **magic-byte check** (a renamed `.exe` is rejected), sanitized filenames, random temp names, size limits and SHA-256 duplicate detection.
+- **Google:** server-side authorization-code flow with a signed `state` bound to a short-lived nonce cookie (CSRF-safe), same-origin return paths only, read-only Drive scope, AES-256-GCM encrypted tokens, revoke on disconnect.
 - **Paths:** every stored path is resolved and confined to `uploads/`, and clients only ever see `/api/media/:id/...` URLs.
 - **No arbitrary execution:** LibreOffice and "Open in PowerPoint" run fixed binaries with `execFile`/`spawn` (no shell) on files tracked in the database.
 - **Resilience:** the display keeps its last frame when disconnected, reconnects forever and restores state exactly. State is persisted (survives restarts), interrupted conversions and cloud uploads resume on start, and missing local files are restored from the cloud. Speaker notes are never sent to displays, and a test checks this.

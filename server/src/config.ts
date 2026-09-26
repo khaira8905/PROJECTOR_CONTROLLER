@@ -38,9 +38,30 @@ export const config = {
     bucket: process.env.SUPABASE_BUCKET ?? 'eventcontrol',
   },
 
+  // Google account connection (Drive import) and optional "Sign in with Google".
+  // Create an OAuth client (type "Web application") in Google Cloud Console; see README.
+  google: {
+    clientId: process.env.GOOGLE_CLIENT_ID ?? '',
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
+    // Leave empty to derive it from the address the app is opened at.
+    redirectUri: process.env.GOOGLE_REDIRECT_URI ?? '',
+    // Comma-separated Google accounts allowed to sign in as operator (empty = sign-in off).
+    allowedEmails: (process.env.GOOGLE_ALLOWED_EMAILS ?? '')
+      .split(',')
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean),
+    // Overridable for tests.
+    authUrl: process.env.GOOGLE_AUTH_URL ?? 'https://accounts.google.com/o/oauth2/v2/auth',
+    tokenUrl: process.env.GOOGLE_TOKEN_URL ?? 'https://oauth2.googleapis.com/token',
+    revokeUrl: process.env.GOOGLE_REVOKE_URL ?? 'https://oauth2.googleapis.com/revoke',
+    apiUrl: (process.env.GOOGLE_API_URL ?? 'https://www.googleapis.com').replace(/\/+$/, ''),
+  },
+
   // LibreOffice binary used to convert PPT/PPTX to PDF. Auto-detected when empty.
   sofficePath: process.env.SOFFICE_PATH ?? '',
   conversionTimeoutMs: Number(process.env.CONVERSION_TIMEOUT_SECONDS ?? 180) * 1000,
 };
 
 export const cloudStorageEnabled = () => !!(config.supabase.url && config.supabase.serviceKey);
+
+export const googleConfigured = () => !!(config.google.clientId && config.google.clientSecret);
