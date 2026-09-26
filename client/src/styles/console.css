@@ -5,6 +5,53 @@
  * in motion.css switches it off.
  */
 
+/* ── System tokens ────────────────────────────────────────────────────────────────
+ * One type scale, one spacing step (4px), three radii, three speeds. Components use
+ * these instead of one-off values, so the console reads as one designed system. */
+:root {
+  /* Type: 11 labels · 13 supporting · 14 body · 15 controls · 17 section · 20 values · 24 page */
+  --text-label: 11px;
+  --text-sm: 13px;
+  --text-base: 14px;
+  --text-control: 15px;
+  --text-section: 17px;
+  --text-value: 20px;
+  --text-page: 24px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --gutter: 20px; /* inner padding of every pane */
+
+  /* Radii by role: controls are crisp, containers barely rounded, nothing is a pill. */
+  --radius-control: 4px;
+  --radius-panel: 6px;
+  --radius-media: 3px;
+
+  /* Motion: fast = controls answering the pointer; medium = panels and sections; slow = layout. */
+  --dur-fast: 120ms;
+  --dur-medium: 220ms;
+  --dur-slow: 360ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+}
+
+/* ── Typography roles ───────────────────────────────────────────────────────────── */
+/* Page title (top bar, settings page). */
+.t-page { font-size: var(--text-page); font-weight: 650; letter-spacing: -0.02em; line-height: 1.15; color: var(--contrast); }
+/* A section inside a pane: "Flow", "Up next". */
+.t-section { font-size: var(--text-section); font-weight: 650; letter-spacing: -0.01em; line-height: 1.25; color: var(--contrast); }
+/* Values the presenter glances at: presentation name, slide number, timer. */
+.t-value { font-size: var(--text-value); font-weight: 600; letter-spacing: -0.015em; line-height: 1.2; color: var(--contrast); }
+.t-num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 600; letter-spacing: -0.02em; }
+/* Supporting text: details, hints. Regular weight, never tiny. */
+.t-support { font-size: var(--text-sm); font-weight: 400; line-height: 1.45; color: var(--ink-500); }
+
 body {
   background: var(--surface-950);
 }
@@ -40,63 +87,74 @@ body {
 
 /* ── Buttons ──────────────────────────────────────────────────────────────────────── */
 
-/* Every button: quick colour change, a 1px lift on hover, sinks when pressed. */
+/*
+ * Buttons are controls, not decorations: flat faces, crisp 4px corners, a hard 1px bottom
+ * edge for depth (like a key), a 1px lift on hover and a press that sinks onto that edge.
+ * Colour changes in --dur-fast; nothing glows, nothing is a pill.
+ */
 .ec-btn {
+  --btn-lift: 0px;
   position: relative;
+  cursor: pointer;
   border: 1px solid transparent;
+  border-radius: var(--radius-control) !important;
+  transform: translateY(var(--btn-lift));
   transition:
-    background-color 120ms ease,
-    border-color 120ms ease,
-    color 120ms ease,
-    box-shadow 160ms ease,
-    transform 160ms var(--ease-out-quart);
+    background-color var(--dur-fast) ease,
+    border-color var(--dur-fast) ease,
+    color var(--dur-fast) ease,
+    box-shadow var(--dur-fast) ease,
+    transform var(--dur-fast) var(--ease-standard);
 }
-.ec-btn:not(:disabled):hover { transform: translateY(-1px); }
+.ec-btn:not(:disabled):hover { --btn-lift: -1px; }
+/* Pressed: onto the edge, a hair smaller — the command was received. */
 .ec-btn:not(:disabled):active {
-  transform: translateY(0.5px) scale(0.985);
-  transition-duration: 60ms;
+  --btn-lift: 1px;
+  transform: translateY(var(--btn-lift)) scale(0.985);
+  transition-duration: 40ms;
 }
-.ec-btn:disabled { cursor: not-allowed; opacity: 0.45; filter: saturate(0.4); }
-.ec-btn svg { transition: transform 160ms var(--ease-out-quart); }
+.ec-btn:disabled { cursor: not-allowed; opacity: 0.42; filter: saturate(0.3); }
+.ec-btn svg { transition: transform var(--dur-fast) var(--ease-standard); }
 
 .ec-btn-primary {
   color: var(--on-accent);
-  background: linear-gradient(180deg, color-mix(in oklab, var(--accent-500) 88%, #fff), var(--accent-500) 55%);
-  border-color: color-mix(in oklab, var(--accent-500) 70%, #000);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.22), 0 1px 2px rgb(16 24 40 / 0.18);
+  background: var(--accent-500);
+  border-color: color-mix(in oklab, var(--accent-500) 78%, #000);
+  box-shadow: 0 1px 0 color-mix(in oklab, var(--accent-500) 55%, #000), inset 0 1px 0 rgb(255 255 255 / 0.12);
 }
 .ec-btn-primary:not(:disabled):hover {
-  background: linear-gradient(180deg, color-mix(in oklab, var(--accent-600) 88%, #fff), var(--accent-600) 55%);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.22), 0 4px 10px -4px color-mix(in oklab, var(--accent-500) 70%, transparent);
+  background: color-mix(in oklab, var(--accent-500) 90%, #000);
+  box-shadow: 0 2px 0 color-mix(in oklab, var(--accent-500) 55%, #000), 0 6px 12px -8px color-mix(in oklab, var(--accent-500) 70%, #000), inset 0 1px 0 rgb(255 255 255 / 0.12);
 }
-.ec-btn-primary:not(:disabled):active { box-shadow: inset 0 2px 3px rgb(0 0 0 / 0.2); }
+.ec-btn-primary:not(:disabled):active { background: color-mix(in oklab, var(--accent-500) 82%, #000); box-shadow: inset 0 2px 3px rgb(0 0 0 / 0.22); }
 
 .ec-btn-secondary {
   color: var(--ink-200);
-  background: linear-gradient(180deg, var(--btn-top), var(--btn-bottom));
+  background: var(--btn-top);
   border-color: var(--line-strong);
   box-shadow: 0 1px 0 var(--btn-edge);
 }
 .ec-btn-secondary:not(:disabled):hover {
   color: var(--contrast);
   border-color: var(--btn-hover-border);
-  box-shadow: 0 3px 8px -4px rgb(16 24 40 / 0.25);
+  box-shadow: 0 2px 0 var(--btn-edge), 0 6px 10px -8px rgb(16 24 40 / 0.35);
 }
-.ec-btn-secondary:not(:disabled):active { background: var(--surface-700); box-shadow: inset 0 1px 2px rgb(16 24 40 / 0.14); }
+.ec-btn-secondary:not(:disabled):active { background: var(--btn-bottom); box-shadow: inset 0 1px 2px rgb(16 24 40 / 0.16); }
 .ec-btn-secondary[aria-pressed='true'] {
   color: var(--accent-300);
   border-color: color-mix(in oklab, var(--accent-500) 55%, transparent);
   background: color-mix(in oklab, var(--accent-500) 10%, var(--surface-900));
 }
 
+/* Ghost: text controls that sit in toolbars. No lift, just a quiet surface on hover. */
 .ec-btn-ghost { color: var(--ink-300); }
-.ec-btn-ghost:not(:disabled):hover { color: var(--contrast); background: var(--surface-700); }
-.ec-btn-ghost:not(:disabled):active { background: var(--surface-600); }
+.ec-btn-ghost:not(:disabled):hover { --btn-lift: 0px; color: var(--contrast); background: color-mix(in oklab, var(--contrast) 6%, transparent); }
+.ec-btn-ghost:not(:disabled):active { background: color-mix(in oklab, var(--contrast) 10%, transparent); }
 .ec-btn-ghost[aria-pressed='true'] { color: var(--accent-300); background: color-mix(in oklab, var(--accent-500) 10%, transparent); }
 
-.ec-btn-danger { color: #fff; background: linear-gradient(180deg, #ef4444, #dc2626 60%); border-color: #b91c1c; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.2); }
-.ec-btn-success { color: #fff; background: linear-gradient(180deg, #16a34a, #15803d 60%); border-color: #166534; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.2); }
-.ec-btn-warning { color: #2b1700; background: linear-gradient(180deg, #fbbf24, #f59e0b 60%); border-color: #d97706; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35); }
+.ec-btn-danger { color: #fff; background: #d92d34; border-color: #a8161d; box-shadow: 0 1px 0 #8f1218; }
+.ec-btn-success { color: #fff; background: #16803c; border-color: #0f5f2c; box-shadow: 0 1px 0 #0c4f24; }
+.ec-btn-warning { color: #2b1700; background: #f0a70a; border-color: #c88400; box-shadow: 0 1px 0 #a86f00; }
 
 /* Arrow icons nudge the way they point. */
 .ec-btn:not(:disabled):hover .ec-nudge-right { transform: translateX(2px); }
@@ -229,7 +287,8 @@ body {
   border-radius: inherit;
   pointer-events: none;
   box-shadow: inset 0 0 0 2px #e5484d;
-  animation: ec-tally 2.4s var(--ease-in-out-sine) infinite;
+  /* Steady, not breathing: it appears once when the projector goes live. */
+  animation: ec-fade-in var(--dur-medium) ease-out;
 }
 
 /* ── Overtime ─────────────────────────────────────────────────────────────────────── */
@@ -290,9 +349,9 @@ body {
 
 /* Small section labels inside a pane. */
 .ec-label {
-  font-size: 11.5px;
-  font-weight: 600;
-  letter-spacing: 0.07em;
+  font-size: var(--text-label);
+  font-weight: 550;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-500);
 }
@@ -353,20 +412,59 @@ body {
 
 /* ── Quick Selection ───────────────────────────────────────────────────────────────── */
 
-.ec-quick-btn {
+/* Quick Selection is a keypad: one block, hairline dividers, a tone mark per key. */
+.ec-quickpad {
   border: 1px solid var(--line-strong);
-  background: linear-gradient(180deg, var(--btn-top), var(--btn-bottom));
+  border-radius: var(--radius-panel);
+  background: var(--btn-top);
   box-shadow: 0 1px 0 var(--btn-edge);
-  border-left-width: 3px;
+  overflow: hidden;
 }
-.ec-quick-btn[data-tone='amber'] { border-left-color: #f59e0b; }
-.ec-quick-btn[data-tone='red'] { border-left-color: #e5484d; }
-.ec-quick-btn[data-tone='blue'] { border-left-color: var(--accent-500); }
-.ec-quick-btn[data-tone='neutral'] { border-left-color: var(--ink-600); }
-.ec-quick-btn[aria-pressed='true'][data-tone='amber'] { background: #f59e0b; border-color: #d97706; color: #1f1300; }
-.ec-quick-btn[aria-pressed='true'][data-tone='red'] { background: #dc2626; border-color: #b91c1c; color: #fff; }
-.ec-quick-btn[aria-pressed='true'][data-tone='blue'] { background: var(--accent-500); border-color: var(--accent-600); color: #fff; }
-.ec-quick-btn[aria-pressed='true'][data-tone='neutral'] { background: #111827; border-color: #000; color: #fff; }
+.ec-quick-btn {
+  cursor: pointer;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  transition: background-color var(--dur-fast) ease, color var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
+}
+.ec-quickpad > .ec-quick-btn:nth-child(2n) { border-right: 0; }
+/* No bottom divider on the last row. */
+.ec-quickpad > .ec-quick-btn:nth-last-child(1),
+.ec-quickpad > .ec-quick-btn:nth-last-child(2):nth-child(odd) { border-bottom: 0; }
+.ec-quick-btn::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.7rem;
+  bottom: 0.7rem;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: var(--quick-tone, var(--ink-600));
+  transition: top var(--dur-fast) var(--ease-standard), bottom var(--dur-fast) var(--ease-standard);
+}
+.ec-quick-btn[data-tone='amber'] { --quick-tone: #f59e0b; }
+.ec-quick-btn[data-tone='red'] { --quick-tone: #e5484d; }
+.ec-quick-btn[data-tone='blue'] { --quick-tone: var(--accent-500); }
+.ec-quick-btn[data-tone='neutral'] { --quick-tone: var(--ink-500); }
+.ec-quick-btn svg { transition: transform var(--dur-fast) var(--ease-standard); }
+.ec-quick-btn:not(:disabled):hover { background: color-mix(in oklab, var(--quick-tone) 7%, var(--btn-top)); color: var(--contrast); }
+.ec-quick-btn:not(:disabled):hover::before { top: 0.45rem; bottom: 0.45rem; }
+.ec-quick-btn:not(:disabled):hover svg { transform: translateY(-1px); }
+.ec-quick-btn:not(:disabled):active { box-shadow: inset 0 2px 4px rgb(16 24 40 / 0.18); transition-duration: 40ms; }
+.ec-quick-btn:focus-visible { outline: 2px solid var(--accent-500); outline-offset: -3px; }
+.ec-quick-btn:disabled { cursor: not-allowed; opacity: 0.45; }
+/* On screen: the key fills with its tone. */
+.ec-quick-btn[aria-pressed='true'] { background: var(--quick-tone); color: #fff; }
+.ec-quick-btn[aria-pressed='true'][data-tone='amber'] { color: #1f1300; }
+.ec-quick-btn[aria-pressed='true'][data-tone='neutral'] { background: #111827; }
+.ec-quick-btn[aria-pressed='true']::before { background: rgb(255 255 255 / 0.5); }
+.ec-quick-btn.ec-armed { background: color-mix(in oklab, #e5484d 10%, var(--btn-top)); color: #e5484d; }
+
+/* Flow row state word ("Current", "On air", "Next"). */
+.ec-row-status { font-size: var(--text-label); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-300); }
+.ec-row-status[data-state='next'] { color: var(--ink-500); }
+.ec-row-status[data-live] { color: #e5484d; }
+.ec-row-status-dot { background: currentColor; }
+.ec-flow-head { padding: var(--space-3) var(--gutter); min-height: 3.5rem; }
 
 /* ── Navigation rail ──────────────────────────────────────────────────────────────── */
 
@@ -444,28 +542,6 @@ body {
 @keyframes ec-breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
 @keyframes ec-ping-once { from { transform: scale(1); opacity: 0.8; } to { transform: scale(2.6); opacity: 0; } }
 
-/* ── Black Screen button ──────────────────────────────────────────────────────────── */
-.ec-black-btn {
-  color: var(--ink-200);
-  background: var(--surface-900);
-  border-color: var(--line-strong);
-  box-shadow: var(--card-shadow);
-}
-.ec-black-btn:not(:disabled):hover { border-color: var(--ink-500); color: var(--contrast); }
-.ec-black-btn[data-state='armed'] {
-  color: #e5484d;
-  border-color: #e5484d;
-  background: color-mix(in oklab, #e5484d 8%, var(--surface-900));
-  animation: ec-armed 420ms ease-in-out both;
-}
-.ec-black-btn[data-state='on'] {
-  color: #fff;
-  background: #05070b;
-  border-color: #000;
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08), 0 6px 14px -8px rgb(0 0 0 / 0.6);
-}
-.ec-black-btn[data-state='on']:hover { color: #fff; background: #111621; }
-.ec-black-btn[data-state='on'] kbd { color: #fff; border-color: rgb(255 255 255 / 0.25); background: rgb(255 255 255 / 0.08); }
 
 /* ── Flow: selection, removal, compact list ───────────────────────────────────────── */
 .ec-flow-row[data-selected] { background: color-mix(in oklab, var(--accent-500) 7%, var(--surface-900)); }
@@ -501,7 +577,7 @@ body {
 /* Switching sections: the new page settles in from slightly below. */
 @keyframes ec-section-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 /* No fill-mode: once settled, no transform lingers (it would trap fixed menus and dialogs). */
-.ec-section-in { animation: ec-section-in 220ms var(--ease-out-quart); }
+.ec-section-in { animation: ec-section-in var(--dur-medium) var(--ease-enter); }
 .ec-view-in { animation: ec-fade-in 180ms ease-out; }
 
 /* Titles sit flat on the page; the settings themselves are a layered list. */
@@ -587,3 +663,263 @@ body {
   to { box-shadow: inset 3px 0 0 var(--accent-500), inset 0 0 0 999px color-mix(in oklab, var(--accent-500) 7%, transparent); }
 }
 .ec-selected { animation: ec-select-flash 420ms var(--ease-out-quart) both; }
+
+/* ══ Control view: primary column ═════════════════════════════════════════════════
+ * Deck (what's on + transport) → Flow → Timer, one column that always fits the screen.
+ * The deck is a raised strip, the Flow is the working surface, the timer is a recessed
+ * footer attached to the Flow. */
+
+.ec-primary { background: var(--surface-900); }
+
+.ec-deck {
+  position: relative;
+  z-index: 2;
+  padding: 0.9rem 1.25rem 1rem;
+  background: linear-gradient(180deg, color-mix(in oklab, var(--surface-850) 60%, var(--surface-900)), var(--surface-900));
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 6px 12px -12px rgb(16 24 40 / 0.45);
+}
+.ec-now { min-height: 2.75rem; }
+.ec-now-title { font-size: 20px; line-height: 1.2; }
+.ec-now-label { transition: color 200ms ease; }
+/* The tally: a vertical bar that says, in colour, what the audience is seeing. */
+.ec-now-tally {
+  align-self: stretch;
+  width: 4px;
+  border-radius: 2px;
+  background: var(--ink-600);
+  transition: background-color 250ms ease, box-shadow 250ms ease;
+}
+.ec-deck[data-state='live'] .ec-now-tally { background: #e5484d; box-shadow: 0 0 0 3px rgb(229 72 77 / 0.12); }
+.ec-deck[data-state='live'] .ec-now-label { color: #e5484d; }
+.ec-deck[data-state='black'] .ec-now-tally { background: var(--contrast); }
+.ec-deck[data-state='offline'] .ec-now-label { color: var(--st-400, #f87171); }
+
+
+/* Titles and small readouts that change: a short settle instead of a hard swap. */
+@keyframes ec-text-swap { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+.ec-text-swap { animation: ec-text-swap 180ms var(--ease-out-quart); }
+
+/* ── Timer dock ─────────────────────────────────────────────────────────────────────── */
+.ec-timer-dock {
+  --timer-tone: var(--ink-400);
+  background: var(--surface-850);
+  border-top: 1px solid var(--line-strong);
+  box-shadow: inset 0 1px 0 color-mix(in oklab, var(--contrast) 4%, transparent), 0 -6px 12px -12px rgb(16 24 40 / 0.35);
+}
+.ec-timer-dock[data-state='running'] { --timer-tone: #22a55b; }
+.ec-timer-dock[data-state='warning'] { --timer-tone: #e0a100; }
+.ec-timer-dock[data-state='paused'] { --timer-tone: #e0a100; }
+.ec-timer-dock[data-state='done'] { --timer-tone: #e5484d; }
+.ec-timer-progress {
+  position: absolute;
+  top: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--timer-tone);
+  transform-origin: 0 50%;
+  transition: transform 1s linear, background-color 300ms ease;
+}
+.ec-timer-dock[data-state='ready'] .ec-timer-progress { opacity: 0.35; }
+.ec-timer-state { color: var(--timer-tone); transition: color 250ms ease; }
+.ec-timer-dot { background: var(--timer-tone); transition: background-color 250ms ease; }
+.ec-timer-readout { color: var(--contrast); transition: color 250ms ease; }
+.ec-timer-dock[data-state='ready'] .ec-timer-readout { color: var(--ink-400); }
+.ec-timer-dock[data-state='paused'] .ec-timer-readout { color: var(--ink-300); }
+.ec-timer-dock[data-state='warning'] .ec-timer-readout { color: #e0a100; }
+.ec-timer-dock[data-state='done'] .ec-timer-readout { color: #e5484d; }
+
+/* Joined buttons (−1 / +1): one control, not two floating squares. */
+.ec-button-group > .ec-btn:first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.ec-button-group > .ec-btn:last-child { border-top-left-radius: 0; border-bottom-left-radius: 0; margin-left: -1px; }
+.ec-button-group > .ec-btn:hover { z-index: 1; }
+
+.ec-link { transition: color 120ms ease; text-decoration: underline transparent; text-underline-offset: 3px; }
+.ec-link:hover { color: var(--contrast); text-decoration-color: currentColor; }
+
+/* ── Supporting column ─────────────────────────────────────────────────────────────── */
+.ec-upnext-card {
+  padding: 0.5rem;
+  margin: -0.5rem;
+  border-radius: 6px;
+  transition: background-color 150ms ease;
+}
+.ec-upnext-thumb { box-shadow: 0 0 0 1px var(--line-strong), 0 4px 10px -6px rgb(0 0 0 / 0.4); }
+
+/* ── Icon motion that explains the action ──────────────────────────────────────────── */
+@keyframes ec-icon-swap { from { opacity: 0; transform: scale(0.6) rotate(-25deg); } to { opacity: 1; transform: none; } }
+.ec-icon-swap { animation: ec-icon-swap 160ms var(--ease-out-quart); }
+@keyframes ec-spin-back { from { transform: rotate(0); } to { transform: rotate(-360deg); } }
+.ec-spin-back { animation: ec-spin-back 450ms var(--ease-out-quart); }
+@keyframes ec-spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+.ec-spin-once { animation: ec-spin 600ms var(--ease-out-quart); }
+.ec-btn:not(:disabled):hover .ec-icon-play { transform: translateX(2px); }
+.ec-rail-item:hover .lucide-settings { transform: rotate(35deg); }
+.ec-rail-item .lucide-settings { transition: transform 300ms var(--ease-out-quart); }
+
+/* ── Buttons: a touch more physical ───────────────────────────────────────────────── */
+
+/* ── Flow rows: depth on hover, a settled active state ─────────────────────────────── */
+.ec-flow-row { transition: background-color 180ms ease; cursor: pointer; }
+.ec-flow-row .ec-flow-thumb { transition: transform 160ms var(--ease-out-quart), box-shadow 160ms ease; }
+.ec-flow-row:hover .ec-flow-thumb { transform: translateY(-1px); box-shadow: 0 6px 12px -8px rgb(0 0 0 / 0.5); }
+.ec-flow-row::before { transition: background-color 200ms ease, transform 220ms var(--ease-out-quart); transform-origin: 50% 50%; }
+.ec-flow-row[data-state='current']::before { animation: ec-bar-in 260ms var(--ease-out-quart); }
+@keyframes ec-bar-in { from { transform: scaleY(0.2); } to { transform: none; } }
+/* Just added: a brief highlight so the eye finds it. */
+@keyframes ec-row-new {
+  from { background-color: color-mix(in oklab, var(--accent-500) 16%, transparent); }
+  to { background-color: transparent; }
+}
+.ec-flow-row.ec-flow-new { animation: ec-flow-in 280ms var(--ease-out-quart) both, ec-row-new 1200ms ease-out 200ms; }
+
+/* ── Height-aware Control view ─────────────────────────────────────────────────────
+ * On short screens the supporting parts give way first; the deck, Flow and timer stay. */
+@media (min-width: 1024px) and (max-height: 820px) {
+  .ec-deck { padding: 0.65rem 1.25rem 0.75rem; }
+  .ec-now-title { font-size: 18px; }
+  .ec-transport { margin-top: 0.5rem; }
+  .ec-transport { --tb-h: 3rem; }
+  .ec-control .ec-flow-thumb { width: 88px; height: 50px; }
+  .ec-control .ec-flow-hit { padding-top: 0.4rem; padding-bottom: 0.4rem; }
+  .ec-stage { gap: 0.75rem; padding-top: 0.75rem; padding-bottom: 0.75rem; }
+}
+@media (min-width: 1024px) and (max-height: 680px) {
+  .ec-now-notes, .ec-next-detail { display: none; }
+  .ec-now { min-height: 0; }
+  .ec-transport { --tb-h: 2.6rem; }
+  .ec-timer-readout { font-size: 24px; }
+  .ec-timer-dock > div { padding-top: 0.35rem; padding-bottom: 0.35rem; }
+  .ec-control .ec-flow-thumb { width: 64px; height: 36px; }
+  .ec-upnext { display: none; }
+}
+/* Being dragged: lifted off the list. */
+.ec-flow-row.ec-dragging { background: var(--surface-800); box-shadow: 0 12px 24px -10px rgb(0 0 0 / 0.45), 0 0 0 1px var(--line-strong); cursor: grabbing; }
+
+/* ══ Transport toolbar ══════════════════════════════════════════════════════════════
+ * One strip, hairline dividers, one filled segment (Next): the primary action is clear
+ * from contrast and position, not from size. Segments answer the pointer in --dur-fast;
+ * pressing pushes the segment in (inner shadow) — the strip itself stays put. */
+.ec-transport { --tb-h: 3.5rem; }
+.ec-toolbar {
+  height: var(--tb-h);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  background: var(--btn-top);
+  box-shadow: 0 1px 0 var(--btn-edge), 0 8px 16px -14px rgb(16 24 40 / 0.5);
+  overflow: hidden;
+}
+.ec-toolbar > * + * { border-left: 1px solid var(--line); }
+.ec-tb-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 1rem;
+  font-size: var(--text-control);
+  font-weight: 500;
+  color: var(--ink-200);
+  cursor: pointer;
+  transition: background-color var(--dur-fast) ease, color var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
+}
+.ec-tb-btn svg { transition: transform var(--dur-fast) var(--ease-standard); }
+.ec-tb-btn:not(:disabled):hover { background: color-mix(in oklab, var(--contrast) 5%, var(--btn-top)); color: var(--contrast); }
+.ec-tb-btn:not(:disabled):active { background: var(--btn-bottom); box-shadow: inset 0 2px 4px rgb(16 24 40 / 0.18); transition-duration: 40ms; }
+.ec-tb-btn:not(:disabled):hover .ec-nudge-left { transform: translateX(-2px); }
+.ec-tb-btn:not(:disabled):hover .ec-nudge-right { transform: translateX(2px); }
+.ec-tb-btn:disabled { cursor: not-allowed; color: var(--ink-600); }
+.ec-tb-btn:focus-visible { outline: 2px solid var(--accent-500); outline-offset: -3px; }
+.ec-tb-prev { flex: 1 1 0; justify-content: center; min-width: 0; }
+.ec-tb-primary {
+  color: var(--on-accent);
+  background: var(--accent-500);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12);
+}
+.ec-toolbar > .ec-tb-primary, .ec-toolbar > div:has(> .ec-tb-primary) { border-left-color: color-mix(in oklab, var(--accent-500) 70%, #000); }
+.ec-tb-primary:not(:disabled):hover { background: color-mix(in oklab, var(--accent-500) 90%, #000); color: var(--on-accent); }
+.ec-tb-primary:not(:disabled):active { background: color-mix(in oklab, var(--accent-500) 80%, #000); box-shadow: inset 0 2px 5px rgb(0 0 0 / 0.28); }
+.ec-tb-primary:disabled { background: color-mix(in oklab, var(--accent-500) 35%, var(--btn-top)); color: color-mix(in oklab, var(--on-accent) 70%, transparent); }
+.ec-tb-counter { background: color-mix(in oklab, var(--surface-850) 70%, var(--btn-top)); }
+.ec-tb-counter-live { cursor: pointer; transition: background-color var(--dur-fast) ease; }
+.ec-tb-counter-live:hover { background: color-mix(in oklab, var(--contrast) 5%, var(--btn-top)); }
+.ec-tb-counter:focus-within { box-shadow: inset 0 0 0 2px var(--accent-500); }
+
+/* Black: its own key beside the strip, same height. Off = outlined, armed = red, on = solid black. */
+.ec-black-btn {
+  height: var(--tb-h);
+  cursor: pointer;
+  color: var(--ink-200);
+  background: var(--btn-top);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  box-shadow: 0 1px 0 var(--btn-edge);
+  transition: background-color var(--dur-fast) ease, color var(--dur-fast) ease, border-color var(--dur-fast) ease, box-shadow var(--dur-fast) ease, transform var(--dur-fast) var(--ease-standard);
+}
+.ec-black-btn:hover { color: var(--contrast); border-color: var(--btn-hover-border); transform: translateY(-1px); box-shadow: 0 2px 0 var(--btn-edge), 0 6px 10px -8px rgb(16 24 40 / 0.35); }
+.ec-black-btn:active { transform: translateY(1px) scale(0.985); box-shadow: inset 0 2px 4px rgb(16 24 40 / 0.18); transition-duration: 40ms; }
+.ec-black-btn:focus-visible { outline: 2px solid var(--accent-500); outline-offset: 2px; }
+.ec-black-btn[data-state='armed'] { color: #e5484d; border-color: #e5484d; background: color-mix(in oklab, #e5484d 8%, var(--btn-top)); animation: ec-armed 380ms ease-in-out; }
+.ec-black-btn[data-state='on'] { color: #fff; background: #05070b; border-color: #000; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.1); }
+.ec-black-btn[data-state='on']:hover { background: #121722; color: #fff; }
+.ec-black-btn kbd { opacity: 0.6; }
+
+/* Start / Back to…: a slim cue line above the transport, not a second giant button. */
+.ec-cue-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  height: 2.5rem;
+  padding: 0 0.9rem;
+  border-radius: var(--radius-control);
+  font-size: var(--text-control);
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--on-accent);
+  background: var(--accent-500);
+  box-shadow: 0 1px 0 color-mix(in oklab, var(--accent-500) 55%, #000);
+  animation: ec-text-swap var(--dur-medium) var(--ease-enter);
+  transition: background-color var(--dur-fast) ease, transform var(--dur-fast) var(--ease-standard);
+}
+.ec-cue-bar:hover { background: color-mix(in oklab, var(--accent-500) 90%, #000); }
+.ec-cue-bar:hover .ec-icon-back { transform: translateX(-2px); }
+.ec-cue-bar:hover .ec-icon-play { transform: translateX(2px); }
+.ec-cue-bar svg { transition: transform var(--dur-fast) var(--ease-standard); }
+.ec-cue-bar:active { transform: translateY(1px); box-shadow: inset 0 2px 4px rgb(0 0 0 / 0.25); transition-duration: 40ms; }
+.ec-cue-bar:focus-visible { outline: 2px solid var(--accent-500); outline-offset: 2px; }
+.ec-cue-hint { font-size: var(--text-label); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.75; }
+
+.ec-toolbar-sm { height: 2.375rem; }
+.ec-toolbar-sm .ec-tb-btn { font-size: var(--text-sm); font-weight: 600; padding: 0 0.8rem; gap: 0.4rem; }
+/* The one piece of motion while the timer runs: the progress hairline (it moves because time does). */
+.ec-timer-dock[data-state='paused'] .ec-timer-progress { opacity: 0.5; }
+
+/* Loading placeholders: one slow, soft sweep (it says "on its way"), instead of blinking. */
+.ec-skeleton {
+  background: linear-gradient(90deg, var(--surface-700) 0%, color-mix(in oklab, var(--surface-700) 55%, var(--surface-900)) 50%, var(--surface-700) 100%);
+  background-size: 200% 100%;
+  animation: ec-skeleton 1.6s ease-in-out infinite;
+}
+@keyframes ec-skeleton { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+.ec-pending-line {
+  position: relative;
+  display: block;
+  width: 7rem;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 1px;
+  background: var(--line);
+}
+.ec-pending-line::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  background: var(--accent-500);
+  animation: ec-pending 1.1s var(--ease-standard) infinite;
+}
+@keyframes ec-pending { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+
+@media (prefers-reduced-motion: reduce) {
+  /* No lifting or sinking: state is shown by colour and borders only. */
+  .ec-btn, .ec-black-btn, .ec-cue-bar { --btn-lift: 0px !important; transform: none !important; }
+}

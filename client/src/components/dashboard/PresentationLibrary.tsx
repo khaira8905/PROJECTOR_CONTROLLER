@@ -201,7 +201,13 @@ function Thumbnail({ media }: { media: Media }) {
   if (media.missing) return <AlertTriangle className="text-red-400" size={20} />;
   if (media.pdfUrl) return <PdfThumb url={media.pdfUrl} page={1} width={160} className="h-full w-full" />;
   if (media.kind === 'image') return <img src={media.url} alt="" loading="lazy" className="h-full w-full object-cover" />;
-  if (media.kind === 'presentation' && media.conversionStatus === 'pending') return <Loader2 className="animate-spin text-slate-500" size={20} />;
+  if (media.kind === 'presentation' && media.conversionStatus === 'pending')
+    return (
+      <span className="flex flex-col items-center gap-1.5 text-[11px] font-medium text-slate-500">
+        Making slides…
+        <span className="ec-pending-line !w-12" aria-hidden />
+      </span>
+    );
   return <MediaIcon kind={media.kind} size={16} />;
 }
 

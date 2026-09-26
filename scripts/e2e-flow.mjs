@@ -85,7 +85,7 @@ try {
   await op.keyboard.press('ArrowRight');
   await display.locator('canvas:not(.invisible)').waitFor();
   await op.keyboard.press('ArrowRight');
-  await op.waitForFunction(() => document.querySelector('select[aria-label="Go to page"]')?.value === '2');
+  await op.waitForFunction(() => document.querySelector('select[aria-label^="Go to page"]')?.value === '2');
   ok('8-9. NEXT shows the PDF, then its next page');
 
   const t0 = Date.now();

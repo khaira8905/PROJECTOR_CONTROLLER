@@ -97,14 +97,14 @@ export default function EventsPage() {
         {events === null && !loadError && (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {[0, 1, 2].map((i) => (
-              <div key={i} className="ec-card h-52 animate-pulse rounded-lg" style={{ animationDelay: `${i * 150}ms` }} />
+              <div key={i} className="ec-card ec-skeleton h-52 rounded-md" />
             ))}
           </div>
         )}
 
         {events && events.length === 0 && (
           <div className="ec-card ec-panel-in flex flex-col items-center rounded-lg px-6 py-20 text-center">
-            <span className="ec-bob relative flex h-20 w-20 items-center justify-center rounded-lg bg-sky-500/10 text-sky-300 ring-1 ring-sky-400/25 ring-inset">
+            <span className="relative flex h-20 w-20 items-center justify-center rounded-lg bg-sky-500/10 text-sky-300 ring-1 ring-sky-400/25 ring-inset">
               <span className="absolute inset-0 rounded-lg bg-sky-500/20 blur-2xl" />
               <MonitorPlay size={36} className="relative" />
             </span>

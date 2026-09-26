@@ -73,6 +73,12 @@ describe('open access', () => {
     expect((await alice.get('/api/integrations/google')).body).toMatchObject({ connected: true, account: { email: 'alice@example.com' } });
     expect((await alice.get('/api/integrations/google/drive')).status).toBe(200);
 
+    // Connected services: Google listed with what it unlocks, connected for Alice only.
+    const aliceServices = (await alice.get('/api/integrations')).body;
+    expect(aliceServices[0]).toMatchObject({ id: 'google', configured: true, connected: true, features: [{ id: 'drive', available: true }] });
+    expect(JSON.stringify(aliceServices)).not.toMatch(/access-A|refresh-A/);
+    expect((await bob.get('/api/integrations')).body[0]).toMatchObject({ connected: false, account: null });
+
     // Someone else with the same link sees their own (empty) connection, not Alice's Drive.
     expect((await bob.get('/api/integrations/google')).body).toMatchObject({ connected: false, account: null });
     const denied = await bob.get('/api/integrations/google/drive');

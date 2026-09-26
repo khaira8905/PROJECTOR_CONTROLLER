@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, Coffee, ArrowDown, ArrowUp, FileText, Hourglass, Image as ImageIcon, MonitorOff, Pencil, Plus, RotateCcw, Star, Trash2, Undo2 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
-import { KeyHint } from './StagePane';
+import { KeyHint } from './ControlDeck';
 import { prettyCombo } from '../../lib/shortcuts';
 import { cn } from '../../lib/cn';
 import type { DisplaySnapshot, EventPreferences, Media, QuickItem, QuickTone, Screen } from '../../types';
@@ -111,7 +111,7 @@ export function QuickSelection({ preferences, screens, media, display, disabled,
           Add your own shortcuts
         </button>
       ) : (
-        <div className="grid grid-cols-2 gap-2">
+        <div className="ec-quickpad grid grid-cols-2" data-count={resolved.length}>
           {resolved.map((r, index) => {
             const isArmed = armed === r.item.id;
             const key = keys?.[index];
@@ -124,7 +124,7 @@ export function QuickSelection({ preferences, screens, media, display, disabled,
                 aria-pressed={r.active}
                 data-tone={isArmed ? 'red' : r.tone}
                 className={cn(
-                  'ec-btn ec-quick-btn group relative flex h-12 min-w-0 items-center gap-2.5 rounded-[5px] px-3 text-left text-[14px] font-semibold text-slate-200',
+                  'ec-quick-btn group relative flex h-12 min-w-0 items-center gap-2.5 px-3.5 text-left text-[14px] font-medium text-slate-200',
                   isArmed && 'ec-armed',
                 )}
               >
@@ -133,7 +133,7 @@ export function QuickSelection({ preferences, screens, media, display, disabled,
                 </span>
                 <span className="min-w-0 flex-1 truncate">{isArmed ? 'Click again for black' : r.label}</span>
                 {r.active ? (
-                  <span className="ec-dot-live h-2 w-2 shrink-0 rounded-full bg-current" aria-label="On the projector" />
+                  <span className="ec-fade-in shrink-0 text-[10px] font-semibold tracking-[0.08em] uppercase opacity-85">On screen</span>
                 ) : key ? (
                   <span className="opacity-60 transition-opacity group-hover:opacity-100">
                     <KeyHint combo={key} />

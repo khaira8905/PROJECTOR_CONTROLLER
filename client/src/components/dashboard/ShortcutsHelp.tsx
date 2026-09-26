@@ -1,7 +1,7 @@
 import { Settings2 } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
-import { KeyHint } from './StagePane';
+import { KeyHint } from './ControlDeck';
 import { SHORTCUT_DEFS } from '../../lib/shortcuts';
 import { useShortcutBindings, useUiPrefs } from '../../lib/uiPrefs';
 

@@ -137,7 +137,7 @@ export function SettingsView(props: SettingsViewProps) {
       <div key={section} className="ec-section-in min-w-0">
         <header className="mb-6 flex items-start gap-4 border-b ec-line pb-5">
           <div className="min-w-0 flex-1">
-            <h2 className="text-[24px] leading-tight font-semibold tracking-[-0.02em] text-white">{current.label}</h2>
+            <h2 className="t-page">{current.label}</h2>
             <p className="mt-1 text-sm text-slate-500">{current.blurb}</p>
           </div>
           <SaveState state={saved} />
@@ -665,7 +665,7 @@ function Block({ id, title, note, scope, children }: { id: string; title: string
   return (
     <section id={`set-${id}`} className="ec-settings-block mb-9 scroll-mt-4">
       <div className="flex items-baseline gap-3">
-        <h3 className="text-[15px] font-semibold text-white">{title}</h3>
+        <h3 className="t-section text-[16px]">{title}</h3>
         {scope && <span className="text-[11px] font-medium text-slate-500">{scope === 'event' ? 'Saved with this event' : 'This computer only'}</span>}
       </div>
       {note && <p className="mt-0.5 max-w-2xl text-[13px] text-slate-500">{note}</p>}
@@ -680,7 +680,7 @@ function Row({ label, hint, local, children }: { label: string; hint?: string; l
       <div className="min-w-0">
         <p className="text-sm font-medium text-slate-200">
           {label}
-          {local && <span className="ml-2 text-[11px] font-normal text-slate-500">this computer</span>}
+          {local && <span className="ml-2 text-[11px] font-normal whitespace-nowrap text-slate-500">· this computer</span>}
         </p>
         {hint && <p className="mt-0.5 text-[13px] leading-snug text-slate-500">{hint}</p>}
       </div>

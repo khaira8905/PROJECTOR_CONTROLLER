@@ -44,7 +44,7 @@ export function TimerPanel({ timer, send, className }: TimerPanelProps) {
   if (!timer) {
     return (
       <Panel title="Timer" icon={<Timer size={20} />} className={className}>
-        <div className="h-32 animate-pulse rounded-lg bg-console-850" />
+        <div className="ec-skeleton h-32 rounded-md" />
       </Panel>
     );
   }

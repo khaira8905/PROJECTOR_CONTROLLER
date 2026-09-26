@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers';
@@ -30,6 +30,8 @@ interface FlowPaneProps {
   /** Scroll the item on screen into view as the show moves on. */
   followLive: boolean;
   thumbSize: 'small' | 'medium' | 'large';
+  /** The Flow is still being fetched (first load). */
+  loading?: boolean;
   /** Changes whenever the "Select presentation" shortcut asks for the focus. */
   focusSignal: number;
   onShow: (item: QueueItem) => void;
@@ -54,6 +56,41 @@ export function FlowPane(props: FlowPaneProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const listRef = useRef<HTMLOListElement>(null);
+  const dragged = useRef(false);
+
+  // Items that arrive after the first render (added here or by another console) get a
+  // short highlight; the initial list simply appears.
+  const known = useRef<Set<string> | null>(null);
+  const arrived = useRef(new Map<string, number>());
+  if (known.current) for (const q of flow) if (!known.current.has(q.id) && !arrived.current.has(q.id)) arrived.current.set(q.id, Date.now());
+  // Kept for the length of the animation, so a re-render meanwhile doesn't cut it short.
+  const fresh = new Set([...arrived.current].filter(([, t]) => Date.now() - t < 1500).map(([id]) => id));
+  // The baseline is the first loaded list, not the empty one shown while loading.
+  useEffect(() => {
+    if (props.loading) return;
+    known.current = new Set(flow.map((q) => q.id));
+  }, [flow, props.loading]);
+
+  // Reordered by someone else (or by Edit): rows glide to their new places (FLIP).
+  const positions = useRef(new Map<string, number>());
+  const order = flow.map((q) => q.id).join(',');
+  useLayoutEffect(() => {
+    const list = listRef.current;
+    if (!list) return;
+    const rows = Array.from(list.querySelectorAll<HTMLElement>('[data-flow-id]'));
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || document.documentElement.dataset.motion === 'off';
+    const skip = dragged.current || reduce;
+    dragged.current = false;
+    for (const row of rows) {
+      const id = row.dataset.flowId!;
+      const before = positions.current.get(id);
+      const now = row.offsetTop;
+      if (!skip && before !== undefined && before !== now) {
+        row.animate([{ transform: `translateY(${before - now}px)` }, { transform: 'none' }], { duration: 240, easing: 'cubic-bezier(0.25, 1, 0.5, 1)' });
+      }
+      positions.current.set(id, now);
+    }
+  }, [order]);
   const followLive = props.followLive;
 
   // Keep the item on screen in view as the show moves on (only this list scrolls).
@@ -90,6 +127,7 @@ export function FlowPane(props: FlowPaneProps) {
   );
   const onDragEnd = ({ active, over }: DragEndEvent) => {
     if (!over || active.id === over.id) return;
+    dragged.current = true; // dnd-kit already animated this move
     const from = flow.findIndex((q) => q.id === active.id);
     const to = flow.findIndex((q) => q.id === over.id);
     if (from >= 0 && to >= 0) onReorder(arrayMove(flow, from, to));
@@ -98,17 +136,17 @@ export function FlowPane(props: FlowPaneProps) {
 
   return (
     <section className={cn('ec-pane flex min-h-0 flex-col', className)} aria-label="Flow">
-      <header className="flex items-end gap-3 border-b ec-line px-5 pt-4 pb-3">
+      <header className="ec-flow-head flex items-center gap-2 border-b ec-line">
         <div className="min-w-0 flex-1">
-          <h2 className="text-[22px] leading-none font-semibold tracking-[-0.02em] text-white">Flow</h2>
-          <p className="mt-1.5 text-[13px] text-slate-500">
+          <h2 className="t-section text-[19px]">Flow</h2>
+          <p className="t-support mt-0.5 truncate">
             {flow.length === 0
               ? 'Nothing planned yet'
               : `${flow.length} ${flow.length === 1 ? 'item' : 'items'}${totalSeconds ? ` · about ${formatDurationShort(totalSeconds)}` : ''} · ${props.activation === 'double' ? 'double-click an item to show it' : 'click an item to show it'}`}
           </p>
         </div>
         <div className="relative">
-          <Button variant="secondary" icon={<Plus size={16} />} onClick={() => setMenuOpen((o) => !o)} aria-expanded={menuOpen} aria-haspopup="menu">
+          <Button size="sm" variant="ghost" icon={<Plus size={15} />} onClick={() => setMenuOpen((o) => !o)} aria-expanded={menuOpen} aria-haspopup="menu">
             Add
           </Button>
           {menuOpen && (
@@ -143,12 +181,25 @@ export function FlowPane(props: FlowPaneProps) {
             </>
           )}
         </div>
-        <Button variant={editing ? 'primary' : 'secondary'} icon={editing ? <Check size={16} /> : <Pencil size={15} />} onClick={() => setEditing((e) => !e)} aria-pressed={editing} disabled={flow.length === 0}>
+        <Button size="sm" variant={editing ? 'primary' : 'ghost'} icon={editing ? <Check size={15} /> : <Pencil size={14} />} onClick={() => setEditing((e) => !e)} aria-pressed={editing} disabled={flow.length === 0}>
           {editing ? 'Done' : 'Edit'}
         </Button>
       </header>
 
-      {flow.length === 0 ? (
+      {flow.length === 0 && props.loading ? (
+        <ol className="min-h-0 flex-1 overflow-hidden" aria-label="Loading the Flow" aria-busy>
+          {[0, 1, 2, 3].map((i) => (
+            <li key={i} className="flex items-center gap-4 border-b ec-line py-3 pr-4 pl-5" style={{ opacity: 1 - i * 0.2 }}>
+              <span className="ec-skeleton h-3 w-5 rounded-[2px]" />
+              <span className="ec-skeleton h-[50px] w-[88px] rounded-[3px]" />
+              <span className="flex-1">
+                <span className="ec-skeleton block h-3.5 w-2/5 rounded-[2px]" />
+                <span className="ec-skeleton mt-2 block h-3 w-1/4 rounded-[2px]" />
+              </span>
+            </li>
+          ))}
+        </ol>
+      ) : flow.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
           <ListVideo size={34} className="text-slate-600" />
           <div>
@@ -167,7 +218,7 @@ export function FlowPane(props: FlowPaneProps) {
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd} modifiers={[restrictToVerticalAxis, restrictToParentElement]}>
           <SortableContext items={flow.map((q) => q.id)} strategy={verticalListSortingStrategy}>
-            <ol ref={listRef} onKeyDown={onListKey} data-layout={props.layout} className="ec-flow-list scroll-thin min-h-0 flex-1 overflow-y-auto">
+            <ol ref={listRef} onKeyDown={onListKey} data-layout={props.layout} className="ec-flow-list scroll-thin relative min-h-0 flex-1 overflow-y-auto">
               {flow.map((item, index) => (
                 <FlowRow
                   key={item.id}
@@ -182,6 +233,7 @@ export function FlowPane(props: FlowPaneProps) {
                   thumbWidth={THUMB_WIDTH[props.thumbSize]}
                   activation={props.activation}
                   selected={props.activation === 'double' && selectedId === item.id}
+                  isNew={fresh.has(item.id)}
                   onSelect={setSelectedId}
                   onShow={props.onShow}
                   onGoToPage={props.onGoToPage}
@@ -213,6 +265,7 @@ const FlowRow = memo(function FlowRow({
   thumbWidth,
   activation,
   selected,
+  isNew,
   onSelect,
   onShow,
   onGoToPage,
@@ -230,6 +283,7 @@ const FlowRow = memo(function FlowRow({
   thumbWidth: number;
   activation: 'click' | 'double';
   selected: boolean;
+  isNew: boolean;
   onSelect: (id: string) => void;
   onShow: (item: QueueItem) => void;
   onGoToPage: (page: number) => void;
@@ -274,7 +328,7 @@ const FlowRow = memo(function FlowRow({
       data-selected={selected || undefined}
       data-leaving={leaving || undefined}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={cn('ec-flow-row ec-flow-in', isDragging && 'z-10 bg-console-800 shadow-lg')}
+      className={cn('ec-flow-row', isNew && 'ec-flow-new', isDragging && 'ec-dragging z-10')}
     >
       <div className="flex items-center">
         <button
@@ -306,7 +360,7 @@ const FlowRow = memo(function FlowRow({
           <span className={cn('min-w-0 flex-1', compact && 'flex items-baseline gap-2.5')}>
             <span className="flex min-w-0 items-center gap-2">
               <span className={cn('truncate font-medium', compact ? 'text-[14px]' : 'text-[15px]', current ? 'text-white' : 'text-slate-200')}>{label}</span>
-              {item.notes && <StickyNote size={13} className="shrink-0 text-amber-400" aria-label="Has speaker notes" />}
+              {item.notes && <StickyNote size={13} className={cn('shrink-0', current ? 'text-amber-400' : 'text-slate-500')} aria-label="Has speaker notes" />}
             </span>
             <span className={cn('block truncate text-slate-500', compact ? 'shrink-0 text-[12px] max-sm:hidden' : 'mt-0.5 text-[13px]')}>
               {media?.missing ? <span className="text-red-400">File missing — upload it again · </span> : null}
@@ -353,15 +407,15 @@ const FlowRow = memo(function FlowRow({
   );
 });
 
+/** A word, not a badge: the row's bar and tint already carry the state. */
 function RowStatus({ state, live }: { state: RowState; live: boolean }) {
-  if (state === 'current')
-    return (
-      <span className={cn('shrink-0 rounded-[3px] px-1.5 py-0.5 text-[11px] font-bold tracking-[0.08em] uppercase', live ? 'bg-[#e5484d] text-[#fff]' : 'bg-sky-500 text-[#fff]')}>
-        {live ? 'On air' : 'Current'}
-      </span>
-    );
-  if (state === 'next') return <span className="shrink-0 text-[12px] font-semibold tracking-[0.06em] text-sky-300 uppercase">Next</span>;
-  return null;
+  if (state === 'idle') return null;
+  return (
+    <span key={`${state}-${live}`} className="ec-row-status ec-text-swap flex shrink-0 items-center gap-1.5" data-live={live || undefined} data-state={state}>
+      {state === 'current' && <span className="ec-row-status-dot h-1.5 w-1.5 rounded-full" aria-hidden />}
+      {state === 'current' ? (live ? 'On air' : 'Current') : 'Next'}
+    </span>
+  );
 }
 
 /** The slides of the item on screen, inline in the Flow: click one to jump to it. */

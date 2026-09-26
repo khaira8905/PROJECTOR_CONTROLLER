@@ -1,4 +1,5 @@
 import * as googleCtl from '../controllers/googleController';
+import * as integrations from '../integrations';
 import { Router } from 'express';
 import multer from 'multer';
 import crypto from 'node:crypto';
@@ -55,6 +56,7 @@ apiRouter.post('/auth/change-password', auth.changePassword);
 // Google: one callback for both "connect Drive" and "sign in with Google" (public, verified by signed state).
 apiRouter.get('/auth/google/start', googleCtl.signInStart);
 apiRouter.get('/auth/google/callback', googleCtl.callback);
+apiRouter.get('/integrations', integrations.listServices);
 apiRouter.get('/integrations/google', googleCtl.getStatus);
 apiRouter.get('/integrations/google/connect', googleCtl.connect);
 apiRouter.post('/integrations/google/disconnect', googleCtl.disconnect);

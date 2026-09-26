@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertTriangle, Check, ChevronRight, Folder, Loader2, RefreshCw, Search } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
+import { Pending } from '../ui/Pending';
 import { DriveIcon } from '../DriveIcon';
 import { MediaIcon } from '../MediaIcon';
 import { ApiError, api } from '../../services/api';
@@ -115,8 +116,8 @@ export function DriveBrowser({
       }
     >
       {!status ? (
-        <div className="flex h-40 items-center justify-center text-slate-500">
-          <Loader2 className="animate-spin" />
+        <div className="flex h-40 items-center justify-center">
+          <Pending label="Checking your Google connection…" />
         </div>
       ) : !status.configured ? (
         <Notice title="Google isn’t set up on this server yet">
@@ -149,7 +150,10 @@ export function DriveBrowser({
                 ))
               )}
             </nav>
-            <label className="relative w-60">
+            <Button size="icon-sm" variant="ghost" onClick={() => void load()} disabled={loading} aria-label="Refresh" title="Refresh">
+              <RefreshCw size={15} className={loading ? 'animate-spin' : undefined} />
+            </Button>
+            <label className="relative w-60 max-sm:w-full">
               <span className="sr-only">Search Drive</span>
               <Search size={15} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-slate-500" />
               <input
@@ -171,7 +175,7 @@ export function DriveBrowser({
                     Connect again
                   </a>
                 ) : (
-                  <Button size="sm" icon={<RefreshCw size={14} />} onClick={() => void load()}>
+                  <Button size="sm" icon={<RefreshCw size={14} className={loading ? 'animate-spin' : undefined} />} onClick={() => void load()} disabled={loading}>
                     Try again
                   </Button>
                 )}
@@ -179,8 +183,8 @@ export function DriveBrowser({
             ) : loading && files.length === 0 ? (
               Array.from({ length: 6 }, (_, i) => (
                 <li key={i} className="flex items-center gap-3 px-3 py-3">
-                  <span className="h-5 w-5 animate-pulse rounded bg-console-600" />
-                  <span className="h-3 animate-pulse rounded bg-console-600" style={{ width: `${30 + ((i * 17) % 40)}%` }} />
+                  <span className="ec-skeleton h-5 w-5 rounded-[3px]" />
+                  <span className="ec-skeleton h-3 rounded-[2px]" style={{ width: `${30 + ((i * 17) % 40)}%` }} />
                 </li>
               ))
             ) : files.length === 0 ? (

@@ -1,7 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useState, type FormEvent, type ReactNode } from 'react';
-import { KeyRound, Loader2 } from 'lucide-react';
+import { KeyRound } from 'lucide-react';
 import { BrandMark } from './BrandMark';
 import { Button } from './ui/Button';
+import { Pending } from './ui/Pending';
 import { Field, TextInput } from './ui/Field';
 import { api } from '../services/api';
 import type { AuthStatus } from '../types';
@@ -55,7 +56,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   if (!status)
     return (
       <Centered>
-        <Loader2 className="animate-spin text-slate-500" />
+        <Pending label="Opening EventControl…" />
       </Centered>
     );
   if (!status.authenticated) return <SignIn status={status} onDone={load} />;

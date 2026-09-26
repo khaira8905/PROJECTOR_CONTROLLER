@@ -12,6 +12,7 @@ import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { useToast } from '../components/ui/Toast';
 import { FlowPane } from '../components/dashboard/FlowPane';
 import { StagePane } from '../components/dashboard/StagePane';
+import { ControlDeck } from '../components/dashboard/ControlDeck';
 import { DEFAULT_QUICK, QuickSelection, QuickSelectionEditor } from '../components/dashboard/QuickSelection';
 import { TimerStrip } from '../components/dashboard/TimerStrip';
 import { FilePicker } from '../components/dashboard/FilePicker';
@@ -444,7 +445,7 @@ export default function DashboardPage() {
                 <ArrowLeft size={20} />
               </Link>
               <div className="min-w-0 flex-1">
-                <h1 className="truncate text-[18px] leading-tight font-semibold tracking-[-0.015em] text-white">{event?.name ?? 'Loading…'}</h1>
+                <h1 className="truncate text-[18px] leading-tight font-semibold tracking-[-0.015em] text-white">{event?.name ?? 'Opening event…'}</h1>
                 <p className="truncate text-[13px] text-slate-500">{presenter ? 'Presenter mode' : view === 'control' ? 'Control' : NAV.find((n) => n.id === view)?.label}</p>
               </div>
               <div className="flex flex-wrap items-center">
@@ -508,50 +509,17 @@ export default function DashboardPage() {
 
           {view === 'control' || presenter ? (
             <main
-              className="ec-view-in grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1.3fr)_minmax(400px,1fr)] lg:overflow-hidden"
-              style={{ '--preview-h': 'clamp(170px, 34vh, 520px)' } as CSSProperties}
+              className="ec-view-in ec-control grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1.35fr)_minmax(380px,1fr)] lg:overflow-hidden"
+              style={{ '--preview-h': 'clamp(150px, 30vh, 480px)' } as CSSProperties}
             >
-              <FlowPane
-                className="border-[var(--line)] max-lg:order-2 max-lg:max-h-[80vh] max-lg:border-t lg:border-r"
-                flow={flow}
-                screens={screens}
-                display={display}
-                currentId={display?.queueItemId ?? null}
-                nextId={nextItem?.id ?? null}
-                onAir={showingFlowItem && isLive}
-                showSlides={ui.showSlides}
-                layout={ui.flowLayout}
-                activation={ui.flowActivation}
-                followLive={ui.followLive}
-                thumbSize={ui.thumbSize}
-                focusSignal={flowFocus}
-                onShow={showItem}
-                onGoToPage={(page) => void run(showingFlowItem ? { type: 'page', page } : { type: 'show-item', queueItemId: currentItem!.id, page })}
-                onReorder={reorder}
-                onEdit={setEditingItem}
-                onRemove={removeFromFlow}
-                onAddFiles={() => setPickerOpen(true)}
-                onAddScreen={async (s) => {
-                  if (!eventId) return;
-                  try {
-                    await api.addScreenToFlow(eventId, s.id);
-                    await data.reloadQueue();
-                    toast.success(`Added “${s.title}” to the Flow.`);
-                  } catch (err) {
-                    toast.error(errorMessage(err, 'Couldn’t add the screen.'));
-                  }
-                }}
-              />
-              <div className="ec-pane-alt scroll-thin min-h-0 max-lg:order-1 lg:overflow-y-auto">
-                <StagePane
+              {/* Primary column: what's on, the controls, the Flow and the timer under it. */}
+              <div className="ec-primary flex min-h-0 min-w-0 flex-col lg:overflow-x-hidden lg:overflow-y-auto lg:border-r lg:border-[var(--line)]">
+                <ControlDeck
                   display={display}
-                  timer={timer}
-                  offFlow={offFlow}
-                  videoCommand={videoCommand}
                   live={isLive}
-                  showPreview={ui.showPreview}
                   currentItem={currentItem}
                   nextItem={nextItem}
+                  offFlow={offFlow}
                   canNext={flow.length > 0 && joined && !atEnd}
                   canPrevious={flow.length > 0 && joined}
                   startLabel={startLabel}
@@ -560,18 +528,68 @@ export default function DashboardPage() {
                   onPrevious={() => void run({ type: 'previous' })}
                   onResume={() => void run({ type: 'show-current' })}
                   onGoToPage={(page) => void run({ type: 'page', page })}
+                  onEditNotes={setEditingItem}
+                  black={{ enabled: blackPrefs.enabled, confirm: prefs?.confirmBlack ?? true, active: blackOn }}
+                  onBlack={toggleBlack}
+                  keys={{ next: bindings.next[0], previous: bindings.previous[0], resume: bindings.resume[0], black: bindings.black[0] }}
+                  position={currentIndex >= 0 ? { index: currentIndex, total: flow.length } : null}
+                />
+                <FlowPane
+                  className="min-h-[14rem] flex-1 max-lg:max-h-[70vh]"
+                  flow={flow}
+                  screens={screens}
+                  display={display}
+                  currentId={display?.queueItemId ?? null}
+                  nextId={nextItem?.id ?? null}
+                  onAir={showingFlowItem && isLive}
+                  showSlides={ui.showSlides}
+                  layout={ui.flowLayout}
+                  activation={ui.flowActivation}
+                  followLive={ui.followLive}
+                  thumbSize={ui.thumbSize}
+                  focusSignal={flowFocus}
+                  loading={data.loading}
+                  onShow={showItem}
+                  onGoToPage={(page) => void run(showingFlowItem ? { type: 'page', page } : { type: 'show-item', queueItemId: currentItem!.id, page })}
+                  onReorder={reorder}
+                  onEdit={setEditingItem}
+                  onRemove={removeFromFlow}
+                  onAddFiles={() => setPickerOpen(true)}
+                  onAddScreen={async (s) => {
+                    if (!eventId) return;
+                    try {
+                      await api.addScreenToFlow(eventId, s.id);
+                      await data.reloadQueue();
+                      toast.success(`Added “${s.title}” to the Flow.`);
+                    } catch (err) {
+                      toast.error(errorMessage(err, 'Couldn’t add the screen.'));
+                    }
+                  }}
+                />
+                <TimerStrip timer={timer} send={(cmd) => void run(cmd)} onMore={() => setView('timers')} />
+              </div>
+
+              {/* Supporting column: the picture, what's next, quick shortcuts. */}
+              <div className="ec-pane-alt ec-secondary scroll-thin min-h-0 min-w-0 lg:overflow-y-auto">
+                <StagePane
+                  display={display}
+                  timer={timer}
+                  videoCommand={videoCommand}
+                  live={isLive}
+                  showPreview={ui.showPreview}
+                  nextItem={nextItem}
+                  canNext={flow.length > 0 && joined && !atEnd}
+                  canPrevious={flow.length > 0 && joined}
+                  onNext={() => void run({ type: 'next' })}
+                  onPrevious={() => void run({ type: 'previous' })}
                   onVideo={videoAction}
                   onFullscreen={() => void run({ type: 'fullscreen' })}
-                  onEditNotes={setEditingItem}
                   onOpenExternally={(id) => {
                     const m = media.find((x) => x.id === id);
                     if (m) void openMedia(m);
                   }}
                   canOpenExternally={!!system?.openExternally}
-                  black={{ enabled: blackPrefs.enabled, confirm: prefs?.confirmBlack ?? true, active: blackOn }}
-                  onBlack={toggleBlack}
                   mouseControls={ui.mouseControls}
-                  keys={{ next: bindings.next[0], previous: bindings.previous[0], resume: bindings.resume[0], black: bindings.black[0] }}
                 >
                   <QuickSelection
                     preferences={prefs}
@@ -583,25 +601,24 @@ export default function DashboardPage() {
                     onTrigger={triggerQuick}
                     onEdit={() => setQuickEditorOpen(true)}
                   />
-                  <TimerStrip timer={timer} send={(cmd) => void run(cmd)} onMore={() => setView('timers')} />
-                  {/* Hidden "go to slide" target for the G shortcut. */}
-                  {pageCount && (
-                    <input
-                      ref={jumpRef}
-                      className="sr-only"
-                      aria-label="Go to slide number"
-                      inputMode="numeric"
-                      onKeyDown={(e) => {
-                        if (e.key !== 'Enter') return;
-                        const n = Number(e.currentTarget.value);
-                        if (Number.isInteger(n) && n >= 1 && n <= pageCount) void run({ type: 'page', page: n });
-                        e.currentTarget.value = '';
-                        e.currentTarget.blur();
-                      }}
-                    />
-                  )}
                 </StagePane>
               </div>
+              {/* Hidden "go to slide" target for the G shortcut. */}
+              {pageCount && (
+                <input
+                  ref={jumpRef}
+                  className="sr-only"
+                  aria-label="Go to slide number"
+                  inputMode="numeric"
+                  onKeyDown={(e) => {
+                    if (e.key !== 'Enter') return;
+                    const n = Number(e.currentTarget.value);
+                    if (Number.isInteger(n) && n >= 1 && n <= pageCount) void run({ type: 'page', page: n });
+                    e.currentTarget.value = '';
+                    e.currentTarget.blur();
+                  }}
+                />
+              )}
             </main>
           ) : (
             <main key={view} className="ec-section-in scroll-thin min-w-0 flex-1 p-4 sm:p-6 lg:overflow-y-auto">

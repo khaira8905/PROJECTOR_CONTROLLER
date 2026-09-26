@@ -15,13 +15,13 @@ export function Switch({ checked, onChange, label, className, compact, hideLabel
       <span
         aria-hidden
         className={cn(
-          'relative h-5 w-9 shrink-0 rounded-full transition-colors duration-300 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-sky-400',
+          'relative h-5 w-9 shrink-0 rounded-[3px] transition-colors duration-200 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-sky-400',
           checked ? 'bg-sky-500' : 'bg-console-500',
         )}
       >
         <span
           className={cn(
-            'absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-[#fff] shadow transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]',
+            'absolute top-0.5 left-0.5 h-4 w-4 rounded-[2px] bg-[#fff] shadow-[0_1px_2px_rgb(0_0_0/0.3)] transition-transform duration-200 ease-[cubic-bezier(0.2,0,0,1)]',
             checked && 'translate-x-4',
           )}
         />

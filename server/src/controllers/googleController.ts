@@ -7,8 +7,9 @@ import { HttpError } from '../lib/errors';
 import { logger } from '../lib/logger';
 import { parseCookies } from '../lib/cookies';
 import * as google from '../integrations/google';
-import { authEnabled, signPayload, verifyPayload } from '../services/authService';
-import { appUrl, cookieOptions, deviceId } from '../lib/network';
+import { signPayload, verifyPayload } from '../services/authService';
+import { appUrl, cookieOptions } from '../lib/network';
+import { connectionOwner, googleSignInEnabled } from '../integrations';
 import { startSession } from './authController';
 import { findEventOr404 } from './eventsController';
 import { folderSchema, ingestFile } from './mediaController';
@@ -27,14 +28,9 @@ interface OAuthState {
 /** Same-origin paths only, so the callback can never be used to bounce someone elsewhere. */
 const safeReturn = (value: unknown, fallback: string) => (typeof value === 'string' && value.startsWith('/') && !value.startsWith('//') ? value.slice(0, 300) : fallback);
 
-/**
- * Who a Google connection belongs to. Open access (no sign-in): the browser that connected
- * it, so opening the shared link never exposes someone else's Drive. Private mode: the
- * installation, shared by its signed-in operators.
- */
-const ownerOf = (req: Request, res: Response) => (authEnabled() ? 'installation' : `device:${deviceId(req, res)}`);
-
-const signInEnabled = () => authEnabled() && googleConfigured() && config.google.allowedEmails.length > 0;
+// Connections are personal to the browser (open access) or the installation (private mode).
+const ownerOf = connectionOwner;
+const signInEnabled = googleSignInEnabled;
 
 /** The callback URL registered with Google; derived from the address the app is opened at. */
 function redirectUri(req: Request) {

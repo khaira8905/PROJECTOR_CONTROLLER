@@ -16,11 +16,11 @@ const variants: Record<Variant, string> = {
 };
 
 const sizes: Record<Size, string> = {
-  sm: 'h-8 px-3 text-[13px] font-medium gap-1.5 rounded-[5px]',
-  md: 'h-10 px-4 text-sm font-medium gap-2 rounded-md',
-  lg: 'h-12 px-5 text-[15px] gap-2.5 rounded-md',
-  icon: 'h-10 w-10 rounded-md',
-  'icon-sm': 'h-8 w-8 rounded-[5px]',
+  sm: 'h-8 px-2.5 text-[13px] font-medium gap-1.5',
+  md: 'h-9 px-3.5 text-sm font-medium gap-2',
+  lg: 'h-11 px-5 text-[15px] font-semibold gap-2.5',
+  icon: 'h-9 w-9',
+  'icon-sm': 'h-8 w-8',
 };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
