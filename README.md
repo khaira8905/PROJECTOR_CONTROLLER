@@ -221,6 +221,8 @@ Deep links (`/events/…`, `/display/…`) work after a refresh: the server retu
 
 ## Free cloud hosting (Render + Supabase)
 
+**Step-by-step guide with troubleshooting: [docs/DEPLOY.md](docs/DEPLOY.md).**
+
 Run EventControl on the internet at no cost: **Render** (free web service) runs the server, and **Supabase** (free plan) stores the database and the uploaded files. Neither needs a credit card.
 
 > **Honest trade-offs of free hosting**

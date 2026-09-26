@@ -6,14 +6,17 @@ services:
     name: eventcontrol
     runtime: docker
     plan: free
+    # Closest Render region to Supabase's Mumbai/Singapore regions. Pick the one near your
+    # Supabase project (oregon, ohio, virginia, frankfurt or singapore).
+    region: singapore
     healthCheckPath: /api/health
     autoDeploy: true
     envVars:
       - key: DATABASE_URL          # Supabase → Connect → "Session pooler" URI
         sync: false
-      - key: SUPABASE_URL          # Supabase → Project Settings → API → Project URL
+      - key: SUPABASE_URL          # Supabase → Project Settings → Data API → Project URL
         sync: false
-      - key: SUPABASE_SERVICE_ROLE_KEY
+      - key: SUPABASE_SERVICE_ROLE_KEY # Project Settings → API Keys (service_role, or a secret key)
         sync: false
       - key: SUPABASE_BUCKET
         value: eventcontrol
@@ -21,6 +24,9 @@ services:
         sync: false
       - key: GOOGLE_CLIENT_SECRET
         sync: false
+      # The free instance has 512 MB: leave room for LibreOffice converting a PowerPoint.
+      - key: NODE_OPTIONS
+        value: --max-old-space-size=320
       # Open access by default: anyone with the link can use it. Set to "local" for a password.
       - key: AUTH_PROVIDER
         value: none

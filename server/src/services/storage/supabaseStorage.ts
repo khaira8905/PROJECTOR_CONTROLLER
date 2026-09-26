@@ -15,7 +15,13 @@ export class SupabaseStorage implements CloudStorage {
     private bucket: string,
   ) {}
 
-  private headers(extra: Record<string, string> = {}) {
+  /**
+   * Legacy service_role keys are JWTs and go in both headers. The newer "secret" keys
+   * (sb_secret_…) are not JWTs: they go only in `apikey`, and Supabase's gateway turns
+   * them into a short-lived token itself.
+   */
+  private headers(extra: Record<string, string> = {}): Record<string, string> {
+    if (this.serviceKey.startsWith('sb_')) return { apikey: this.serviceKey, ...extra };
     return { Authorization: `Bearer ${this.serviceKey}`, apikey: this.serviceKey, ...extra };
   }
 

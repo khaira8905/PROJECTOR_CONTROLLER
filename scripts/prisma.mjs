@@ -22,6 +22,25 @@ if (!process.env.DATABASE_URL) {
   process.env.DATABASE_URL = `file:${path.join(root, 'prisma', 'eventcontrol.db').split(path.sep).join('/')}`;
 }
 
+// Catch the usual copy-paste mistakes with a message that says what to do (shown in Render's log).
+const db = process.env.DATABASE_URL;
+if (/\[YOUR-PASSWORD\]|YOUR-PASSWORD/i.test(db)) {
+  console.error('\nDATABASE_URL still contains [YOUR-PASSWORD]. Replace it (brackets included) with your Supabase database password.\n');
+  process.exit(1);
+}
+if (/^postgres(ql)?:\/\/[^@]*@db\.[a-z0-9]+\.supabase\.co/i.test(db)) {
+  console.error('\nDATABASE_URL is Supabase\'s "Direct connection", which hosts like Render cannot reach.\nIn Supabase click Connect → "Session pooler" and use that address instead (it contains "pooler.supabase.com").\n');
+  process.exit(1);
+}
+if (/^postgres(ql)?:\/\//.test(db)) {
+  try {
+    new URL(db);
+  } catch {
+    console.error('\nDATABASE_URL is not a valid address. If your database password contains symbols such as @ # / ? :, reset it in Supabase (Project Settings → Database) to one with only letters and numbers.\n');
+    process.exit(1);
+  }
+}
+
 let schema = path.join(root, 'prisma', 'schema.prisma');
 if (/^postgres(ql)?:\/\//.test(process.env.DATABASE_URL)) {
   const source = fs.readFileSync(schema, 'utf8');
