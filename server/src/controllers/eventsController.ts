@@ -11,7 +11,7 @@ import * as timer from '../services/timerService';
 import { emitToEvent } from '../socket/bus';
 import { OVERLAY_POSITIONS } from '../services/controlService';
 import { ensureBuiltinScreens, forgetScreens } from '../services/screenService';
-import { parsePreferences, preferencesPatchSchema } from '../services/preferences';
+import { mergePreferences, parsePreferences, preferencesPatchSchema } from '../services/preferences';
 
 const createSchema = z.object({
   name: trimmed(120).min(1, 'Event name is required'),
@@ -87,7 +87,7 @@ export async function updateEvent(req: Request<{ id: string }>, res: Response) {
   const data: typeof fields & { preferences?: string } = { ...fields };
   if (prefsPatch) {
     // Merge into what is stored, so one screen can change Quick Selection without touching the rest.
-    data.preferences = JSON.stringify({ ...parsePreferences(existing.preferences), ...prefsPatch });
+    data.preferences = JSON.stringify(mergePreferences(parsePreferences(existing.preferences), prefsPatch));
   }
   const event = await prisma.event.update({ where: { id: existing.id }, data, include: withCounts });
   const dto = toEventDto(event);

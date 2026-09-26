@@ -1,4 +1,4 @@
-import type { AuthStatus, DriveFile, EventInput, GoogleStatus, EventPreferences, EventSummary, Media, QueueItem, ScheduleItem, Screen, ScreenStyle, SystemStatus, UploadResult } from '../types';
+import type { AuthStatus, DriveFile, EventInput, GoogleStatus, PreferencesPatch, EventSummary, Media, QueueItem, ScheduleItem, Screen, ScreenStyle, SystemStatus, UploadResult } from '../types';
 
 export class ApiError extends Error {
   constructor(
@@ -10,15 +10,24 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(url: string, init: RequestInit = {}): Promise<T> {
+/**
+ * Where the API lives. Empty (the default) = the same site that serves this page, which is
+ * how EventControl is normally hosted. Set VITE_API_URL at build time only when the UI is
+ * hosted separately, e.g. VITE_API_URL=https://api.example.com.
+ */
+export const API_BASE = ((import.meta.env.VITE_API_URL as string | undefined) ?? '').replace(/\/+$/, '');
+const apiUrl = (path: string) => `${API_BASE}${path}`;
+
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(url, {
+    res = await fetch(apiUrl(path), {
       ...init,
+      credentials: API_BASE ? 'include' : 'same-origin',
       headers: init.body && !(init.body instanceof FormData) ? { 'Content-Type': 'application/json', ...init.headers } : init.headers,
     });
   } catch {
-    throw new ApiError('Cannot reach the EventControl server. Is it running?', 0);
+    throw new ApiError('Can’t reach the EventControl server. Check the internet connection; it retries on its own.', 0);
   }
   if (res.status === 204) return undefined as T;
   const data = await res.json().catch(() => null);
@@ -48,7 +57,7 @@ export const api = {
   createEvent: (input: EventInput) => request<EventSummary>('/api/events', { method: 'POST', body: json(input) }),
   updateEvent: (id: string, input: Partial<EventInput>) =>
     request<EventSummary>(`/api/events/${id}`, { method: 'PUT', body: json(input) }),
-  updatePreferences: (id: string, preferences: Partial<EventPreferences>) =>
+  updatePreferences: (id: string, preferences: PreferencesPatch) =>
     request<EventSummary>(`/api/events/${id}`, { method: 'PUT', body: json({ preferences }) }),
   deleteEvent: (id: string) => request<void>(`/api/events/${id}`, { method: 'DELETE' }),
 
@@ -63,8 +72,8 @@ export const api = {
   googleStatus: () => request<GoogleStatus>('/api/integrations/google'),
   googleDisconnect: () => request<GoogleStatus>('/api/integrations/google/disconnect', { method: 'POST' }),
   /** Full-page navigation: Google's consent screen, then back to `returnTo`. */
-  googleConnectUrl: (returnTo: string) => `/api/integrations/google/connect?returnTo=${encodeURIComponent(returnTo)}`,
-  googleSignInUrl: () => '/api/auth/google/start',
+  googleConnectUrl: (returnTo: string) => apiUrl(`/api/integrations/google/connect?returnTo=${encodeURIComponent(returnTo)}`),
+  googleSignInUrl: () => apiUrl('/api/auth/google/start'),
   driveList: (opts: { q?: string; folderId?: string; pageToken?: string }) => {
     const params = new URLSearchParams(Object.entries(opts).filter(([, v]) => !!v) as [string, string][]);
     return request<{ files: DriveFile[]; nextPageToken: string | null }>(`/api/integrations/google/drive?${params}`);
@@ -76,7 +85,8 @@ export const api = {
       const form = new FormData();
       files.forEach((f) => form.append('files', f, f.name));
       const xhr = new XMLHttpRequest();
-      xhr.open('POST', `/api/events/${eventId}/media${folder ? `?folder=${encodeURIComponent(folder)}` : ''}`);
+      xhr.withCredentials = !!API_BASE;
+      xhr.open('POST', apiUrl(`/api/events/${eventId}/media${folder ? `?folder=${encodeURIComponent(folder)}` : ''}`));
       xhr.upload.onprogress = (e) => e.lengthComputable && onProgress?.(e.loaded / e.total);
       xhr.onerror = () => reject(new ApiError('Unable to upload file. Check the server connection.', 0));
       xhr.onload = () => {

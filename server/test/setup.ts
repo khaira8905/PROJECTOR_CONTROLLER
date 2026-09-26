@@ -19,3 +19,4 @@ execFileSync(process.execPath, [path.join(root, 'scripts', 'prisma.mjs'), 'db', 
 process.env.UPLOADS_DIR = path.join(tmp, 'uploads');
 process.env.ALLOW_EXTERNAL_OPEN = 'false';
 process.env.MAX_UPLOAD_MB = '5';
+process.env.AUTH_PROVIDER = 'local'; // most suites exercise the private (sign-in) mode; public-access.test.ts switches it off

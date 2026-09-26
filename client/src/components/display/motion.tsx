@@ -4,12 +4,12 @@ import { formatClock } from '../../lib/format';
 
 export type LayerKind = 'media' | 'screen' | 'black' | 'logo';
 
-const ENTER_MS: Record<LayerKind, number> = { media: 700, screen: 650, logo: 650, black: 120 };
+const ENTER_MS: Record<LayerKind, number> = { media: 700, screen: 650, logo: 650, black: 480 };
 const ENTER_CLASS: Record<LayerKind, string> = {
   media: 'ec-layer-in-media',
   screen: 'ec-layer-in',
   logo: 'ec-layer-in',
-  black: 'ec-layer-in-black',
+  black: 'ec-layer-in-black-soft',
 };
 
 interface Layer {
@@ -24,7 +24,7 @@ interface Layer {
  * Old layers keep their component instances until they are removed, so videos and
  * slides don't flash or restart while fading out.
  */
-export function StageTransition({ layerKey, kind, children }: { layerKey: string; kind: LayerKind; children: ReactNode }) {
+export function StageTransition({ layerKey, kind, cutBlack = false, children }: { layerKey: string; kind: LayerKind; cutBlack?: boolean; children: ReactNode }) {
   const [layers, setLayers] = useState<Layer[]>([{ key: layerKey, kind }]);
   const nodes = useRef(new Map<string, ReactNode>());
   nodes.current.set(layerKey, children);
@@ -35,6 +35,10 @@ export function StageTransition({ layerKey, kind, children }: { layerKey: string
     setLayers((prev) => [...prev.filter((l) => l.key !== layerKey), { key: layerKey, kind }]);
   }
 
+  // "Fade to black" off: going to and coming back from black is an instant cut.
+  const previousKind = layers.length > 1 ? layers[layers.length - 2].kind : null;
+  const cut = cutBlack && (current.kind === 'black' || previousKind === 'black');
+
   useEffect(() => {
     if (layers.length <= 1) return;
     const timeout = window.setTimeout(() => {
@@ -43,9 +47,9 @@ export function StageTransition({ layerKey, kind, children }: { layerKey: string
         for (const l of prev.slice(0, -1)) if (l.key !== keep[0].key) nodes.current.delete(l.key);
         return keep;
       });
-    }, ENTER_MS[kind] + 80);
+    }, cut ? 0 : ENTER_MS[kind] + 80);
     return () => window.clearTimeout(timeout);
-  }, [layerKey, layers.length, kind]);
+  }, [layerKey, layers.length, kind, cut]);
 
   return (
     <div className="absolute inset-0">
@@ -55,7 +59,7 @@ export function StageTransition({ layerKey, kind, children }: { layerKey: string
           <div
             key={layer.key}
             aria-hidden={!live}
-            className={cn('absolute inset-0 overflow-hidden bg-black', live ? ENTER_CLASS[layer.kind] : 'pointer-events-none')}
+            className={cn('absolute inset-0 overflow-hidden bg-black', live ? !cut && ENTER_CLASS[layer.kind] : 'pointer-events-none')}
           >
             {live ? children : nodes.current.get(layer.key)}
           </div>

@@ -1,40 +1,41 @@
+import { Settings2 } from 'lucide-react';
 import { Modal } from '../ui/Modal';
-import { Kbd } from '../ui/Kbd';
+import { Button } from '../ui/Button';
+import { KeyHint } from './StagePane';
+import { SHORTCUT_DEFS } from '../../lib/shortcuts';
+import { useShortcutBindings, useUiPrefs } from '../../lib/uiPrefs';
 
-export const SHORTCUTS: [string, string][] = [
-  ['→ / Space', 'Next slide / next item'],
-  ['←', 'Previous slide / item'],
-  ['G', 'Jump to a slide number'],
-  ['B', 'Black screen (instant)'],
-  ['W', 'Please Wait screen'],
-  ['T', 'Technical Difficulty screen'],
-  ['Esc', 'Resume presentation (leave special screen)'],
-  ['L', 'Full-screen event logo'],
-  ['O', 'Show / hide logo overlay'],
-  ['F', 'Fullscreen the display'],
-  ['P', 'Start / pause timer'],
-  ['R', 'Reset timer'],
-  ['?', 'Show this help'],
-];
-
-export function ShortcutsHelp({ open, onClose }: { open: boolean; onClose: () => void }) {
+/** The "?" overview: the keys in effect on this computer, grouped like the settings. */
+export function ShortcutsHelp({ open, onClose, onCustomize }: { open: boolean; onClose: () => void; onCustomize: () => void }) {
+  const bindings = useShortcutBindings();
+  const { prefs } = useUiPrefs();
+  const groups = [...new Set(SHORTCUT_DEFS.map((d) => d.group))];
   return (
     <Modal open={open} onClose={onClose} title="Keyboard shortcuts" size="sm">
-      <ul className="divide-y divide-white/[0.06]">
-        {SHORTCUTS.map(([key, label]) => (
-          <li key={key} className="flex items-center justify-between py-2 text-sm">
-            <span className="text-slate-300">{label}</span>
-            <span className="flex gap-1">
-              {key.split(' / ').map((k) => (
-                <Kbd key={k} className="h-6 px-2 text-[11px]">
-                  {k}
-                </Kbd>
+      {!prefs.keyboard && <p className="mb-3 rounded-[4px] border border-amber-500/30 bg-amber-400/10 px-3 py-2 text-[13px] text-amber-200">Keyboard shortcuts are turned off on this computer.</p>}
+      <div className="grid gap-4">
+        {groups.map((group) => (
+          <section key={group}>
+            <h3 className="ec-label mb-1">{group}</h3>
+            <ul className="divide-y divide-[var(--line)]">
+              {SHORTCUT_DEFS.filter((d) => d.group === group).map((d) => (
+                <li key={d.id} className="flex items-center justify-between gap-3 py-1.5 text-sm">
+                  <span className="text-slate-300">{d.label}</span>
+                  <span className="flex flex-wrap justify-end gap-1.5">
+                    {bindings[d.id].length ? bindings[d.id].map((k) => <KeyHint key={k} combo={k} className="h-6 px-1.5 text-[11px]" />) : <span className="text-xs text-slate-600">none</span>}
+                  </span>
+                </li>
               ))}
-            </span>
-          </li>
+            </ul>
+          </section>
         ))}
-      </ul>
-      <p className="mt-3 text-xs text-slate-500">Shortcuts are disabled while typing in a field.</p>
+      </div>
+      <div className="mt-4 flex items-center justify-between gap-3">
+        <p className="text-xs text-slate-500">Ignored while typing in a field.</p>
+        <Button size="sm" variant="secondary" icon={<Settings2 size={14} />} onClick={onCustomize}>
+          Change keys…
+        </Button>
+      </div>
     </Modal>
   );
 }

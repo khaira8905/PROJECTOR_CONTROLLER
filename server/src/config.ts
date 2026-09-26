@@ -10,6 +10,22 @@ if (process.env.NODE_ENV !== 'test' && typeof process.loadEnvFile === 'function'
   process.loadEnvFile(envFile);
 }
 
+function authProvider(value: string | undefined): 'local' | 'supabase' | 'none' {
+  const v = (value ?? '').trim().toLowerCase();
+  if (v === 'local' || v === 'password') return 'local';
+  if (v === 'supabase') return 'supabase';
+  return 'none'; // "", "none", "open", anything unknown
+}
+
+const origin = (url: string | undefined) => {
+  if (!url?.trim()) return '';
+  try {
+    return new URL(url.trim()).origin;
+  } catch {
+    return '';
+  }
+};
+
 export const config = {
   port: Number(process.env.PORT ?? 4000),
   host: process.env.HOST ?? '0.0.0.0',
@@ -18,15 +34,24 @@ export const config = {
   maxFilesPerUpload: 20,
   clientDistDir: path.join(ROOT_DIR, 'client', 'dist'),
   demoAssetsDir: path.join(ROOT_DIR, 'server', 'demo-assets'),
+  // Public addresses. Leave both empty when the server also hosts the UI (one link, recommended).
+  // Set them only when the UI is hosted separately (e.g. a static host) from this API server:
+  //   PUBLIC_APP_URL = where people open the UI, e.g. https://show.example.com
+  //   PUBLIC_API_URL = where this server is reachable, e.g. https://api.example.com
+  publicAppUrl: origin(process.env.PUBLIC_APP_URL),
+  publicApiUrl: origin(process.env.PUBLIC_API_URL),
+  // Extra browser origins allowed to call the API (comma-separated). PUBLIC_APP_URL is always allowed.
+  corsOrigins: [process.env.PUBLIC_APP_URL, ...(process.env.CORS_ORIGINS ?? '').split(',')].map(origin).filter(Boolean),
   // Launching PowerPoint etc. on the host machine. Disable on shared/remote servers.
+  // Only ever honoured for requests made on the server machine itself (see lib/network.ts).
   allowExternalOpen: process.env.ALLOW_EXTERNAL_OPEN !== 'false',
   seedDemo: process.env.SEED_DEMO !== 'false',
 
   auth: {
-    // "local": operator password stored (hashed) in the database, created on first run.
-    // "supabase": operators sign in with a Supabase Auth email + password.
-    // "none": no sign-in at all (only for trusted, isolated setups).
-    provider: (process.env.AUTH_PROVIDER ?? 'local') as 'local' | 'supabase' | 'none',
+    // "none" (default): anyone with the link can open and use the app — no password, no account.
+    // "local": optional private mode; an operator password stored (hashed) in the database.
+    // "supabase": optional private mode; operators sign in with a Supabase Auth email + password.
+    provider: authProvider(process.env.AUTH_PROVIDER),
     sessionHours: Number(process.env.SESSION_HOURS ?? 24 * 7),
   },
 
@@ -65,3 +90,6 @@ export const config = {
 export const cloudStorageEnabled = () => !!(config.supabase.url && config.supabase.serviceKey);
 
 export const googleConfigured = () => !!(config.google.clientId && config.google.clientSecret);
+
+/** UI and API on different sites: cookies must be SameSite=None (and therefore HTTPS). */
+export const crossSite = () => !!config.publicAppUrl && !!config.publicApiUrl && config.publicAppUrl !== config.publicApiUrl;

@@ -1,5 +1,5 @@
-import { memo, useState, type ReactNode } from 'react';
-import { ChevronLeft, ChevronRight, ExternalLink, Maximize, Pause, Play, RotateCcw, StickyNote, Undo2 } from 'lucide-react';
+import { memo, useEffect, useRef, useState, type ReactNode } from 'react';
+import { ChevronLeft, ChevronRight, ExternalLink, Maximize, MonitorOff, MonitorUp, Pause, Play, RotateCcw, StickyNote, Undo2 } from 'lucide-react';
 import { DisplayStage, type VideoCommand } from '../display/DisplayStage';
 import { PdfThumb } from '../PdfThumb';
 import { MediaIcon } from '../MediaIcon';
@@ -7,6 +7,7 @@ import { Button } from '../ui/Button';
 import { Kbd } from '../ui/Kbd';
 import { cn } from '../../lib/cn';
 import { itemDetail, itemLabel, pageWord } from '../../lib/flow';
+import { comboParts } from '../../lib/shortcuts';
 import type { DisplaySnapshot, QueueItem, TimerSnapshot } from '../../types';
 
 interface StagePaneProps {
@@ -33,6 +34,15 @@ interface StagePaneProps {
   onOpenExternally: (mediaId: string) => void;
   onFullscreen: () => void;
   onEditNotes: (item: QueueItem) => void;
+  /** Black Screen: offered at all, needs a second click, is on now. */
+  black: { enabled: boolean; confirm: boolean; active: boolean };
+  onBlack: () => void;
+  /** Scroll over the picture to change slides, click it for the next one. */
+  mouseControls: boolean;
+  /** "Open in PowerPoint" only works on the computer that runs EventControl. */
+  canOpenExternally: boolean;
+  /** First key of each action, for the small hints on the buttons. */
+  keys: { next?: string; previous?: string; resume?: string; black?: string };
   /** Quick Selection and the timer, rendered below the transport. */
   children?: ReactNode;
 }
@@ -73,7 +83,12 @@ export const StagePane = memo(function StagePane(props: StagePaneProps) {
           </Button>
         </div>
         {props.showPreview && (
-          <div className={cn('ec-monitor relative mx-auto aspect-video w-full', onAir && 'ec-onair')} style={{ maxWidth: 'calc(var(--preview-h, 40vh) * 16 / 9)' }}>
+          <Monitor
+            onAir={onAir}
+            mouse={props.mouseControls && !!display}
+            onNext={props.canNext ? props.onNext : undefined}
+            onPrevious={props.canPrevious ? props.onPrevious : undefined}
+          >
             <div className="absolute inset-0 overflow-hidden rounded-[6px]">
               {display ? (
                 <DisplayStage display={display} timer={props.timer} variant="preview" videoCommand={props.videoCommand} />
@@ -81,12 +96,10 @@ export const StagePane = memo(function StagePane(props: StagePaneProps) {
                 <div className="absolute inset-0 flex items-center justify-center text-sm text-[#fff]/50">Connecting…</div>
               )}
               {display?.mode === 'black' && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="border border-[#fff]/15 px-3 py-1 font-mono text-xs tracking-[0.3em] text-[#fff]/45">BLACK</span>
-                </div>
+                <span className="ec-fade-in absolute top-2 left-2 border border-[#fff]/20 bg-black/60 px-2 py-0.5 font-mono text-[10px] tracking-[0.3em] text-[#fff]/60">BLACK</span>
               )}
             </div>
-          </div>
+          </Monitor>
         )}
 
         <div className="mt-3 flex items-center gap-3">
@@ -134,7 +147,7 @@ export const StagePane = memo(function StagePane(props: StagePaneProps) {
                 </Button>
               </>
             )}
-            {media.kind === 'presentation' && (
+            {media.kind === 'presentation' && props.canOpenExternally && (
               <Button size="sm" variant="ghost" icon={<ExternalLink size={13} />} onClick={() => props.onOpenExternally(media.id)} title="Open the original file in PowerPoint (for animations and embedded video)">
                 Open in PowerPoint
               </Button>
@@ -152,7 +165,7 @@ export const StagePane = memo(function StagePane(props: StagePaneProps) {
         ) : offFlow && currentItem ? (
           <Button variant="primary" className="h-12 w-full justify-start px-4 text-[15px]" icon={<Undo2 size={17} />} onClick={props.onResume}>
             <span className="min-w-0 flex-1 truncate text-left">Back to {itemLabel(currentItem)}</span>
-            <Kbd className="ec-kbd-on-solid">Esc</Kbd>
+            {props.keys.resume && <KeyHint combo={props.keys.resume} className="ec-kbd-on-solid" />}
           </Button>
         ) : null}
         <div className="grid grid-cols-[1fr_1.6fr] gap-2">
@@ -162,6 +175,7 @@ export const StagePane = memo(function StagePane(props: StagePaneProps) {
           <NextButton disabled={!props.canNext} onClick={props.onNext} nextPage={nextPage} word={Word} pdfUrl={media?.pdfUrl ?? null} nextItem={nextItem} />
         </div>
         <UpNext nextPage={nextPage} pdfUrl={media?.pdfUrl ?? null} word={Word} item={nextItem} />
+        {props.black.enabled && <BlackButton {...props.black} hint={props.keys.black} onPress={props.onBlack} />}
       </section>
 
       {props.children}
@@ -221,4 +235,102 @@ function ItemPicture({ item, small }: { item: QueueItem; small?: boolean }) {
   if (m?.pdfUrl && !m.missing) return <PdfThumb url={m.pdfUrl} page={item.startPage ?? 1} width={small ? 60 : 256} className="h-full w-full" />;
   if (m?.kind === 'image' && !m.missing) return <img src={m.url} alt="" className="h-full w-full object-contain" />;
   return <div className="flex h-full items-center justify-center">{m && <MediaIcon kind={m.kind} size={small ? 7 : 14} />}</div>;
+}
+
+/** A key hint on a button ("B", "Esc"); hidden when the operator turns hints off. */
+export function KeyHint({ combo, className }: { combo: string; className?: string }) {
+  return (
+    <span className="ec-hint flex shrink-0 gap-0.5">
+      {comboParts(combo).map((p) => (
+        <Kbd key={p} className={className}>
+          {p}
+        </Kbd>
+      ))}
+    </span>
+  );
+}
+
+/**
+ * The program monitor. With mouse controls on, the wheel turns slides (one step per
+ * gesture, however fast the trackpad scrolls) and a click moves on.
+ */
+function Monitor({ onAir, mouse, onNext, onPrevious, children }: { onAir: boolean; mouse: boolean; onNext?: () => void; onPrevious?: () => void; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const nav = useRef({ onNext, onPrevious });
+  nav.current = { onNext, onPrevious };
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !mouse) return;
+    let travel = 0;
+    let quietUntil = 0;
+    let settle = 0;
+    // Non-passive, so the page does not scroll while the pointer is over the picture.
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const now = performance.now();
+      window.clearTimeout(settle);
+      settle = window.setTimeout(() => (travel = 0), 180);
+      if (now < quietUntil) return;
+      travel += Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+      if (Math.abs(travel) < 40) return;
+      (travel > 0 ? nav.current.onNext : nav.current.onPrevious)?.();
+      travel = 0;
+      quietUntil = now + 350;
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', onWheel);
+      window.clearTimeout(settle);
+    };
+  }, [mouse]);
+
+  return (
+    <div
+      ref={ref}
+      className={cn('ec-monitor relative mx-auto aspect-video w-full', onAir && 'ec-onair', mouse && 'cursor-pointer')}
+      style={{ maxWidth: 'calc(var(--preview-h, 40vh) * 16 / 9)' }}
+      onClick={mouse ? () => nav.current.onNext?.() : undefined}
+      title={mouse ? 'Click for next · scroll to move through slides' : undefined}
+    >
+      {children}
+    </div>
+  );
+}
+
+/**
+ * Black Screen with an unmistakable state: an outlined button while the picture is up,
+ * a solid "Black is on" bar while the audience sees black. Optionally asks for a second
+ * click (the keyboard shortcut always acts at once).
+ */
+function BlackButton({ active, confirm, hint, onPress }: { active: boolean; confirm: boolean; hint?: string; onPress: () => void }) {
+  const [armed, setArmed] = useState(false);
+  const timer = useRef(0);
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+  useEffect(() => setArmed(false), [active]);
+
+  const press = () => {
+    if (!active && confirm && !armed) {
+      setArmed(true);
+      window.clearTimeout(timer.current);
+      timer.current = window.setTimeout(() => setArmed(false), 3000);
+      return;
+    }
+    setArmed(false);
+    onPress();
+  };
+
+  return (
+    <button
+      onClick={press}
+      aria-pressed={active}
+      data-state={active ? 'on' : armed ? 'armed' : 'off'}
+      className="ec-btn ec-black-btn group mt-1 flex h-11 w-full items-center gap-2.5 rounded-[5px] px-3.5 text-left text-[14px] font-semibold"
+    >
+      {active ? <MonitorUp size={17} className="shrink-0" /> : <MonitorOff size={17} className="shrink-0" />}
+      <span className="min-w-0 flex-1 truncate">{active ? 'Black is on — show the picture again' : armed ? 'Click again to go black' : 'Black screen'}</span>
+      {active && <span className="ec-dot-live h-2 w-2 shrink-0 rounded-full bg-current" aria-hidden />}
+      {hint && <KeyHint combo={hint} />}
+    </button>
+  );
 }

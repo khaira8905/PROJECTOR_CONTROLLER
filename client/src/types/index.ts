@@ -41,7 +41,38 @@ export interface EventPreferences {
   defaultMediaId: string | null;
   defaultStartPage: number | null;
   confirmBlack: boolean;
+  blackScreen: BlackScreenPrefs;
+  presentation: { startAt: 'first' | 'last'; confirmSwitch: boolean };
 }
+
+/** How the projector draws Black Screen and how the show returns from it (saved with the event). */
+export interface BlackScreenPrefs {
+  enabled: boolean;
+  showLogo: boolean;
+  logoSize: 'small' | 'medium' | 'large';
+  logoPosition: 'center' | 'lower' | 'corner';
+  animateLogo: boolean;
+  fade: boolean;
+  statusText: string;
+  resume: 'same' | 'advance';
+}
+
+/** A partial settings update; the nested groups can be changed one field at a time. */
+export type PreferencesPatch = Partial<Omit<EventPreferences, 'blackScreen' | 'presentation'>> & {
+  blackScreen?: Partial<BlackScreenPrefs>;
+  presentation?: Partial<EventPreferences['presentation']>;
+};
+
+export const DEFAULT_BLACK_SCREEN: BlackScreenPrefs = {
+  enabled: true,
+  showLogo: false,
+  logoSize: 'medium',
+  logoPosition: 'center',
+  animateLogo: true,
+  fade: true,
+  statusText: '',
+  resume: 'same',
+};
 
 export interface EventInput {
   name: string;
@@ -134,6 +165,8 @@ export interface DisplaySnapshot {
   screen: Screen | null;
   logo: PublicMedia | null;
   overlay: { media: PublicMedia | null; position: OverlayPosition; size: number; opacity: number; visible: boolean };
+  /** Missing when talking to an older server. */
+  blackScreen?: BlackScreenPrefs;
   version: number;
   serverNow: number;
 }
@@ -229,6 +262,8 @@ export interface SystemStatus {
   storage: { provider: string; ok: boolean; message: string; pending: number; errors: number };
   conversion: { available: boolean; queued: number };
   auth: { provider: string };
+  /** "Open in PowerPoint" is possible (this browser runs on the server machine). */
+  openExternally?: boolean;
   /** Free/total bytes on the drive holding the uploads (null if unknown). */
   disk?: { free: number; total: number } | null;
 }

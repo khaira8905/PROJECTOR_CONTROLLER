@@ -1,19 +1,26 @@
 import { io, type Socket } from 'socket.io-client';
+import { API_BASE } from './api';
 
 /**
  * One Socket.IO connection per page. Reconnection is automatic and unlimited;
  * the hooks re-join their event on every (re)connect to receive a fresh snapshot.
  */
 export function createSocket(): Socket {
-  return io({
+  const options = {
     path: '/socket.io',
+    withCredentials: true,
     transports: ['websocket', 'polling'],
+    // Some venue and company networks block WebSockets: fall back to HTTP long-polling
+    // instead of never connecting.
+    tryAllTransports: true,
     reconnection: true,
     reconnectionAttempts: Infinity,
     reconnectionDelay: 500,
     reconnectionDelayMax: 3000,
     timeout: 5000,
-  });
+  };
+  // Same site by default; the API server's address when the UI is hosted separately.
+  return API_BASE ? io(API_BASE, options) : io(options);
 }
 
 export type AckResponse<T = unknown> = { ok: true; data?: T } | { ok: false; error: string; status?: number };

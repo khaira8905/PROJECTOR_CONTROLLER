@@ -4,11 +4,13 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { HttpError } from '../lib/errors';
 import { logger } from '../lib/logger';
+import { config } from '../config';
 import { controlCommandSchema, execute } from '../services/controlService';
 import * as display from '../services/displayService';
 import * as timer from '../services/timerService';
 import { emitToOperators, rooms, setIo } from './bus';
 import { parseCookies } from '../lib/cookies';
+import { allowedOrigin } from '../lib/network';
 import { SESSION_COOKIE, authEnabled, verifySessionToken } from '../services/authService';
 
 type Role = 'operator' | 'display';
@@ -50,7 +52,12 @@ export function createSocketServer(httpServer: HttpServer): Server {
     pingTimeout: 5000,
     // Clients that briefly drop keep their rooms and missed events.
     connectionStateRecovery: { maxDisconnectionDuration: 30_000 },
-    cors: { origin: true },
+    // Same-site pages always work; a separately hosted UI must be listed in PUBLIC_APP_URL / CORS_ORIGINS.
+    cors: { origin: [...config.corsOrigins], credentials: true },
+    // Private mode: another website must not drive the show with a signed-in operator's cookie.
+    // (With open access anyone with the link may control it, so there is nothing to protect.)
+    allowRequest: (req, cb) =>
+      cb(null, !authEnabled() || allowedOrigin(req.headers.origin, (req.headers['x-forwarded-host'] as string | undefined)?.split(',')[0].trim() ?? req.headers.host)),
   });
   setIo(io);
 

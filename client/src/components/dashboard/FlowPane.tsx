@@ -23,11 +23,20 @@ interface FlowPaneProps {
   /** The current item is what the audience is seeing (not black, a quick screen or a library file). */
   onAir: boolean;
   showSlides: boolean;
+  /** Detailed rows with pictures, or a compact list. */
+  layout: 'detailed' | 'compact';
+  /** Show on click, or select on click and show on double-click / Enter. */
+  activation: 'click' | 'double';
+  /** Scroll the item on screen into view as the show moves on. */
+  followLive: boolean;
+  thumbSize: 'small' | 'medium' | 'large';
+  /** Changes whenever the "Select presentation" shortcut asks for the focus. */
+  focusSignal: number;
   onShow: (item: QueueItem) => void;
   onGoToPage: (page: number) => void;
   onReorder: (flow: QueueItem[]) => void;
   onEdit: (item: QueueItem) => void;
-  onRemove: (item: QueueItem) => void;
+  onRemove: (item: QueueItem) => Promise<unknown> | void;
   onAddScreen: (screen: Screen) => void;
   onAddFiles: () => void;
   className?: string;
@@ -43,13 +52,37 @@ export function FlowPane(props: FlowPaneProps) {
   const { flow, screens, currentId, onReorder, className } = props;
   const [editing, setEditing] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const listRef = useRef<HTMLOListElement>(null);
+  const followLive = props.followLive;
 
   // Keep the item on screen in view as the show moves on (only this list scrolls).
   useEffect(() => {
-    if (!currentId) return;
+    if (!currentId || !followLive) return;
     revealWithin(listRef.current?.querySelector<HTMLElement>(`[data-flow-id="${currentId}"]`));
-  }, [currentId]);
+  }, [currentId, followLive]);
+
+  // "Select presentation": put the keyboard focus on the item on screen (or the first one).
+  useEffect(() => {
+    if (!props.focusSignal) return;
+    const list = listRef.current;
+    const row = list?.querySelector<HTMLElement>(`[data-flow-id="${currentId}"] .ec-flow-hit`) ?? list?.querySelector<HTMLElement>('.ec-flow-hit');
+    row?.focus();
+    revealWithin(row);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.focusSignal]);
+
+  /** ↑ / ↓ move between items, Home / End jump to the ends; Enter shows the focused item. */
+  const onListKey = (e: React.KeyboardEvent) => {
+    if (!['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key)) return;
+    const rows = Array.from(listRef.current?.querySelectorAll<HTMLElement>('.ec-flow-hit') ?? []);
+    const at = rows.indexOf(document.activeElement as HTMLElement);
+    if (at < 0) return;
+    e.preventDefault();
+    const to = e.key === 'Home' ? 0 : e.key === 'End' ? rows.length - 1 : Math.max(0, Math.min(rows.length - 1, at + (e.key === 'ArrowDown' ? 1 : -1)));
+    rows[to].focus();
+    revealWithin(rows[to]);
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -69,7 +102,9 @@ export function FlowPane(props: FlowPaneProps) {
         <div className="min-w-0 flex-1">
           <h2 className="text-[22px] leading-none font-semibold tracking-[-0.02em] text-white">Flow</h2>
           <p className="mt-1.5 text-[13px] text-slate-500">
-            {flow.length === 0 ? 'Nothing planned yet' : `${flow.length} ${flow.length === 1 ? 'item' : 'items'}${totalSeconds ? ` · about ${formatDurationShort(totalSeconds)}` : ''} · click an item to show it`}
+            {flow.length === 0
+              ? 'Nothing planned yet'
+              : `${flow.length} ${flow.length === 1 ? 'item' : 'items'}${totalSeconds ? ` · about ${formatDurationShort(totalSeconds)}` : ''} · ${props.activation === 'double' ? 'double-click an item to show it' : 'click an item to show it'}`}
           </p>
         </div>
         <div className="relative">
@@ -132,7 +167,7 @@ export function FlowPane(props: FlowPaneProps) {
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd} modifiers={[restrictToVerticalAxis, restrictToParentElement]}>
           <SortableContext items={flow.map((q) => q.id)} strategy={verticalListSortingStrategy}>
-            <ol ref={listRef} className="ec-flow-list scroll-thin min-h-0 flex-1 overflow-y-auto">
+            <ol ref={listRef} onKeyDown={onListKey} data-layout={props.layout} className="ec-flow-list scroll-thin min-h-0 flex-1 overflow-y-auto">
               {flow.map((item, index) => (
                 <FlowRow
                   key={item.id}
@@ -143,6 +178,11 @@ export function FlowPane(props: FlowPaneProps) {
                   editing={editing}
                   page={item.id === currentId ? (props.display?.page ?? null) : null}
                   showSlides={props.showSlides}
+                  compact={props.layout === 'compact'}
+                  thumbWidth={THUMB_WIDTH[props.thumbSize]}
+                  activation={props.activation}
+                  selected={props.activation === 'double' && selectedId === item.id}
+                  onSelect={setSelectedId}
                   onShow={props.onShow}
                   onGoToPage={props.onGoToPage}
                   onEdit={props.onEdit}
@@ -159,6 +199,8 @@ export function FlowPane(props: FlowPaneProps) {
 
 type RowState = 'current' | 'next' | 'idle';
 
+const THUMB_WIDTH = { small: 92, medium: 124, large: 172 } as const;
+
 const FlowRow = memo(function FlowRow({
   item,
   index,
@@ -167,6 +209,11 @@ const FlowRow = memo(function FlowRow({
   editing,
   page,
   showSlides,
+  compact,
+  thumbWidth,
+  activation,
+  selected,
+  onSelect,
   onShow,
   onGoToPage,
   onEdit,
@@ -179,10 +226,15 @@ const FlowRow = memo(function FlowRow({
   editing: boolean;
   page: number | null;
   showSlides: boolean;
+  compact: boolean;
+  thumbWidth: number;
+  activation: 'click' | 'double';
+  selected: boolean;
+  onSelect: (id: string) => void;
   onShow: (item: QueueItem) => void;
   onGoToPage: (page: number) => void;
   onEdit: (item: QueueItem) => void;
-  onRemove: (item: QueueItem) => void;
+  onRemove: (item: QueueItem) => Promise<unknown> | void;
 }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: item.id });
   const label = itemLabel(item);
@@ -190,31 +242,73 @@ const FlowRow = memo(function FlowRow({
   const media = item.media;
   const paged = !!media?.pdfUrl && !!media.pageCount && !media.missing;
   const live = current && onAir;
+  const rowRef = useRef<HTMLLIElement | null>(null);
+  const [leaving, setLeaving] = useState(false);
+
+  /** The row folds away first, then it is removed; if removing fails it comes back. */
+  const remove = async () => {
+    const el = rowRef.current;
+    if (el) {
+      el.style.height = `${el.offsetHeight}px`;
+      void el.getBoundingClientRect(); // commit the start height so the fold can animate from it
+    }
+    setLeaving(true);
+    await new Promise((r) => window.setTimeout(r, 190));
+    try {
+      await onRemove(item);
+    } finally {
+      if (rowRef.current) rowRef.current.style.height = '';
+      setLeaving(false);
+    }
+  };
 
   return (
     <li
-      ref={setNodeRef}
+      ref={(el) => {
+        setNodeRef(el);
+        rowRef.current = el;
+      }}
       data-flow-id={item.id}
       data-state={state}
       data-onair={live}
+      data-selected={selected || undefined}
+      data-leaving={leaving || undefined}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn('ec-flow-row ec-flow-in', isDragging && 'z-10 bg-console-800 shadow-lg')}
     >
       <div className="flex items-center">
         <button
           type="button"
-          onClick={() => onShow(item)}
-          className="ec-flow-hit flex min-w-0 flex-1 items-center gap-4 py-2.5 pr-2 pl-5 text-left max-sm:gap-2.5 max-sm:pl-3 focus-visible:outline-offset-[-2px]"
+          onClick={() => (activation === 'click' ? onShow(item) : onSelect(item.id))}
+          onDoubleClick={activation === 'double' ? () => onShow(item) : undefined}
+          onKeyDown={(e) => {
+            // Enter always shows (also in double-click mode); Space keeps its global meaning.
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              onShow(item);
+            }
+          }}
+          onFocus={activation === 'double' ? () => onSelect(item.id) : undefined}
+          className={cn(
+            'ec-flow-hit flex min-w-0 flex-1 items-center text-left focus-visible:outline-offset-[-2px]',
+            compact ? 'gap-3 py-1.5 pr-2 pl-5 max-sm:pl-3' : 'gap-4 py-2.5 pr-2 pl-5 max-sm:gap-2.5 max-sm:pl-3',
+          )}
           aria-label={`Show ${label}${current ? ' (on screen)' : ''}`}
         >
           <span className={cn('w-6 shrink-0 text-right font-mono text-[13px] tabular-nums', current ? 'font-semibold text-white' : 'text-slate-500')}>{String(index + 1).padStart(2, '0')}</span>
-          <FlowThumb item={item} />
-          <span className="min-w-0 flex-1">
-            <span className="flex items-center gap-2">
-              <span className={cn('truncate text-[15px] font-medium', current ? 'text-white' : 'text-slate-200')}>{label}</span>
+          {compact ? (
+            <span className="flex w-6 shrink-0 justify-center">
+              {item.kind === 'screen' ? <ScreenDot style={item.screen?.style ?? 'custom'} /> : <MediaIcon kind={media?.kind ?? 'pdf'} size={13} className="ring-0" />}
+            </span>
+          ) : (
+            <FlowThumb item={item} />
+          )}
+          <span className={cn('min-w-0 flex-1', compact && 'flex items-baseline gap-2.5')}>
+            <span className="flex min-w-0 items-center gap-2">
+              <span className={cn('truncate font-medium', compact ? 'text-[14px]' : 'text-[15px]', current ? 'text-white' : 'text-slate-200')}>{label}</span>
               {item.notes && <StickyNote size={13} className="shrink-0 text-amber-400" aria-label="Has speaker notes" />}
             </span>
-            <span className="mt-0.5 block truncate text-[13px] text-slate-500">
+            <span className={cn('block truncate text-slate-500', compact ? 'shrink-0 text-[12px] max-sm:hidden' : 'mt-0.5 text-[13px]')}>
               {media?.missing ? <span className="text-red-400">File missing — upload it again · </span> : null}
               {itemDetail(item)}
             </span>
@@ -226,7 +320,7 @@ const FlowRow = memo(function FlowRow({
             <Button size="icon" variant="ghost" onClick={() => onEdit(item)} aria-label={`Edit ${label}`} title="Title, slides, duration and notes">
               <Pencil size={16} />
             </Button>
-            <Button size="icon" variant="ghost" onClick={() => onRemove(item)} aria-label={`Remove ${label} from the flow`} title="Remove from the flow" className="hover:!text-red-400">
+            <Button size="icon" variant="ghost" onClick={() => void remove()} disabled={leaving} aria-label={`Remove ${label} from the flow`} title="Remove from the flow" className="hover:!text-red-400">
               <X size={18} />
             </Button>
           </span>
@@ -251,6 +345,7 @@ const FlowRow = memo(function FlowRow({
           page={page}
           word={pageWord(media)}
           live={live}
+          width={thumbWidth}
           onGo={onGoToPage}
         />
       )}
@@ -270,7 +365,7 @@ function RowStatus({ state, live }: { state: RowState; live: boolean }) {
 }
 
 /** The slides of the item on screen, inline in the Flow: click one to jump to it. */
-function SlideRow({ url, start, end, page, word, live, onGo }: { url: string; start: number; end: number; page: number | null; word: string; live: boolean; onGo: (p: number) => void }) {
+function SlideRow({ url, start, end, page, word, live, width, onGo }: { url: string; start: number; end: number; page: number | null; word: string; live: boolean; width: number; onGo: (p: number) => void }) {
   const strip = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (page) revealWithin(strip.current?.querySelector<HTMLElement>(`[data-page="${page}"]`), 'x', true);
@@ -283,14 +378,14 @@ function SlideRow({ url, start, end, page, word, live, onGo }: { url: string; st
           const active = p === page;
           const next = page !== null && p === page + 1;
           return (
-            <button key={p} data-page={p} onClick={() => onGo(p)} className="group w-[124px] shrink-0 text-left" title={`Show ${word} ${p}`}>
+            <button key={p} data-page={p} onClick={() => onGo(p)} className="group shrink-0 text-left" style={{ width }} title={`Show ${word} ${p}`}>
               <span
                 className={cn(
                   'relative block overflow-hidden rounded-[4px] border bg-[#fff] transition-[border-color,box-shadow] duration-150',
                   active ? (live ? 'border-[#e5484d] shadow-[0_0_0_2px_#e5484d]' : 'border-sky-500 shadow-[0_0_0_2px_var(--accent-500)]') : 'border-[var(--line-strong)] group-hover:border-sky-400',
                 )}
               >
-                <PdfThumb url={url} page={p} width={124} className="aspect-video w-full" />
+                <PdfThumb url={url} page={p} width={width} className="aspect-video w-full" />
               </span>
               <span className={cn('mt-1 flex items-center gap-1.5 text-[12px] tabular-nums', active ? 'font-semibold text-white' : 'text-slate-500')}>
                 {p}

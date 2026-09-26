@@ -13,7 +13,7 @@ export default defineConfig({
     proxy: {
       // xfwd: the server sees the address the browser used (needed for the Google OAuth callback URL).
       '/api': { target: API_TARGET, changeOrigin: true, xfwd: true },
-      '/socket.io': { target: API_TARGET, ws: true, changeOrigin: true },
+      '/socket.io': { target: API_TARGET, ws: true, changeOrigin: true, xfwd: true },
     },
   },
 });

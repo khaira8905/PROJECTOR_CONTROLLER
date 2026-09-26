@@ -2,7 +2,7 @@
   "name": "event-control",
   "version": "1.0.0",
   "private": true,
-  "description": "EventControl — event presentation & projector control system",
+  "description": "EventControl \u2014 event presentation & projector control system",
   "workspaces": [
     "client",
     "server"
@@ -17,7 +17,8 @@
     "typecheck": "npm run typecheck -w server && npm run typecheck -w client",
     "test": "npm run test -w server",
     "e2e": "node scripts/e2e-flow.mjs",
-    "reset-password": "npm run reset-password -w server"
+    "reset-password": "npm run reset-password -w server",
+    "share": "node scripts/share.mjs"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",

@@ -16,7 +16,8 @@ import { prisma } from '../lib/prisma';
  *
  * Server-side OAuth (authorization-code flow): the browser only ever sees Google's consent
  * page and our own pages. The client secret and the tokens stay on the server; tokens are
- * stored encrypted. One Google account is connected per installation (the operator's).
+ * stored encrypted. Each connection belongs to an "owner": the browser that connected it when the
+ * app is open to anyone with the link, or the whole installation when operators sign in.
  *
  * Built as a small, self-contained "integration" so another provider can sit next to it
  * later (see services/integrations.ts).
@@ -24,7 +25,7 @@ import { prisma } from '../lib/prisma';
 
 export const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.readonly';
 const PROFILE_SCOPES = ['openid', 'email', 'profile'];
-const ACCOUNT_KEY = 'integration.google';
+const accountKey = (owner: string) => (owner === 'installation' ? 'integration.google' : `integration.google:${owner}`);
 
 export interface GoogleAccount {
   email: string;
@@ -57,8 +58,8 @@ export function notConfiguredError() {
 
 // ---- Stored account ----------------------------------------------------------------
 
-async function loadAccount(): Promise<StoredAccount | null> {
-  const sealed = await getSetting(ACCOUNT_KEY);
+async function loadAccount(owner: string): Promise<StoredAccount | null> {
+  const sealed = await getSetting(accountKey(owner));
   if (!sealed) return null;
   const json = await decryptSecret(sealed);
   if (!json) return null;
@@ -69,27 +70,27 @@ async function loadAccount(): Promise<StoredAccount | null> {
   }
 }
 
-async function saveAccount(account: StoredAccount) {
-  await setSetting(ACCOUNT_KEY, await encryptSecret(JSON.stringify(account)));
+async function saveAccount(owner: string, account: StoredAccount) {
+  await setSetting(accountKey(owner), await encryptSecret(JSON.stringify(account)));
 }
 
-async function forgetAccount() {
-  await prisma.setting.deleteMany({ where: { key: ACCOUNT_KEY } });
+async function forgetAccount(owner: string) {
+  await prisma.setting.deleteMany({ where: { key: accountKey(owner) } });
 }
 
-export async function getAccount(): Promise<GoogleAccount | null> {
-  const a = await loadAccount();
+export async function getAccount(owner: string): Promise<GoogleAccount | null> {
+  const a = await loadAccount(owner);
   return a ? { email: a.email, name: a.name, picture: a.picture, scopes: a.scopes, connectedAt: a.connectedAt } : null;
 }
 
-export async function status() {
-  const account = await getAccount();
+export async function status(owner: string, signInEnabled: boolean) {
+  const account = await getAccount(owner);
   return {
     configured: googleConfigured(),
     connected: !!account,
     account,
     drive: !!account?.scopes.includes(DRIVE_SCOPE),
-    signInEnabled: googleConfigured() && config.google.allowedEmails.length > 0,
+    signInEnabled,
   };
 }
 
@@ -152,15 +153,15 @@ async function fetchProfile(accessToken: string) {
 }
 
 /** Finishes the OAuth dance: exchanges the code and returns the Google profile. */
-export async function exchangeCode(code: string, redirectUri: string, purpose: OAuthPurpose) {
+export async function exchangeCode(code: string, redirectUri: string, purpose: OAuthPurpose, owner: string) {
   const tokens = await tokenRequest({ code, grant_type: 'authorization_code', redirect_uri: redirectUri });
   const profile = await fetchProfile(tokens.access_token);
   if (purpose === 'connect') {
-    const previous = await loadAccount();
+    const previous = await loadAccount(owner);
     const refreshToken = tokens.refresh_token ?? (previous?.email === profile.email ? previous.refreshToken : undefined);
     if (!refreshToken) throw new HttpError(502, 'Google didn’t grant offline access. Please try connecting again.');
     const scopes = (tokens.scope ?? '').split(' ').filter(Boolean);
-    await saveAccount({
+    await saveAccount(owner, {
       email: profile.email,
       name: profile.name,
       picture: profile.picture,
@@ -175,9 +176,9 @@ export async function exchangeCode(code: string, redirectUri: string, purpose: O
   return profile;
 }
 
-export async function disconnect() {
-  const account = await loadAccount();
-  await forgetAccount();
+export async function disconnect(owner: string) {
+  const account = await loadAccount(owner);
+  await forgetAccount(owner);
   if (account) {
     // Tell Google too, so the access is gone from the user's account page. Best effort.
     await fetch(config.google.revokeUrl, {
@@ -190,24 +191,24 @@ export async function disconnect() {
 }
 
 /** A valid access token, refreshed when it is about to expire. */
-async function accessToken(): Promise<string> {
+async function accessToken(owner: string): Promise<string> {
   if (!googleConfigured()) throw notConfiguredError();
-  const account = await loadAccount();
+  const account = await loadAccount(owner);
   if (!account) throw new GoogleReconnectError('Google Drive isn’t connected. Connect it in Settings → File sources.');
   if (account.expiresAt - Date.now() > 60_000) return account.accessToken;
   try {
     const t = await tokenRequest({ refresh_token: account.refreshToken, grant_type: 'refresh_token' });
-    await saveAccount({ ...account, accessToken: t.access_token, expiresAt: Date.now() + t.expires_in * 1000 });
+    await saveAccount(owner, { ...account, accessToken: t.access_token, expiresAt: Date.now() + t.expires_in * 1000 });
     return t.access_token;
   } catch (err) {
     // Revoked, or the password changed: forget it so the UI shows "Connect" again.
-    if (err instanceof GoogleReconnectError) await forgetAccount();
+    if (err instanceof GoogleReconnectError) await forgetAccount(owner);
     throw err;
   }
 }
 
-async function driveFetch(url: string): Promise<Response> {
-  const token = await accessToken();
+async function driveFetch(owner: string, url: string): Promise<Response> {
+  const token = await accessToken(owner);
   let res: Response;
   try {
     res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
@@ -215,7 +216,7 @@ async function driveFetch(url: string): Promise<Response> {
     throw new HttpError(502, 'Couldn’t reach Google Drive. Check the internet connection and try again.');
   }
   if (res.status === 401) {
-    await forgetAccount();
+    await forgetAccount(owner);
     throw new GoogleReconnectError();
   }
   if (res.status === 403) throw new HttpError(403, 'Google Drive didn’t allow this. Make sure you gave EventControl permission to see your files when connecting.');
@@ -248,7 +249,7 @@ const kindOf = (mime: string): DriveFile['kind'] => (mime === FOLDER ? 'folder' 
 const esc = (s: string) => s.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 
 /** Presentations (PowerPoint, Google Slides) and PDFs; browse by folder or search by name. */
-export async function listDrive(opts: { query?: string; folderId?: string; pageToken?: string }) {
+export async function listDrive(owner: string, opts: { query?: string; folderId?: string; pageToken?: string }) {
   const types = IMPORTABLE.map((t) => `mimeType='${t}'`).join(' or ');
   const clauses = ['trashed = false'];
   if (opts.query?.trim()) {
@@ -265,7 +266,7 @@ export async function listDrive(opts: { query?: string; folderId?: string; pageT
     includeItemsFromAllDrives: 'true',
     ...(opts.pageToken ? { pageToken: opts.pageToken } : {}),
   });
-  const res = await driveFetch(`${config.google.apiUrl}/drive/v3/files?${params}`);
+  const res = await driveFetch(owner, `${config.google.apiUrl}/drive/v3/files?${params}`);
   const data = (await res.json()) as { nextPageToken?: string; files?: Array<Record<string, string | undefined>> };
   const files: DriveFile[] = (data.files ?? []).map((f) => ({
     id: f.id!,
@@ -284,9 +285,9 @@ export async function listDrive(opts: { query?: string; folderId?: string; pageT
  * Brings one Drive file onto this computer so it can be converted, shown offline and
  * controlled slide by slide. Google Slides are exported as PowerPoint.
  */
-export async function downloadDriveFile(fileId: string): Promise<{ tmpPath: string; originalName: string; size: number }> {
+export async function downloadDriveFile(owner: string, fileId: string): Promise<{ tmpPath: string; originalName: string; size: number }> {
   if (!/^[\w-]{10,128}$/.test(fileId)) throw new HttpError(400, 'Invalid Google Drive file.');
-  const metaRes = await driveFetch(`${config.google.apiUrl}/drive/v3/files/${fileId}?fields=id,name,mimeType,size&supportsAllDrives=true`);
+  const metaRes = await driveFetch(owner, `${config.google.apiUrl}/drive/v3/files/${fileId}?fields=id,name,mimeType,size&supportsAllDrives=true`);
   const meta = (await metaRes.json()) as { name?: string; mimeType?: string; size?: string };
   const mime = meta.mimeType ?? '';
   if (!IMPORTABLE.includes(mime)) throw new HttpError(415, 'Only PowerPoint, Google Slides and PDF files can be imported from Drive.');
@@ -300,7 +301,7 @@ export async function downloadDriveFile(fileId: string): Promise<{ tmpPath: stri
     mime === SLIDES
       ? `${config.google.apiUrl}/drive/v3/files/${fileId}/export?mimeType=${encodeURIComponent(PPTX)}`
       : `${config.google.apiUrl}/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true`;
-  const res = await driveFetch(url);
+  const res = await driveFetch(owner, url);
   if (!res.body) throw new HttpError(502, 'Google Drive sent an empty file.');
   const tmpPath = path.join(os.tmpdir(), `ec-drive-${crypto.randomBytes(8).toString('hex')}${ext}`);
   let bytes = 0;

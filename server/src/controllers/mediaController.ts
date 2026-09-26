@@ -7,6 +7,7 @@ import { HttpError, badRequest, notFound } from '../lib/errors';
 import { logger } from '../lib/logger';
 import { toMediaDto } from '../lib/dto';
 import { idParam } from '../lib/validation';
+import { isLocalRequest } from '../lib/network';
 import { config } from '../config';
 import {
   getFileType,
@@ -254,10 +255,15 @@ function openerFor(file: string): { cmd: string; args: string[] } {
  * the command is fixed, and no shell is involved.
  */
 export async function openMediaExternally(req: Request<{ mediaId: string }>, res: Response) {
-  const media = await findMediaOr404(req.params.mediaId);
   if (!config.allowExternalOpen) {
     throw new HttpError(403, 'Opening files on the server machine is disabled.', 'OPEN_DISABLED');
   }
+  // Launching an app on the server's desktop is only for the person sitting at it — never for
+  // someone who opened the shared link from elsewhere (including through a tunnel).
+  if (!isLocalRequest(req)) {
+    throw new HttpError(403, 'PowerPoint can only be opened on the computer that runs EventControl. Use the slides here instead.', 'OPEN_REMOTE');
+  }
+  const media = await findMediaOr404(req.params.mediaId);
   if (!(await ensureLocalCopy(media.storagePath))) {
     throw new HttpError(404, 'Media file no longer exists.', 'MEDIA_MISSING');
   }

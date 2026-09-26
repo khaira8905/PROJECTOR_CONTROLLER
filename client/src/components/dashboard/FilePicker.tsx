@@ -135,12 +135,12 @@ export function FilePicker({
                   await onAdd([m]);
                   onClose();
                 }}
-                className={cn('flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors', selected ? 'bg-[var(--row-active)]' : 'hover:bg-[var(--row-hover)]')}
+                className={cn('flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors', selected ? 'ec-selected bg-[var(--row-active)]' : 'hover:bg-[var(--row-hover)]')}
               >
                 <span
                   className={cn(
                     'flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] border text-[11px] font-bold',
-                    selected ? 'border-sky-500 bg-sky-500 text-[#fff]' : 'border-[var(--line-strong)] bg-console-900',
+                    selected ? 'ec-pop border-sky-500 bg-sky-500 text-[#fff]' : 'border-[var(--line-strong)] bg-console-900',
                   )}
                 >
                   {selected ? (picked.length > 1 ? order + 1 : <Check size={13} strokeWidth={3} />) : null}

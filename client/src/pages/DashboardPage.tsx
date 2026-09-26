@@ -12,11 +12,11 @@ import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { useToast } from '../components/ui/Toast';
 import { FlowPane } from '../components/dashboard/FlowPane';
 import { StagePane } from '../components/dashboard/StagePane';
-import { QuickSelection, QuickSelectionEditor } from '../components/dashboard/QuickSelection';
+import { DEFAULT_QUICK, QuickSelection, QuickSelectionEditor } from '../components/dashboard/QuickSelection';
 import { TimerStrip } from '../components/dashboard/TimerStrip';
 import { FilePicker } from '../components/dashboard/FilePicker';
 import { DriveBrowser } from '../components/dashboard/DriveBrowser';
-import { SettingsView } from '../components/dashboard/SettingsView';
+import { SettingsView, isSettingsSection } from '../components/dashboard/SettingsView';
 import { FlowItemModal } from '../components/dashboard/FlowItemModal';
 import { PresentationLibrary } from '../components/dashboard/PresentationLibrary';
 import { PreviewModal } from '../components/dashboard/PreviewModal';
@@ -31,11 +31,12 @@ import { useEventSocket } from '../hooks/useEventSocket';
 import { ClockOffsetContext } from '../hooks/useLiveRemaining';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useSystemStatus } from '../hooks/useSystemStatus';
-import { useUiPrefs } from '../lib/uiPrefs';
+import { useShortcutBindings, useUiPrefs } from '../lib/uiPrefs';
+import type { ShortcutAction } from '../lib/shortcuts';
 import { ApiError, api } from '../services/api';
 import { cn } from '../lib/cn';
 import { itemLabel } from '../lib/flow';
-import type { ControlCommand, EventPreferences, GoogleStatus, Media, QueueItem, QuickItem, UploadResult } from '../types';
+import { DEFAULT_BLACK_SCREEN, type ControlCommand, type PreferencesPatch, type GoogleStatus, type Media, type QueueItem, type QuickItem, type UploadResult } from '../types';
 
 const errorMessage = (err: unknown, fallback: string) => (err instanceof Error ? err.message : fallback);
 
@@ -84,8 +85,14 @@ export default function DashboardPage() {
   /** Where Drive imports go: straight into the Flow (from "Add"), or just into the library. */
   const [driveTarget, setDriveTarget] = useState<'flow' | 'library' | null>(null);
   const [google, setGoogle] = useState<GoogleStatus | null>(null);
+  /** Asked before leaving a deck mid-way (Settings → Presentation behaviour). */
+  const [switchTo, setSwitchTo] = useState<QueueItem | null>(null);
+  const [flowFocus, setFlowFocus] = useState(0);
+  const bindings = useShortcutBindings();
   const [view, setView] = useDashboardView();
   const [params, setParams] = useSearchParams();
+  const sectionParam = params.get('section');
+  const settingsSection = isSettingsSection(sectionParam) ? sectionParam : 'presentation';
   const videoNonce = useRef(0);
   const jumpRef = useRef<HTMLInputElement>(null);
 
@@ -170,6 +177,13 @@ export default function DashboardPage() {
   const cloudEnabled = !!system && system.storage.provider !== 'local';
   const atEnd = !!currentItem && currentIndex === flow.length - 1 && (!display?.range || display.page >= display.range.end) && !display?.adHocMediaId;
   const prefs = event?.preferences ?? null;
+  const blackPrefs = prefs?.blackScreen ?? DEFAULT_BLACK_SCREEN;
+  const blackOn = display?.mode === 'black';
+  // What the Quick Selection buttons (and their 1–8 keys) point at, in order.
+  const quickItems = useMemo(
+    () => (prefs?.quickSelection ?? DEFAULT_QUICK).filter((q) => !(blackPrefs.enabled === false && q.kind === 'black')),
+    [prefs?.quickSelection, blackPrefs.enabled],
+  );
 
   // "Start": nothing from the Flow has been on screen yet.
   const defaultDeck = prefs?.defaultMediaId ? media.find((m) => m.id === prefs.defaultMediaId && !m.missing) : undefined;
@@ -193,6 +207,20 @@ export default function DashboardPage() {
     if (!win) toast.warning('The browser blocked the pop-up. Allow pop-ups for this site, or copy the display link from Settings → Projector.');
   };
 
+  /** Black Screen is a toggle: pressing it again brings the picture back. */
+  const toggleBlack = () => {
+    if (!blackPrefs.enabled) return toast.info('Black Screen is turned off for this event (Settings → Display).');
+    void run(blackOn ? { type: 'show-current' } : { type: 'black' });
+  };
+
+  /** Shows a Flow item, asking first when that would leave a presentation half-way. */
+  const showItem = (item: QueueItem) => {
+    const media = display?.mode === 'media' ? display.media : null;
+    const midDeck = showingFlowItem && item.id !== currentItem?.id && !!media?.pageCount && !!display?.range && display.page > display.range.start && display.page < display.range.end;
+    if (prefs?.presentation?.confirmSwitch && midDeck) return setSwitchTo(item);
+    void run({ type: 'show-item', queueItemId: item.id });
+  };
+
   const toggleOverlay = () => {
     if (!event?.overlay.mediaId) return toast.info('Choose an overlay logo in Branding first.');
     void run({ type: 'overlay', visible: !event.overlay.visible });
@@ -205,7 +233,7 @@ export default function DashboardPage() {
       case 'media':
         return item.mediaId && void run({ type: 'show-media', mediaId: item.mediaId, page: item.page });
       case 'black':
-        return void run({ type: 'black' });
+        return toggleBlack();
       case 'logo':
         return void run({ type: 'logo' });
       case 'current':
@@ -213,7 +241,7 @@ export default function DashboardPage() {
     }
   };
 
-  const savePreferences = async (patch: Partial<EventPreferences>) => {
+  const savePreferences = async (patch: PreferencesPatch) => {
     if (!eventId) return;
     try {
       await api.updatePreferences(eventId, patch);
@@ -224,26 +252,35 @@ export default function DashboardPage() {
     }
   };
 
+  const quickHandlers = Object.fromEntries(
+    quickItems.slice(0, 8).map((q, i) => [`quick${i + 1}` as ShortcutAction, () => triggerQuick(q)]),
+  );
   useKeyboardShortcuts(
+    bindings,
     {
-      ArrowRight: () => void run({ type: 'next' }),
-      ' ': () => void run({ type: 'next' }),
-      ArrowLeft: () => void run({ type: 'previous' }),
-      PageDown: () => void run({ type: 'next' }),
-      PageUp: () => void run({ type: 'previous' }),
-      b: () => void run({ type: 'black' }),
-      w: () => void run({ type: 'show-screen', key: 'please-wait' }),
-      t: () => void run({ type: 'show-screen', key: 'technical' }),
-      Escape: () => void run({ type: 'show-current' }),
-      l: () => void run({ type: 'logo' }),
-      o: toggleOverlay,
-      f: () => void run({ type: 'fullscreen' }),
-      g: () => jumpRef.current?.focus(),
-      p: () => void run({ type: 'timer-toggle' }),
-      r: () => void run({ type: 'timer-reset' }),
-      '?': () => setHelpOpen(true),
+      next: () => void run({ type: 'next' }),
+      previous: () => void run({ type: 'previous' }),
+      start: () => (startLabel ? start() : void run({ type: 'show-current' })),
+      resume: () => void run({ type: 'show-current' }),
+      exit: () => void run({ type: 'logo' }),
+      black: toggleBlack,
+      goToSlide: () => jumpRef.current?.focus(),
+      openFlow: () => setView('control'),
+      selectPresentation: () => {
+        setView('control');
+        setFlowFocus((n) => n + 1);
+      },
+      toggleControls: () => setUi({ presenterMode: !ui.presenterMode }),
+      fullscreen: () => void run({ type: 'fullscreen' }),
+      pleaseWait: () => void run({ type: 'show-screen', key: 'please-wait' }),
+      technical: () => void run({ type: 'show-screen', key: 'technical' }),
+      overlay: toggleOverlay,
+      timerToggle: () => void run({ type: 'timer-toggle' }),
+      timerReset: () => void run({ type: 'timer-reset' }),
+      help: () => setHelpOpen(true),
+      ...quickHandlers,
     },
-    !!eventId,
+    !!eventId && ui.keyboard,
   );
 
   // ---- Files & Flow ------------------------------------------------------------------
@@ -266,7 +303,7 @@ export default function DashboardPage() {
       await data.reloadMedia();
       return result;
     } catch (err) {
-      toast.error(err instanceof ApiError && err.status === 0 ? 'The upload couldn’t reach the EventControl server. Is the black window still running?' : errorMessage(err, 'The upload failed. Please try again.'));
+      toast.error(err instanceof ApiError && err.status === 0 ? 'The upload couldn’t reach the EventControl server. Check the connection and try again.' : errorMessage(err, 'The upload failed. Please try again.'));
       return null;
     } finally {
       setUploadProgress(null);
@@ -312,7 +349,9 @@ export default function DashboardPage() {
   const removeFromFlow = async (item: QueueItem) => {
     try {
       await api.deleteQueueItem(item.id);
-      await data.reloadQueue();
+      // Drop it locally at once (the row has already folded away), then confirm with the server.
+      setQueue(flow.filter((q) => q.id !== item.id));
+      void quiet(data.reloadQueue());
       toast.info(`Removed “${itemLabel(item)}” from the Flow. The file is still in Files.`);
     } catch (err) {
       toast.error(errorMessage(err, 'Couldn’t remove the item. Please try again.'));
@@ -322,6 +361,11 @@ export default function DashboardPage() {
   const openMedia = async (m: Media) => {
     if (m.kind !== 'presentation') {
       window.open(m.url, '_blank', 'noopener');
+      return;
+    }
+    // PowerPoint can only open on the computer running EventControl; elsewhere, download it.
+    if (!system?.openExternally) {
+      window.open(`${m.url}?download=1`, '_blank', 'noopener');
       return;
     }
     try {
@@ -394,7 +438,7 @@ export default function DashboardPage() {
 
         <div className="flex min-w-0 flex-1 flex-col lg:min-h-0">
           {/* ── Top bar ─────────────────────────────────────────────────────────── */}
-          <header className="z-30 border-b ec-line bg-console-900 max-lg:sticky max-lg:top-0">
+          <header className="ec-topbar z-30 border-b ec-line bg-console-900 max-lg:sticky max-lg:top-0">
             <div className="flex min-h-[60px] flex-wrap items-center gap-x-5 gap-y-2 px-4 py-2 sm:px-5">
               <Link to="/" className="rounded-md p-1 text-slate-400 hover:text-white lg:hidden" aria-label="All events">
                 <ArrowLeft size={20} />
@@ -405,11 +449,11 @@ export default function DashboardPage() {
               </div>
               <div className="flex flex-wrap items-center">
                 <TopStatus
-                  tone={isLive ? 'ok' : 'bad'}
-                  icon={<span className={cn('h-2.5 w-2.5 rounded-full', isLive ? 'ec-dot-live bg-emerald-500 text-emerald-500/50' : 'bg-red-500')} />}
-                  title={isLive ? 'Projector connected' : 'Projector offline'}
-                  detail={isLive ? (presence!.displays > 1 ? `${presence!.displays} display windows` : 'Display window open') : 'Open the display window'}
-                  onClick={isLive ? undefined : openDisplayWindow}
+                  tone={!joined || isLive ? 'ok' : 'bad'}
+                  icon={<span className="ec-status-dot h-2.5 w-2.5 rounded-full" data-state={!joined ? 'connecting' : isLive ? 'ok' : 'bad'} />}
+                  title={!joined ? 'Connecting…' : isLive ? 'Projector connected' : 'Projector offline'}
+                  detail={!joined ? 'Reaching the EventControl server' : isLive ? (presence!.displays > 1 ? `${presence!.displays} display windows` : 'Display window open') : 'Open the display window'}
+                  onClick={isLive || !joined ? undefined : openDisplayWindow}
                 />
                 {system && !presenter && (
                   <TopStatus
@@ -464,7 +508,7 @@ export default function DashboardPage() {
 
           {view === 'control' || presenter ? (
             <main
-              className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1.3fr)_minmax(400px,1fr)] lg:overflow-hidden"
+              className="ec-view-in grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1.3fr)_minmax(400px,1fr)] lg:overflow-hidden"
               style={{ '--preview-h': 'clamp(170px, 34vh, 520px)' } as CSSProperties}
             >
               <FlowPane
@@ -476,7 +520,12 @@ export default function DashboardPage() {
                 nextId={nextItem?.id ?? null}
                 onAir={showingFlowItem && isLive}
                 showSlides={ui.showSlides}
-                onShow={(item) => void run({ type: 'show-item', queueItemId: item.id })}
+                layout={ui.flowLayout}
+                activation={ui.flowActivation}
+                followLive={ui.followLive}
+                thumbSize={ui.thumbSize}
+                focusSignal={flowFocus}
+                onShow={showItem}
                 onGoToPage={(page) => void run(showingFlowItem ? { type: 'page', page } : { type: 'show-item', queueItemId: currentItem!.id, page })}
                 onReorder={reorder}
                 onEdit={setEditingItem}
@@ -518,8 +567,22 @@ export default function DashboardPage() {
                     const m = media.find((x) => x.id === id);
                     if (m) void openMedia(m);
                   }}
+                  canOpenExternally={!!system?.openExternally}
+                  black={{ enabled: blackPrefs.enabled, confirm: prefs?.confirmBlack ?? true, active: blackOn }}
+                  onBlack={toggleBlack}
+                  mouseControls={ui.mouseControls}
+                  keys={{ next: bindings.next[0], previous: bindings.previous[0], resume: bindings.resume[0], black: bindings.black[0] }}
                 >
-                  <QuickSelection preferences={prefs} screens={screens} media={media} display={display} disabled={!joined} onTrigger={triggerQuick} onEdit={() => setQuickEditorOpen(true)} />
+                  <QuickSelection
+                    preferences={prefs}
+                    screens={screens}
+                    media={media}
+                    display={display}
+                    disabled={!joined}
+                    keys={quickItems.map((_, i) => (i < 8 ? bindings[`quick${i + 1}` as ShortcutAction][0] : undefined))}
+                    onTrigger={triggerQuick}
+                    onEdit={() => setQuickEditorOpen(true)}
+                  />
                   <TimerStrip timer={timer} send={(cmd) => void run(cmd)} onMore={() => setView('timers')} />
                   {/* Hidden "go to slide" target for the G shortcut. */}
                   {pageCount && (
@@ -541,7 +604,7 @@ export default function DashboardPage() {
               </div>
             </main>
           ) : (
-            <main key={view} className="ec-page-in scroll-thin min-w-0 flex-1 p-4 sm:p-6 lg:overflow-y-auto">
+            <main key={view} className="ec-section-in scroll-thin min-w-0 flex-1 p-4 sm:p-6 lg:overflow-y-auto">
               {view === 'files' && (
                 <PresentationLibrary
                   className="mx-auto min-h-[70dvh] max-w-7xl"
@@ -657,16 +720,37 @@ export default function DashboardPage() {
 
               {view === 'settings' && (
                 <SettingsView
+                  section={settingsSection}
+                  onSection={(section) =>
+                    setParams(
+                      (p) => {
+                        const next = new URLSearchParams(p);
+                        next.set('section', section);
+                        return next;
+                      },
+                      { replace: true },
+                    )
+                  }
                   event={event}
                   media={media}
                   screens={screens}
                   google={google}
+                  openAccess={!auth?.enabled}
                   signedIn={!!auth?.enabled}
                   displayUrl={eventId ? `${window.location.origin}/display/${eventId}` : ''}
+                  consoleUrl={eventId ? `${window.location.origin}/events/${eventId}` : ''}
                   uploadProgress={uploadProgress}
-                  onPreferences={(patch) => void savePreferences(patch).then(() => toast.success('Saved.'), () => undefined)}
+                  onPreferences={savePreferences}
                   onCustomizeQuick={() => setQuickEditorOpen(true)}
                   onUpload={(files) => void upload(files)}
+                  onUploadLogo={async (file) => {
+                    const result = await upload([file], 'Branding');
+                    const logoFile = result?.uploaded[0] ?? result?.duplicates[0];
+                    if (logoFile) await setEventField({ logoMediaId: logoFile.id }, 'Logo updated.');
+                  }}
+                  onSetLogo={(id) => setEventField({ logoMediaId: id }, id ? 'Logo updated.' : 'Logo removed. The image is still in Files.')}
+                  onManageFiles={() => setView('files')}
+                  onOverlay={() => setView('branding')}
                   onBrowseDrive={() => setDriveTarget('library')}
                   onDisconnectGoogle={async () => {
                     try {
@@ -679,9 +763,8 @@ export default function DashboardPage() {
                   onEditEvent={() => setEditEventOpen(true)}
                   onOpenDisplay={openDisplayWindow}
                   onFullscreen={() => void run({ type: 'fullscreen' })}
-                  onShortcuts={() => setHelpOpen(true)}
                   onSignOut={signOut}
-                  onCopied={() => toast.success('Display link copied.')}
+                  onCopied={(what) => toast.success(what)}
                 />
               )}
             </main>
@@ -762,7 +845,34 @@ export default function DashboardPage() {
             }
           }}
         />
-        <ShortcutsHelp open={helpOpen} onClose={() => setHelpOpen(false)} />
+        <ShortcutsHelp
+          open={helpOpen}
+          onClose={() => setHelpOpen(false)}
+          onCustomize={() => {
+            setHelpOpen(false);
+            setParams((p) => {
+              const next = new URLSearchParams(p);
+              next.set('view', 'settings');
+              next.set('section', 'controls');
+              return next;
+            });
+          }}
+        />
+        <ConfirmDialog
+          open={!!switchTo}
+          title="Switch presentation?"
+          confirmLabel="Switch"
+          message={
+            <>
+              <b className="text-white">{currentItem ? itemLabel(currentItem) : ''}</b> is at slide {display?.page} of {display?.range?.end}. Show{' '}
+              <b className="text-white">{switchTo ? itemLabel(switchTo) : ''}</b> instead?
+            </>
+          }
+          onClose={() => setSwitchTo(null)}
+          onConfirm={() => {
+            if (switchTo) void run({ type: 'show-item', queueItemId: switchTo.id });
+          }}
+        />
       </div>
     </ClockOffsetContext.Provider>
   );

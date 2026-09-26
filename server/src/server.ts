@@ -35,12 +35,19 @@ async function main() {
   createSocketServer(server);
 
   server.listen(config.port, config.host, () => {
-    logger.info(`EventControl server listening on http://localhost:${config.port}`);
-    for (const ip of lanAddresses()) logger.info(`  on your network: http://${ip}:${config.port}`);
+    logger.info(`EventControl is running on port ${config.port}.`);
+    logger.info(`  on this computer: http://localhost:${config.port}`);
+    for (const ip of lanAddresses()) logger.info(`  on your network:  http://${ip}:${config.port}`);
+    if (config.publicAppUrl) logger.info(`  public address:   ${config.publicAppUrl}`);
+    logger.info(
+      config.auth.provider === 'none'
+        ? 'Access: open — anyone with the link can use it (no password).'
+        : `Access: private — operators sign in (${config.auth.provider}).`,
+    );
     if (process.env.RENDER && !config.supabase.url) {
       logger.warn('Running on Render without SUPABASE_URL: uploaded files will be lost when the instance restarts.');
     }
-    logger.info(`Sign-in: ${config.auth.provider} · Cloud storage: ${config.supabase.url ? `Supabase (${config.supabase.bucket})` : 'off (local files only)'}`);
+    logger.info(`Cloud storage: ${config.supabase.url ? `Supabase (${config.supabase.bucket})` : 'off (local files only)'}`);
   });
 
   const shutdown = async () => {

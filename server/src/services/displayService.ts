@@ -6,6 +6,7 @@ import { toPublicMediaDto, toScreenDto, type PublicMedia, type ScreenDto } from 
 import { emitToEvent } from '../socket/bus';
 import { ensureBuiltinScreens, findScreenByKey } from './screenService';
 import * as timer from './timerService';
+import { parsePreferences, type BlackScreenPrefs } from './preferences';
 
 /**
  * media  – a presentation/PDF page, image or video
@@ -56,6 +57,8 @@ export interface DisplaySnapshot extends DisplayRecord {
   screen: ScreenDto | null;
   logo: PublicMedia | null;
   overlay: OverlayState;
+  /** How the projector draws "black" (pure black, or a quiet branded card). */
+  blackScreen: BlackScreenPrefs;
   /** Monotonic counter; clients ignore snapshots older than the one they have. */
   version: number;
   serverNow: number;
@@ -160,6 +163,7 @@ async function buildSnapshot(eventId: string, record: DisplayRecord): Promise<Di
       opacity: event.overlayOpacity,
       visible: event.overlayVisible && !!overlayRow,
     },
+    blackScreen: parsePreferences(event.preferences).blackScreen,
     version: ++versionCounter,
     serverNow: Date.now(),
   };
@@ -189,6 +193,7 @@ function persist(eventId: string, record: DisplayRecord) {
  */
 async function commit(eventId: string, record: DisplayRecord, sameContent = false): Promise<DisplaySnapshot> {
   records.set(eventId, record);
+  if (record.mode === 'media' && record.queueItemId && !record.adHocMediaId) rememberPage(eventId, record.queueItemId, record.page);
   const cached = snapshots.get(eventId);
   const snapshot: DisplaySnapshot =
     sameContent && cached
@@ -221,6 +226,7 @@ export async function refresh(eventId: string): Promise<void> {
 
 export function forget(eventId: string) {
   records.delete(eventId);
+  lastPages.delete(eventId);
   snapshots.delete(eventId);
   persistChains.delete(eventId);
 }
@@ -242,7 +248,7 @@ async function goToItem(eventId: string, item: FlowItem, page: number | 'start' 
     return snapshot;
   }
   const range = itemRange(item);
-  const target = !range ? 1 : page === 'start' ? range.start : page === 'end' ? range.end : page;
+  const target = !range ? 1 : page === 'start' ? range.start : page === 'end' ? range.end : Math.min(Math.max(page, range.start), range.end);
   return commit(eventId, { mode: 'media', queueItemId: item.id, adHocMediaId: null, screenId: null, page: target });
 }
 
@@ -258,6 +264,13 @@ export async function step(eventId: string, direction: 1 | -1) {
 
   const index = record.queueItemId ? items.findIndex((i) => i.id === record.queueItemId) : -1;
   const current = index >= 0 ? items[index] : null;
+
+  // Coming back from black: by default the same slide returns (nothing is skipped while the
+  // audience saw nothing). The "advance" setting moves on instead.
+  if (record.mode === 'black' && current) {
+    const black = (snapshots.get(eventId) ?? (await getSnapshot(eventId))).blackScreen;
+    if (black.resume === 'same') return showCurrent(eventId);
+  }
 
   // Ad-hoc content (shown from the library): NEXT continues the flow, PREVIOUS returns to it.
   if (record.adHocMediaId) {
@@ -299,7 +312,21 @@ export async function showQueueItem(eventId: string, queueItemId: string, page?:
   const items = await flowItems(eventId);
   const item = items.find((i) => i.id === queueItemId);
   if (!item) throw notFound('Show Flow item not found.');
+  if (page === undefined) {
+    // "Remember last slide": reopening a deck continues where it was left.
+    const event = await prisma.event.findUnique({ where: { id: eventId }, select: { preferences: true } });
+    const remembered = lastPages.get(eventId)?.get(item.id);
+    if (remembered && parsePreferences(event?.preferences).presentation.startAt === 'last') return goToItem(eventId, item, remembered);
+  }
   return goToItem(eventId, item, page ?? 'start');
+}
+
+/** The last slide shown per Flow item (memory only: a restart starts decks from the top). */
+const lastPages = new Map<string, Map<string, number>>();
+function rememberPage(eventId: string, queueItemId: string, page: number) {
+  let pages = lastPages.get(eventId);
+  if (!pages) lastPages.set(eventId, (pages = new Map()));
+  pages.set(queueItemId, page);
 }
 
 export async function showMedia(eventId: string, mediaId: string, page?: number) {

@@ -208,7 +208,7 @@ describe('Google integration', () => {
 describe('event preferences', () => {
   it('stores Quick Selection and defaults, merging partial updates', async () => {
     const event = (await api.post('/api/events').send({ name: 'Prefs', date: '2026-10-02' })).body;
-    expect(event.preferences.quickSelection.map((q: any) => q.kind)).toEqual(['screen', 'screen', 'black', 'logo']);
+    expect(event.preferences.quickSelection.map((q: any) => q.kind)).toEqual(['screen', 'screen', 'screen', 'logo']);
     expect(event.preferences.confirmBlack).toBe(true);
 
     const quick = [{ id: 'a', kind: 'black', label: 'Kill screen' }, { id: 'b', kind: 'screen', screenKey: 'thanks', tone: 'blue' }];

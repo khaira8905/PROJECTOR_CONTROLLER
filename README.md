@@ -12,6 +12,8 @@ UPLOAD → ORGANIZE → PREVIEW → QUEUE (Show Flow) → CONTROL → DISPLAY
 
 ![Operator console, Blue theme](docs/screenshots/console-blue.png)
 
+![Settings → Display: logo and Black Screen with a live preview](docs/screenshots/settings.png)
+
 </details>
 
 ---
@@ -40,32 +42,38 @@ Keep the black window open while you use EventControl, and close it to stop the 
 | **Flow (the main workspace)** | The running order of the event, taking most of the Control screen: `01 Starting Soon → 02 Opening (slides 1–8) → 03 Please Wait → 04 Speaker 1 → …`. **Click an item to put it on the projector.** The item on screen opens up to show its slides; click a slide to jump to it. **Add** presentations (several at once, straight from upload or Drive) and screens; **Edit** to change slide ranges, durations, speaker notes or remove items; drag the handle to reorder. It scrolls smoothly however many items there are. **Next** walks through the slides of the current item, then on to the next item. |
 | **Control screen** | Flow on the left; on the right, what the audience sees: the projector picture, big **Previous / Next** buttons (Next says what it will do — *Slide 4* or the next item — and shows a preview on hover), a slide picker, a quiet **Up next** line, **Quick Selection** and the **Timer**. **Start** appears before the show begins; **Back to …** appears whenever a quick screen, black or a library file is on instead of the Flow. **Presenter mode** hides everything else. |
 | **Special screens** | Built-in **Please Wait, Technical Difficulty, We'll Be Back Shortly, Session Starting Soon, Coming Up Next** (announces the next item automatically) and **Thank You**. Each has its own hand-built animation: slow ripples, TV colour bars with a signal glitch, a steaming coffee cup, a sweeping clock ring, chevrons pulling toward what's next, and falling paper confetti. You can edit their text and create **custom screens** (title, subtitle, colour, image/video background). Any screen can be shown **with a countdown** ("Please Wait — 05:00") whose digits roll as they change. |
-| **Quick Selection** | Your own shortcut buttons (default: Please Wait, Technical Difficulty, Black Screen, Show Logo). **Customize** to add screens, files or actions, remove them, reorder them, rename them and pick a colour. Saved with the event, so every console sees the same set. Black needs a second click (configurable); the `B` key acts at once. |
+| **Quick Selection** | Your own shortcut buttons (default: Please Wait, Technical Difficulty, We'll Be Back Shortly, Show Logo), pressed with keys `1`–`8`. **Customize** to add screens, files or actions, remove them, reorder them, rename them and pick a colour. Saved with the event, so every console sees the same set. |
+| **Black Screen** | One toggle under Previous/Next with an unmistakable state (outlined → solid *Black is on*), or `B`; press again to bring the picture back. Set up once in **Settings → Display**: pure black or a branded card (your logo at its own proportions — never stretched — small, medium or large, centred, lower third or corner, a gentle one-time entrance, optional status text such as *We'll be right back*), fade or instant cut, two-click protection, and whether Next while black brings back the same slide or moves on. |
 | **Branding** | A logo overlay (university, event or sponsor logo) drawn over slides and screens. Choose the position (4 corners or centre), size, opacity and show/hide. There's also a separate full-screen logo mode. |
 | **Timer** | A server-authoritative countdown (start/pause/reset, ±1 min, warning threshold, show/hide on display), shown large on special screens and as a corner badge over slides. When time runs out, the console keeps counting the **overtime in red** (+01:25) while the audience still sees 00:00. A **Clock** tab shows the current time. |
 | **Top bar & rail** | Projector connected / offline (click to open the display window), storage status and upload progress, presenter mode, theme and **Open display**. The narrow rail on the left has labelled sections: Control, Files, Screens, Branding, Timers and Settings, plus free disk space and the operator. |
 | **Schedule** | A time-based run sheet (NOW / NEXT) as an operator reference. |
-| **Settings** | **Presentation** (default presentation and starting slide for *Start*, Black confirmation), **Quick Selection**, **Interface** for this computer (White or Blue theme, comfortable/compact density, animations full/reduced/off, show or hide the projector picture and the slide thumbnails, presenter mode), **File sources** (this computer, Google Drive connect/browse/disconnect), **Projector** (display link, open, fullscreen) and **Event & account**. |
+| **Settings** | A control centre in six groups, each saving as you change it and saying where it's saved (with the event, or on this computer): **Presentation** (what Start shows, reopen decks at the first slide or where you left them, show on click or on double-click, ask before switching decks mid-way, Flow layout detailed/compact, follow the item on screen, slide thumbnails and their size, Quick Selection), **Display** (upload/replace/remove the logo, Black Screen look and behaviour with a live preview, projector picture, display link), **Controls** (keyboard shortcuts on/off and fully editable, mouse on the picture, key hints, compact controls), **Files & integrations** (upload, Google Drive, connected accounts), **Appearance** (White/Blue theme, animations, presenter mode) and **Event & sharing** (details, console and projector links). |
 | **Motion** | Everything on the projector cross-fades: no flash of black between items, slides turn with a soft directional drift, and the logo overlay and corner timer fade in and out. Headlines rise word by word and underlines draw themselves in. The console keeps its motion small and useful: a red on-air frame around the preview while the projector is live, a peek at the next slide, sliding tabs, sections that fade in, rolling timer digits, toasts that count down, a shaking Black button when it's armed, and a LIVE equaliser. People who turn on "reduce motion" in their OS get a calm, static version. |
 | **Reliability** | The display keeps the last content if the network drops, reconnects on its own and restores the exact state (slide, screen, overlay, timer). The console survives long pauses too: after a reconnect, a server restart or a tab the browser put to sleep, it re-joins, reloads the Flow and files it may have missed, and reconnects immediately when you come back to the tab. The projector laptop is kept awake while the display is open. Files are always served from a local copy, so everything works offline. |
 
 ### Keyboard shortcuts
 
+Defaults below. **Every key can be changed** in **Settings → Controls**: click a key and press the new one, `+` adds a second key, `×` removes one, and each action (or everything) can be reset. If a key is already used by another action, the editor asks before moving it — keys never silently overwrite each other. Press `?` in the console for the keys in effect.
+
 | Key | Action |
 | --- | --- |
 | `→` / `Space` / `PgDn` | Next slide / next item |
 | `←` / `PgUp` | Previous slide / item |
-| `G` | Jump to a slide number |
-| `B` | Black screen (instant) |
-| `W` | Please Wait screen |
-| `T` | Technical Difficulty screen |
-| `Esc` | Resume the presentation (leave the special screen, back to the same slide) |
-| `L` | Full-screen event logo |
-| `O` | Show / hide logo overlay |
+| `S` | Start the presentation |
+| `Esc` | Back to the presentation (leave black, a quick screen or a library file) |
+| `L` | Exit the presentation (logo screen) |
+| `B` | Black screen on / off |
+| `G` | Go to a slide number |
+| `Shift` + `F` | Open the Flow (Control view) |
+| `/` | Select a presentation: focus the Flow, `↑` `↓` to choose, `Enter` to show |
+| `H` | Show / hide controls (presenter mode) |
+| `1` – `8` | Quick Selection buttons |
 | `F` | Fullscreen the display |
-| `P` | Start / pause timer |
-| `R` | Reset timer |
-| `?` | Shortcut help |
+| `W` / `T` | Please Wait / Technical Difficulty screen |
+| `O` | Show / hide logo overlay |
+| `P` / `R` | Start-pause / reset the timer |
+| `?` | Shortcut overview |
 
 Shortcuts are ignored while typing, and holding a key never skips several slides. On the display window, a click or `F` toggles fullscreen.
 
@@ -152,7 +160,7 @@ npm start          # everything on http://localhost:4000
 | Command | Purpose |
 | --- | --- |
 | `npm test` | Server integration tests (SQLite; `TEST_DATABASE_URL=postgresql://…` runs them on an empty Postgres database): auth, Show Flow navigation across files and slide ranges, screens, overlay, real PPTX conversion (if LibreOffice is installed), cloud storage against a mock Supabase API, and more |
-| `npm run e2e` | Browser end-to-end check against the running app (`E2E_PASSWORD=… npm run e2e`; needs `npx playwright install chromium` once or `CHROME_PATH`) |
+| `npm run e2e` | Browser end-to-end check against the running app (`E2E_PASSWORD=…` only in private mode; needs `npx playwright install chromium` once or `CHROME_PATH`) |
 | `npm run typecheck` | TypeScript checks |
 | `npm run reset-password` | Clear the operator password (the next visit asks for a new one) |
 | `npm run db:reset` | Wipe the database (the demo event is re-created on the next start) |
@@ -166,13 +174,15 @@ Copy **`.env.example`** to **`.env`** in the project folder and fill in what you
 | `DATABASE_URL` | SQLite `prisma/eventcontrol.db` | `file:/path/to.db` or a Postgres URL (`postgresql://…`, e.g. Supabase) |
 | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | empty | Enable cloud storage (see below) |
 | `SUPABASE_BUCKET` | `eventcontrol` | Storage bucket name |
-| `AUTH_PROVIDER` | `local` | `local` (operator password), `supabase` (Supabase Auth email + password, needs `SUPABASE_ANON_KEY`), `none` |
+| `AUTH_PROVIDER` | `none` (open) | Empty/`none`: anyone with the link can use it, no password. `local` (operator password) or `supabase` (Supabase Auth, needs `SUPABASE_ANON_KEY`) make it private |
+| `PUBLIC_APP_URL`, `PUBLIC_API_URL` | empty | Only when the UI is hosted separately from the server (see *Sharing a public link*) |
+| `CORS_ORIGINS` | empty | Extra sites allowed to call the API |
 | `SESSION_HOURS` | `168` | How long a sign-in lasts |
 | `SOFFICE_PATH` | auto-detected | Path to LibreOffice's `soffice` if it's installed somewhere unusual |
 | `CONVERSION_TIMEOUT_SECONDS` | `180` | Give up converting a deck after this long |
 | `PORT` / `HOST` | `4000` / `0.0.0.0` | Server address (all interfaces, so a projector PC on the LAN can connect) |
 | `MAX_UPLOAD_MB` | `1024` | Per-file upload limit |
-| `ALLOW_EXTERNAL_OPEN` | `true` | Allow "Open in PowerPoint" on the server machine |
+| `ALLOW_EXTERNAL_OPEN` | `true` | Allow "Open in PowerPoint" — only ever for a browser on the server machine itself |
 | `SEED_DEMO` | `true` | Create the demo event when the database is empty |
 
 ### Enabling cloud storage (Supabase)
@@ -183,6 +193,31 @@ Copy **`.env.example`** to **`.env`** in the project folder and fill in what you
 4. Restart EventControl. The status bar shows **CLOUD SYNCED** once uploads are copied, and each file card shows its cloud status. Existing files are uploaded automatically.
 
 The service key stays on the server (it is never sent to the browser). Uploads are retried with backoff if the connection drops.
+
+## Sharing a public link
+
+EventControl is one web app: the same server hosts the page, the API and the live connection, and the browser always talks to **the address it was opened at**. There is no `localhost` anywhere in the app — `localhost` only appears because `npm run dev` runs it on your own computer, which other people can't reach. To give people a link, run it somewhere they *can* reach:
+
+```
+ Anyone's browser ──https──▶  EventControl (public address)  ◀──https──  Projector computer
+   (console link)              UI + API + live updates                 (display link, a browser)
+```
+
+The projector needs no special software: it is just a browser showing the display link, connected **outwards** to the same address, so nothing on the venue computer is exposed to the internet.
+
+| Option | Link | Good for |
+| --- | --- | --- |
+| **Hosted** (Render, below — free) | permanent `https://…onrender.com` | the normal way; works when your laptop is off |
+| **`npm run share`** on your laptop | temporary `https://….trycloudflare.com` | a quick link without an account; works while the window is open |
+| Same Wi-Fi only | `http://<laptop-ip>:4000` (printed at start) | a projector PC in the same room |
+
+`npm run share` builds the app, starts it on one port and opens a free Cloudflare quick tunnel (install `cloudflared` once: `winget install --id Cloudflare.cloudflared` on Windows, `brew install cloudflared` on a Mac). It prints the public link.
+
+**No password.** Opening the link is enough; there are no accounts or sign-in screens. Share the console link only with your crew — whoever has it can run the show. The projector link only shows the audience picture. Connecting Google Drive is optional and personal: each browser connects its own account and nobody else sees it. "Open in PowerPoint" is only offered on the computer that runs EventControl and never to visitors. For a private set-up set `AUTH_PROVIDER=local`.
+
+Deep links (`/events/…`, `/display/…`) work after a refresh: the server returns the app for any page address, and built assets are cached safely (hashed names; the page itself is always revalidated, so a new deploy reaches everyone).
+
+**UI on a separate host** (optional, e.g. a static host in front of an API server): build the client with `VITE_API_URL=https://api.example.com npm run build -w client`, and set `PUBLIC_APP_URL=https://show.example.com` and `PUBLIC_API_URL=https://api.example.com` on the server. Only that UI address is allowed to call the API with cookies (both must be HTTPS).
 
 ## Free cloud hosting (Render + Supabase)
 
@@ -215,7 +250,7 @@ Run EventControl on the internet at no cost: **Render** (free web service) runs 
    | `SUPABASE_URL` | the Project URL from step 1.4 |
    | `SUPABASE_SERVICE_ROLE_KEY` | the service_role key from step 1.4 |
 4. Click **Apply**. The first build takes ~10 minutes (it installs LibreOffice). When the log shows `EventControl server listening`, open the `https://eventcontrol-….onrender.com` address Render shows.
-5. **Create the operator password immediately** — the address is public, and the first visitor chooses it. Use a strong one.
+5. That's it: anyone you give the address to can open EventControl — no password or account. (Want a password after all? Set `AUTH_PROVIDER=local` in Render's environment.)
 
 Every push to `main` redeploys automatically. Events and files survive restarts and redeploys (they live in Supabase; files are cached on the server and re-downloaded when needed).
 
@@ -229,13 +264,13 @@ Import presentations straight from Google Drive (Settings → File sources → G
 
 1. Open [Google Cloud Console](https://console.cloud.google.com/) → create a project → **APIs & Services → Library** → enable **Google Drive API**.
 2. **APIs & Services → OAuth consent screen**: choose *External*, fill in the app name and your email, and add yourself (and other operators) as **test users**.
-3. **Credentials → Create credentials → OAuth client ID → Web application**. Under *Authorized redirect URIs* add `http://localhost:5173/api/auth/google/callback` (and your hosted address, e.g. `https://your-app.onrender.com/api/auth/google/callback`).
+3. **Credentials → Create credentials → OAuth client ID → Web application**. Under *Authorized redirect URIs* add every address the app is opened at + `/api/auth/google/callback`, e.g. `https://your-app.onrender.com/api/auth/google/callback` (and `http://localhost:5173/api/auth/google/callback` for development). A `trycloudflare.com` link changes every time, so for Drive use a hosted address.
 4. Put the client ID and secret in `.env` (or Render's environment settings) and restart:
    ```
    GOOGLE_CLIENT_ID=…apps.googleusercontent.com
    GOOGLE_CLIENT_SECRET=…
    ```
-5. Optional: `GOOGLE_ALLOWED_EMAILS=you@college.edu,colleague@college.edu` adds **Continue with Google** to the sign-in page for those accounts only.
+5. Private mode only (`AUTH_PROVIDER=local`): `GOOGLE_ALLOWED_EMAILS=you@college.edu,colleague@college.edu` adds **Continue with Google** to the sign-in page for those accounts.
 
 How it works: the server does the OAuth exchange, so the client secret and the tokens never reach the browser; tokens are stored encrypted. EventControl asks for **read-only** Drive access. Imported files are copied onto this computer (they have to be, to turn PowerPoint into slides and keep the show running if the venue Wi-Fi drops); duplicates are recognised. Disconnecting revokes the access at Google. While the consent screen is in *testing*, Google may show an "unverified app" notice to test users — that is expected for a private tool.
 
@@ -331,7 +366,8 @@ All routes except sign-in, health and media file downloads require the operator 
 
 ## Security & reliability
 
-- **Sign-in:** scrypt-hashed operator password (or Supabase Auth, or Google for allow-listed accounts), HMAC-signed HttpOnly `SameSite=Strict` session cookie, rate-limited sign-in, and a password change signs out other sessions. Operator REST routes and socket control require a session; displays are read-only.
+- **Access:** open by default — anyone with the link uses the console, without accounts (by request). Per-browser data (a connected Google account) is tied to a random HttpOnly browser cookie, so visitors never see each other's Drive. Actions on the server machine's desktop ("Open in PowerPoint") are refused for any request that didn't come from that machine, including through a tunnel or proxy. Security headers, CORS only for a configured UI origin, and a production log of failed and slow requests.
+- **Private mode (optional):** scrypt-hashed operator password (or Supabase Auth, or Google for allow-listed accounts), HMAC-signed HttpOnly `SameSite=Strict` session cookie, rate-limited sign-in, and a password change signs out other sessions. Operator REST routes and socket control require a session; displays are read-only.
 - **Uploads:** extension allowlist and **magic-byte check** (a renamed `.exe` is rejected), sanitized filenames, random temp names, size limits and SHA-256 duplicate detection.
 - **Google:** server-side authorization-code flow with a signed `state` bound to a short-lived nonce cookie (CSRF-safe), same-origin return paths only, read-only Drive scope, AES-256-GCM encrypted tokens, revoke on disconnect.
 - **Paths:** every stored path is resolved and confined to `uploads/`, and clients only ever see `/api/media/:id/...` URLs.

@@ -1,26 +1,24 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, ArrowDown, ArrowUp, FileText, Hourglass, Image as ImageIcon, MonitorOff, Pencil, Plus, RotateCcw, Star, Trash2, Undo2 } from 'lucide-react';
+import { AlertTriangle, Coffee, ArrowDown, ArrowUp, FileText, Hourglass, Image as ImageIcon, MonitorOff, Pencil, Plus, RotateCcw, Star, Trash2, Undo2 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
-import { Kbd } from '../ui/Kbd';
+import { KeyHint } from './StagePane';
+import { prettyCombo } from '../../lib/shortcuts';
 import { cn } from '../../lib/cn';
 import type { DisplaySnapshot, EventPreferences, Media, QuickItem, QuickTone, Screen } from '../../types';
 
 export const DEFAULT_QUICK: QuickItem[] = [
   { id: 'qs-wait', kind: 'screen', screenKey: 'please-wait', tone: 'amber' },
   { id: 'qs-tech', kind: 'screen', screenKey: 'technical', tone: 'red' },
-  { id: 'qs-black', kind: 'black' },
+  { id: 'qs-break', kind: 'screen', screenKey: 'break', tone: 'blue' },
   { id: 'qs-logo', kind: 'logo' },
 ];
-
-const HINTS: Record<string, string> = { 'please-wait': 'W', technical: 'T', black: 'B', logo: 'L', current: 'Esc' };
 
 interface Resolved {
   item: QuickItem;
   label: string;
   icon: React.ReactNode;
   tone: QuickTone;
-  hint?: string;
   active: boolean;
   /** Missing target (deleted file or screen): shown disabled with the reason. */
   missing?: string;
@@ -38,8 +36,7 @@ export function resolveQuickItems(items: QuickItem[], screens: Screen[], media: 
           item,
           tone: item.tone ?? (key === 'technical' ? 'red' : key === 'please-wait' ? 'amber' : 'blue'),
           label: item.label || screen?.title || 'Screen',
-          icon: key === 'technical' ? <AlertTriangle size={18} /> : key === 'please-wait' ? <Hourglass size={18} /> : <Star size={18} />,
-          hint: key ? HINTS[key] : undefined,
+          icon: key === 'technical' ? <AlertTriangle size={18} /> : key === 'please-wait' ? <Hourglass size={18} /> : key === 'break' ? <Coffee size={18} /> : <Star size={18} />,
           active,
           missing: screen ? undefined : 'This screen was deleted.',
         };
@@ -57,11 +54,11 @@ export function resolveQuickItems(items: QuickItem[], screens: Screen[], media: 
         };
       }
       case 'black':
-        return { item, tone: 'neutral', label: item.label || 'Black Screen', icon: <MonitorOff size={18} />, hint: 'B', active: display?.mode === 'black' };
+        return { item, tone: 'neutral', label: item.label || 'Black Screen', icon: <MonitorOff size={18} />, active: display?.mode === 'black' };
       case 'logo':
-        return { item, tone: item.tone ?? 'neutral', label: item.label || 'Show Logo', icon: <ImageIcon size={18} />, hint: 'L', active: display?.mode === 'logo' };
+        return { item, tone: item.tone ?? 'neutral', label: item.label || 'Show Logo', icon: <ImageIcon size={18} />, active: display?.mode === 'logo' };
       case 'current':
-        return { item, tone: item.tone ?? 'blue', label: item.label || 'Back to Flow', icon: <Undo2 size={18} />, hint: 'Esc', active: false };
+        return { item, tone: item.tone ?? 'blue', label: item.label || 'Back to Flow', icon: <Undo2 size={18} />, active: false };
     }
   });
 }
@@ -72,13 +69,16 @@ interface QuickSelectionProps {
   media: Media[];
   display: DisplaySnapshot | null;
   disabled?: boolean;
+  /** Keyboard shortcut per button position (Settings → Controls), for the hints. */
+  keys?: (string | undefined)[];
   onTrigger: (item: QuickItem) => void;
   onEdit: () => void;
 }
 
 /** The presenter's own shortcuts: one click puts a screen, file or state on the projector. */
-export function QuickSelection({ preferences, screens, media, display, disabled, onTrigger, onEdit }: QuickSelectionProps) {
-  const items = preferences?.quickSelection ?? DEFAULT_QUICK;
+export function QuickSelection({ preferences, screens, media, display, disabled, keys, onTrigger, onEdit }: QuickSelectionProps) {
+  const blackOff = preferences?.blackScreen?.enabled === false;
+  const items = (preferences?.quickSelection ?? DEFAULT_QUICK).filter((q) => !(blackOff && q.kind === 'black'));
   const resolved = useMemo(() => resolveQuickItems(items, screens, media, display), [items, screens, media, display]);
   const confirmBlack = preferences?.confirmBlack ?? true;
   const [armed, setArmed] = useState<string | null>(null);
@@ -112,14 +112,15 @@ export function QuickSelection({ preferences, screens, media, display, disabled,
         </button>
       ) : (
         <div className="grid grid-cols-2 gap-2">
-          {resolved.map((r) => {
+          {resolved.map((r, index) => {
             const isArmed = armed === r.item.id;
+            const key = keys?.[index];
             return (
               <button
                 key={r.item.id}
                 onClick={() => press(r)}
                 disabled={disabled || !!r.missing}
-                title={r.missing ?? (r.hint ? `${r.label} (${r.hint})` : r.label)}
+                title={r.missing ?? (key ? `${r.label} (${prettyCombo(key)})` : r.label)}
                 aria-pressed={r.active}
                 data-tone={isArmed ? 'red' : r.tone}
                 className={cn(
@@ -133,8 +134,10 @@ export function QuickSelection({ preferences, screens, media, display, disabled,
                 <span className="min-w-0 flex-1 truncate">{isArmed ? 'Click again for black' : r.label}</span>
                 {r.active ? (
                   <span className="ec-dot-live h-2 w-2 shrink-0 rounded-full bg-current" aria-label="On the projector" />
-                ) : r.hint ? (
-                  <Kbd className="shrink-0 opacity-60 group-hover:opacity-100">{r.hint}</Kbd>
+                ) : key ? (
+                  <span className="opacity-60 transition-opacity group-hover:opacity-100">
+                    <KeyHint combo={key} />
+                  </span>
                 ) : null}
               </button>
             );

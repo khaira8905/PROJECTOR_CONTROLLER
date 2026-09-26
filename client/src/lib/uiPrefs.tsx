@@ -1,4 +1,5 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { effectiveBindings, type ShortcutOverrides } from './shortcuts';
 
 /**
  * How the console looks on this computer. Kept in the browser (not the event), because
@@ -13,9 +14,38 @@ export interface UiPrefs {
   showSlides: boolean;
   /** Presenter mode: hides everything except Flow, the picture and the transport. */
   presenterMode: boolean;
+  /** Keyboard shortcuts on/off, and the keys the operator changed (see lib/shortcuts). */
+  keyboard: boolean;
+  shortcuts: ShortcutOverrides;
+  /** Scroll over the projector picture to change slides; click it for the next one. */
+  mouseControls: boolean;
+  /** Small key hints on buttons (B, W, Esc…). */
+  hints: boolean;
+  /** Size of the slide thumbnails under the item on screen. */
+  thumbSize: 'small' | 'medium' | 'large';
+  /** Keep the item on screen scrolled into view in the Flow. */
+  followLive: boolean;
+  /** Detailed rows (picture and details) or a compact list. */
+  flowLayout: 'detailed' | 'compact';
+  /** Show a Flow item as soon as it is clicked, or only on double-click / Enter (safer). */
+  flowActivation: 'click' | 'double';
 }
 
-export const DEFAULT_UI_PREFS: UiPrefs = { density: 'comfortable', motion: 'full', showPreview: true, showSlides: true, presenterMode: false };
+export const DEFAULT_UI_PREFS: UiPrefs = {
+  density: 'comfortable',
+  motion: 'full',
+  showPreview: true,
+  showSlides: true,
+  presenterMode: false,
+  keyboard: true,
+  shortcuts: {},
+  mouseControls: false,
+  hints: true,
+  thumbSize: 'medium',
+  followLive: true,
+  flowLayout: 'detailed',
+  flowActivation: 'click',
+};
 
 const KEY = 'ec-ui-prefs';
 
@@ -33,6 +63,7 @@ export function applyUiPrefs(p: UiPrefs) {
   const root = document.documentElement;
   root.dataset.density = p.density;
   root.dataset.motion = p.motion;
+  root.dataset.hints = p.hints ? 'on' : 'off';
 }
 
 const Ctx = createContext<{ prefs: UiPrefs; set: (patch: Partial<UiPrefs>) => void }>({ prefs: DEFAULT_UI_PREFS, set: () => {} });
@@ -61,6 +92,12 @@ export function UiPrefsProvider({ children }: { children: ReactNode }) {
 }
 
 export const useUiPrefs = () => useContext(Ctx);
+
+/** The shortcut keys in effect on this computer. */
+export function useShortcutBindings() {
+  const { prefs } = useUiPrefs();
+  return useMemo(() => effectiveBindings(prefs.shortcuts), [prefs.shortcuts]);
+}
 
 /** Called before the first paint. */
 export function applyStoredUiPrefs() {

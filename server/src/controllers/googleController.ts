@@ -7,7 +7,8 @@ import { HttpError } from '../lib/errors';
 import { logger } from '../lib/logger';
 import { parseCookies } from '../lib/cookies';
 import * as google from '../integrations/google';
-import { signPayload, verifyPayload } from '../services/authService';
+import { authEnabled, signPayload, verifyPayload } from '../services/authService';
+import { appUrl, cookieOptions, deviceId } from '../lib/network';
 import { startSession } from './authController';
 import { findEventOr404 } from './eventsController';
 import { folderSchema, ingestFile } from './mediaController';
@@ -19,15 +20,26 @@ interface OAuthState {
   n: string; // nonce, also in a short-lived cookie: ties the callback to this browser
   p: google.OAuthPurpose;
   r: string; // where to return in the app
+  o: string; // who the connection belongs to (see ownerOf)
   e: number; // expiry
 }
 
 /** Same-origin paths only, so the callback can never be used to bounce someone elsewhere. */
 const safeReturn = (value: unknown, fallback: string) => (typeof value === 'string' && value.startsWith('/') && !value.startsWith('//') ? value.slice(0, 300) : fallback);
 
+/**
+ * Who a Google connection belongs to. Open access (no sign-in): the browser that connected
+ * it, so opening the shared link never exposes someone else's Drive. Private mode: the
+ * installation, shared by its signed-in operators.
+ */
+const ownerOf = (req: Request, res: Response) => (authEnabled() ? 'installation' : `device:${deviceId(req, res)}`);
+
+const signInEnabled = () => authEnabled() && googleConfigured() && config.google.allowedEmails.length > 0;
+
 /** The callback URL registered with Google; derived from the address the app is opened at. */
 function redirectUri(req: Request) {
   if (config.google.redirectUri) return config.google.redirectUri;
+  if (config.publicApiUrl) return `${config.publicApiUrl}/api/auth/google/callback`;
   const proto = (req.get('x-forwarded-proto') ?? req.protocol).split(',')[0].trim();
   const host = (req.get('x-forwarded-host') ?? req.get('host') ?? 'localhost').split(',')[0].trim();
   return `${proto}://${host}/api/auth/google/callback`;
@@ -36,20 +48,20 @@ function redirectUri(req: Request) {
 async function beginOAuth(req: Request, res: Response, purpose: google.OAuthPurpose, returnTo: string) {
   if (!googleConfigured()) throw google.notConfiguredError();
   const nonce = crypto.randomBytes(16).toString('base64url');
-  const state = await signPayload({ n: nonce, p: purpose, r: returnTo, e: Date.now() + 10 * 60_000 } satisfies OAuthState);
+  const state = await signPayload({ n: nonce, p: purpose, r: returnTo, o: ownerOf(req, res), e: Date.now() + 10 * 60_000 } satisfies OAuthState);
   // Lax (not Strict), so the browser sends it when Google redirects back to us.
-  res.cookie(NONCE_COOKIE, nonce, { httpOnly: true, sameSite: 'lax', secure: req.secure, maxAge: 10 * 60_000, path: '/api/auth/google' });
+  res.cookie(NONCE_COOKIE, nonce, cookieOptions(req, { sameSite: 'lax', maxAge: 10 * 60_000, path: '/api/auth/google' }));
   res.redirect(google.authorizationUrl({ purpose, state, redirectUri: redirectUri(req) }));
 }
 
-/** Where the app sends the operator to connect Google (needs a signed-in operator). */
+/** Where the app sends the browser to connect Google (private mode: needs a signed-in operator). */
 export async function connect(req: Request, res: Response) {
   await beginOAuth(req, res, 'connect', safeReturn(req.query.returnTo, '/'));
 }
 
 /** "Sign in with Google" (public; only accounts listed in GOOGLE_ALLOWED_EMAILS get in). */
 export async function signInStart(req: Request, res: Response) {
-  if (!config.google.allowedEmails.length) throw new HttpError(404, 'Sign in with Google is not enabled on this server.');
+  if (!signInEnabled()) throw new HttpError(404, 'Sign in with Google is not enabled on this server.');
   await beginOAuth(req, res, 'signin', '/');
 }
 
@@ -62,7 +74,7 @@ export async function callback(req: Request, res: Response) {
     const url = new URL(to, 'http://x');
     url.searchParams.set('google', result);
     if (message) url.searchParams.set('message', message.slice(0, 300));
-    res.redirect(url.pathname + url.search);
+    res.redirect(appUrl(url.pathname + url.search));
   };
 
   if (!state || state.e < Date.now() || !nonce || nonce !== state.n) {
@@ -76,7 +88,7 @@ export async function callback(req: Request, res: Response) {
   if (!code) return back(state.r, 'error', 'Google did not return a sign-in code. Please try again.');
 
   try {
-    const profile = await google.exchangeCode(code, redirectUri(req), state.p);
+    const profile = await google.exchangeCode(code, redirectUri(req), state.p, state.o);
     if (state.p === 'signin') {
       if (!profile.emailVerified || !config.google.allowedEmails.includes(profile.email)) {
         logger.warn(`Google sign-in refused for ${profile.email}`);
@@ -92,13 +104,14 @@ export async function callback(req: Request, res: Response) {
   }
 }
 
-export async function getStatus(_req: Request, res: Response) {
-  res.json(await google.status());
+export async function getStatus(req: Request, res: Response) {
+  res.json(await google.status(ownerOf(req, res), signInEnabled()));
 }
 
-export async function disconnect(_req: Request, res: Response) {
-  await google.disconnect();
-  res.json(await google.status());
+export async function disconnect(req: Request, res: Response) {
+  const owner = ownerOf(req, res);
+  await google.disconnect(owner);
+  res.json(await google.status(owner, signInEnabled()));
 }
 
 const listSchema = z.object({
@@ -109,7 +122,7 @@ const listSchema = z.object({
 
 export async function listDrive(req: Request, res: Response) {
   const { q, folderId, pageToken } = listSchema.parse(req.query);
-  res.json(await google.listDrive({ query: q, folderId, pageToken }));
+  res.json(await google.listDrive(ownerOf(req, res), { query: q, folderId, pageToken }));
 }
 
 const importSchema = z.object({ fileIds: z.array(z.string().min(1).max(128)).min(1).max(20), folder: z.string().optional() });
@@ -123,13 +136,14 @@ export async function importFromDrive(req: Request<{ id: string }>, res: Respons
   const event = await findEventOr404(req.params.id);
   const { fileIds, folder: rawFolder } = importSchema.parse(req.body);
   const folder = folderSchema.parse(rawFolder ?? '');
+  const owner = ownerOf(req, res);
   const uploaded = [];
   const duplicates = [];
   const rejected: { name: string; error: string }[] = [];
   for (const fileId of fileIds) {
     let tmp: { tmpPath: string; originalName: string; size: number } | null = null;
     try {
-      tmp = await google.downloadDriveFile(fileId);
+      tmp = await google.downloadDriveFile(owner, fileId);
       const result = await ingestFile({ eventId: event.id, ...tmp, folder, source: 'drive', sourceRef: fileId });
       if (result.status === 'uploaded') uploaded.push(result.media);
       else if (result.status === 'duplicate') result.media && duplicates.push(result.media);

@@ -5,6 +5,7 @@ import { cn } from '../../lib/cn';
 import { LogoScene, ScreenScene } from './ScreenScene';
 import { StageTransition, usePresence, type LayerKind } from './motion';
 import { TimerBadge } from './TimerBadge';
+import { BlackScene } from './BlackScene';
 
 // pdf.js is large: load it only when a PDF/slide deck is actually shown.
 const PdfView = lazy(() => import('./PdfView').then((m) => ({ default: m.PdfView })));
@@ -53,8 +54,10 @@ export function DisplayStage({ display, timer, variant, videoCommand }: DisplayS
   return (
     // The console's white theme redefines "white" as dark text; the projector output always uses real white.
     <div className="absolute inset-0 overflow-hidden bg-black text-white" style={{ containerType: 'size', '--color-white': '#fff' } as CSSProperties}>
-      <StageTransition layerKey={layerKey} kind={kind}>
-        {display.mode === 'black' ? null : display.mode === 'screen' ? (
+      <StageTransition layerKey={layerKey} kind={kind} cutBlack={display.blackScreen?.fade === false}>
+        {display.mode === 'black' ? (
+          <BlackScene settings={display.blackScreen} logo={display.logo} />
+        ) : display.mode === 'screen' ? (
           <ScreenScene
             screen={screen ?? { title: 'Please Wait', subtitle: '', style: 'please-wait' }}
             eventName={display.eventName}

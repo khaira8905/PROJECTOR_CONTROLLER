@@ -398,3 +398,192 @@ body {
   background: #6ea2ff;
   animation: ec-nav-bar 260ms var(--ease-out-expo) both;
 }
+
+/* ── Icon motion on hover ─────────────────────────────────────────────────────────── */
+/* Only icons that point somewhere move, and only by a pixel or two, in their own direction. */
+.ec-btn:not(:disabled):hover .lucide-external-link,
+.ec-btn:not(:disabled):hover .lucide-link-2 { transform: translate(1px, -1px); }
+.ec-btn:not(:disabled):hover .lucide-plus { transform: rotate(90deg); }
+.ec-btn:not(:disabled):hover .lucide-rotate-ccw { transform: rotate(-40deg); }
+.ec-btn:not(:disabled):hover .lucide-undo-2 { transform: translateX(-2px); }
+.ec-btn:not(:disabled):hover .lucide-play { transform: translateX(1px); }
+.ec-btn:not(:disabled):hover .lucide-image-plus,
+.ec-btn:not(:disabled):hover .lucide-pencil { transform: translateY(-1px); }
+
+/* ── Key hints ────────────────────────────────────────────────────────────────────── */
+:root[data-hints='off'] .ec-hint { display: none; }
+
+/* ── Top bar: sits just above the workspace ───────────────────────────────────────── */
+.ec-topbar {
+  position: relative;
+  box-shadow: 0 1px 0 var(--line), 0 8px 16px -14px rgb(16 24 40 / 0.35);
+}
+
+/* ── Connection status dots ───────────────────────────────────────────────────────── */
+.ec-status-dot {
+  position: relative;
+  background: var(--ink-600);
+  transition: background-color 300ms ease, box-shadow 300ms ease;
+}
+.ec-status-dot[data-state='connected'],
+.ec-status-dot[data-state='ok'] { background: #22a55b; box-shadow: 0 0 0 3px rgb(34 165 91 / 0.16); }
+.ec-status-dot[data-state='bad'] { background: #e5484d; box-shadow: 0 0 0 3px rgb(229 72 77 / 0.16); }
+.ec-status-dot[data-state='disconnected'] { background: transparent; box-shadow: inset 0 0 0 1.5px var(--ink-500); }
+.ec-status-dot[data-state='connecting'],
+.ec-status-dot[data-state='checking'] { background: #e0a100; animation: ec-breathe 1.2s var(--ease-in-out-sine) infinite; }
+/* Just connected: one ring goes out, once. */
+.ec-status-dot[data-state='connected']::after,
+.ec-status-dot[data-state='ok']::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 2px solid #22a55b;
+  animation: ec-ping-once 700ms var(--ease-out-quart) both;
+}
+@keyframes ec-breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+@keyframes ec-ping-once { from { transform: scale(1); opacity: 0.8; } to { transform: scale(2.6); opacity: 0; } }
+
+/* ── Black Screen button ──────────────────────────────────────────────────────────── */
+.ec-black-btn {
+  color: var(--ink-200);
+  background: var(--surface-900);
+  border-color: var(--line-strong);
+  box-shadow: var(--card-shadow);
+}
+.ec-black-btn:not(:disabled):hover { border-color: var(--ink-500); color: var(--contrast); }
+.ec-black-btn[data-state='armed'] {
+  color: #e5484d;
+  border-color: #e5484d;
+  background: color-mix(in oklab, #e5484d 8%, var(--surface-900));
+  animation: ec-armed 420ms ease-in-out both;
+}
+.ec-black-btn[data-state='on'] {
+  color: #fff;
+  background: #05070b;
+  border-color: #000;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08), 0 6px 14px -8px rgb(0 0 0 / 0.6);
+}
+.ec-black-btn[data-state='on']:hover { color: #fff; background: #111621; }
+.ec-black-btn[data-state='on'] kbd { color: #fff; border-color: rgb(255 255 255 / 0.25); background: rgb(255 255 255 / 0.08); }
+
+/* ── Flow: selection, removal, compact list ───────────────────────────────────────── */
+.ec-flow-row[data-selected] { background: color-mix(in oklab, var(--accent-500) 7%, var(--surface-900)); }
+.ec-flow-row[data-selected]::before { background: color-mix(in oklab, var(--accent-500) 55%, transparent); }
+/* Removing: the row slides aside and folds up, then the list closes the gap. */
+.ec-flow-row[data-leaving] {
+  overflow: hidden;
+  pointer-events: none;
+  height: 0 !important;
+  opacity: 0;
+  transform: translateX(-12px);
+  border-bottom-color: transparent;
+  transition: height 190ms var(--ease-out-quart), opacity 150ms ease, transform 190ms var(--ease-out-quart) !important;
+}
+.ec-flow-list[data-layout='compact'] .ec-flow-row { border-bottom-color: color-mix(in oklab, var(--line) 70%, transparent); }
+
+/* ── Settings ─────────────────────────────────────────────────────────────────────── */
+.ec-settings-nav-item {
+  position: relative;
+  color: var(--ink-400);
+  transition: background-color 140ms ease, color 140ms ease;
+}
+.ec-settings-nav-item:hover { background: var(--surface-800); color: var(--contrast); }
+.ec-settings-nav-item[aria-current='page'] {
+  color: var(--contrast);
+  font-weight: 600;
+  background: var(--surface-900);
+  box-shadow: var(--card-shadow), inset 0 0 0 1px var(--line);
+}
+.ec-settings-nav-item[aria-current='page'] svg { color: var(--accent-500); }
+.ec-settings-parts { animation: ec-rise-in 220ms var(--ease-out-quart) both; margin: 0.15rem 0 0.4rem; }
+
+/* Switching sections: the new page settles in from slightly below. */
+@keyframes ec-section-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+/* No fill-mode: once settled, no transform lingers (it would trap fixed menus and dialogs). */
+.ec-section-in { animation: ec-section-in 220ms var(--ease-out-quart); }
+.ec-view-in { animation: ec-fade-in 180ms ease-out; }
+
+/* Titles sit flat on the page; the settings themselves are a layered list. */
+.ec-settings-list {
+  background: var(--surface-900);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  box-shadow: var(--card-shadow);
+  padding: 0 1rem;
+}
+.ec-settings-list .ec-settings-list { background: transparent; border: 0; box-shadow: none; padding: 0; }
+.ec-settings-row + .ec-settings-row,
+.ec-collapse + .ec-settings-row,
+.ec-settings-row + .ec-collapse .ec-settings-row:first-child { border-top: 1px solid var(--line); }
+.ec-collapse .ec-settings-row + .ec-settings-row { border-top: 1px solid var(--line); }
+.ec-settings-row[data-conflict] p:first-child { color: #e5484d; }
+
+/* Options that depend on another option unfold instead of popping in. */
+.ec-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 240ms var(--ease-out-quart), opacity 180ms ease;
+}
+.ec-collapse[data-open='true'] { grid-template-rows: 1fr; opacity: 1; }
+.ec-collapse-inner { min-height: 0; overflow: hidden; }
+
+.ec-choice {
+  flex-wrap: wrap;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface-850);
+}
+.ec-choice button {
+  padding: 0.3rem 0.75rem;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  border-radius: 4px;
+}
+.ec-choice .ec-seg-indicator {
+  border-radius: 4px;
+  background: var(--surface-900);
+  box-shadow: 0 1px 2px rgb(16 24 40 / 0.12), inset 0 0 0 1px var(--line-strong);
+}
+
+.ec-input {
+  border: 1px solid var(--line-strong);
+  border-radius: 5px;
+  background: var(--surface-900);
+  color: var(--contrast);
+  font-size: 14px;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+.ec-input:hover { border-color: var(--ink-600); }
+.ec-input:focus { outline: none; border-color: var(--accent-500); box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent-500) 20%, transparent); }
+
+.ec-chip { background: var(--surface-850); border: 1px solid var(--line); }
+.ec-source-icon { background: var(--surface-850); border: 1px solid var(--line); }
+/* The logo sits on black, the way the audience will see it. */
+.ec-logo-well {
+  background: #000;
+  box-shadow: 0 0 0 1px var(--monitor-edge), 0 0 0 4px var(--monitor-bezel), 0 0 0 5px var(--line);
+}
+
+/* Shortcut editor */
+.ec-keychip { transition: border-color 120ms ease, background-color 120ms ease; }
+.ec-keychip:hover { border-color: var(--accent-500); }
+.ec-icon-btn { transition: color 120ms ease, background-color 120ms ease, border-color 120ms ease, transform 120ms ease; }
+.ec-icon-btn:active { transform: scale(0.92); }
+.ec-recording { animation: ec-pop-in 160ms var(--ease-out-quart) both; }
+.ec-rec-dot { animation: ec-breathe 1s ease-in-out infinite; }
+
+/* Small fades used for images arriving and badges. */
+@keyframes ec-fade-in { from { opacity: 0; } to { opacity: 1; } }
+.ec-fade-in { animation: ec-fade-in 260ms ease-out both; }
+
+/* ── Selection feedback in lists (Files, file picker) ─────────────────────────────── */
+@keyframes ec-select-flash {
+  from { box-shadow: inset 3px 0 0 var(--accent-500), inset 0 0 0 999px color-mix(in oklab, var(--accent-500) 16%, transparent); }
+  to { box-shadow: inset 3px 0 0 var(--accent-500), inset 0 0 0 999px color-mix(in oklab, var(--accent-500) 7%, transparent); }
+}
+.ec-selected { animation: ec-select-flash 420ms var(--ease-out-quart) both; }

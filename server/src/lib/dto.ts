@@ -1,14 +1,18 @@
 import { parsePreferences } from '../services/preferences';
 import type { Event, Media, QueueItem, ScheduleItem, Screen } from '@prisma/client';
 import { storedFileExists } from '../services/mediaStorage';
+import { config } from '../config';
+
+/** Relative when the server hosts the UI; absolute when the UI lives on another site. */
+const fileUrl = (path: string) => `${config.publicApiUrl}${path}`;
 
 /** A file is only "missing" if it is gone locally and there is no cloud copy to restore it from. */
 const isMissing = (m: Media) => !storedFileExists(m.storagePath) && m.cloudStatus !== 'synced';
 
 /** URL of a browser-renderable PDF for this media (PDFs, and PPT/PPTX once converted). */
 export function pdfUrlFor(m: Media): string | null {
-  if (m.kind === 'pdf') return `/api/media/${m.id}/file`;
-  if (m.kind === 'presentation' && m.renderPath && m.conversionStatus === 'ready') return `/api/media/${m.id}/render`;
+  if (m.kind === 'pdf') return fileUrl(`/api/media/${m.id}/file`);
+  if (m.kind === 'presentation' && m.renderPath && m.conversionStatus === 'ready') return fileUrl(`/api/media/${m.id}/render`);
   return null;
 }
 
@@ -30,7 +34,7 @@ export function toMediaDto(m: Media) {
     cloudError: m.cloudError,
     source: m.source,
     createdAt: m.createdAt,
-    url: `/api/media/${m.id}/file`,
+    url: fileUrl(`/api/media/${m.id}/file`),
     pdfUrl: pdfUrlFor(m),
     missing: isMissing(m),
   };
@@ -43,7 +47,7 @@ export function toPublicMediaDto(m: Media) {
     name: m.name,
     kind: m.kind,
     mimeType: m.mimeType,
-    url: `/api/media/${m.id}/file`,
+    url: fileUrl(`/api/media/${m.id}/file`),
     pdfUrl: pdfUrlFor(m),
     pageCount: m.pageCount,
     missing: isMissing(m),
