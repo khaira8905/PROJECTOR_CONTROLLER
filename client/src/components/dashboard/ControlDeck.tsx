@@ -1,5 +1,5 @@
-import { memo, useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, MonitorOff, MonitorUp, Play, StickyNote, Undo2 } from 'lucide-react';
+import { memo, useState } from 'react';
+import { ChevronLeft, ChevronRight, Play, StickyNote, Undo2 } from 'lucide-react';
 import { PdfThumb } from '../PdfThumb';
 import { MediaIcon } from '../MediaIcon';
 import { Kbd } from '../ui/Kbd';
@@ -26,8 +26,6 @@ interface ControlDeckProps {
   onResume: () => void;
   onGoToPage: (page: number) => void;
   onEditNotes: (item: QueueItem) => void;
-  black: { enabled: boolean; confirm: boolean; active: boolean };
-  onBlack: () => void;
   keys: { next?: string; previous?: string; resume?: string; black?: string };
   /** Where the current item sits in the Flow (for content without slides). */
   position: { index: number; total: number } | null;
@@ -92,16 +90,15 @@ export const ControlDeck = memo(function ControlDeck(props: ControlDeckProps) {
             {props.keys.resume && <KeyHint combo={props.keys.resume} className="ec-kbd-on-solid" />}
           </button>
         ) : null}
-        <div className="flex gap-2">
+        <div className="flex">
           <div className="ec-toolbar flex min-w-0 flex-1" role="toolbar" aria-label="Move through the show">
             <button className="ec-tb-btn ec-tb-prev" onClick={props.onPrevious} disabled={!props.canPrevious} aria-label="Previous" title="Previous">
-              <ChevronLeft size={19} className="ec-nudge-left" />
+              <ChevronLeft size={22} className="ec-nudge-left" />
               <span className="max-[480px]:hidden">Previous</span>
             </button>
             <Counter paged={paged} page={page} count={count} word={Word} position={props.position} onGoToPage={props.onGoToPage} />
             <NextButton disabled={!props.canNext} onClick={props.onNext} nextPage={nextPage} word={Word} pdfUrl={media?.pdfUrl ?? null} nextItem={nextItem} />
           </div>
-          {props.black.enabled && <BlackButton {...props.black} hint={props.keys.black} onPress={props.onBlack} />}
         </div>
       </div>
     </section>
@@ -116,10 +113,10 @@ function NextButton({ disabled, onClick, nextPage, word, pdfUrl, nextItem }: { d
     <div className="relative flex min-w-0 flex-[1.6]" onMouseEnter={() => setPeek(true)} onMouseLeave={() => setPeek(false)}>
       <button className="ec-tb-btn ec-tb-primary w-full" onClick={onClick} disabled={disabled} aria-label={`Next: ${detail}`}>
         <span className="flex min-w-0 flex-col items-start leading-tight">
-          <span className="text-[var(--text-control)] font-semibold">Next</span>
-          <span className="ec-next-detail max-w-full truncate text-[12px] font-normal opacity-80">{detail}</span>
+          <span className="text-[18px] font-semibold">Next</span>
+          <span className="ec-next-detail max-w-full truncate text-[13px] font-normal opacity-85">{detail}</span>
         </span>
-        <ChevronRight size={20} className="ec-nudge-right ml-auto shrink-0" />
+        <ChevronRight size={24} className="ec-nudge-right ml-auto shrink-0" />
       </button>
       {peek && !disabled && (nextPage || nextItem) && (
         <div className="ec-card ec-card-raised ec-peek pointer-events-none absolute top-full left-1/2 z-40 mt-2 w-64 rounded-md p-2">
@@ -132,43 +129,6 @@ function NextButton({ disabled, onClick, nextPage, word, pdfUrl, nextItem }: { d
         </div>
       )}
     </div>
-  );
-}
-
-/**
- * Black Screen with an unmistakable state: outlined while the picture is up, solid black
- * while the audience sees black. Optionally asks for a second click (the shortcut acts at once).
- */
-function BlackButton({ active, confirm, hint, onPress }: { active: boolean; confirm: boolean; hint?: string; onPress: () => void }) {
-  const [armed, setArmed] = useState(false);
-  const timer = useRef(0);
-  useEffect(() => () => window.clearTimeout(timer.current), []);
-  useEffect(() => setArmed(false), [active]);
-
-  const press = () => {
-    if (!active && confirm && !armed) {
-      setArmed(true);
-      window.clearTimeout(timer.current);
-      timer.current = window.setTimeout(() => setArmed(false), 3000);
-      return;
-    }
-    setArmed(false);
-    onPress();
-  };
-
-  return (
-    <button
-      onClick={press}
-      aria-pressed={active}
-      aria-label={active ? 'Black is on — show the picture again' : armed ? 'Click again to go black' : 'Black screen'}
-      title={active ? 'Show the picture again' : armed ? 'Click again to go black' : 'Black screen'}
-      data-state={active ? 'on' : armed ? 'armed' : 'off'}
-      className="ec-black-btn group flex w-[6.5rem] shrink-0 items-center justify-center gap-2 px-3 text-[var(--text-sm)] font-semibold"
-    >
-      {active ? <MonitorUp size={17} className="shrink-0" /> : <MonitorOff size={17} className="shrink-0" />}
-      <span className="whitespace-nowrap">{active ? 'Black on' : armed ? 'Again?' : 'Black'}</span>
-      {hint && !active && !armed && <KeyHint combo={hint} />}
-    </button>
   );
 }
 
@@ -208,14 +168,14 @@ function Counter({ paged, page, count, word, position, onGoToPage }: { paged: bo
   const value = paged ? page : position ? position.index + 1 : null;
   const total = paged ? count : (position?.total ?? null);
   return (
-    <div className={cn('ec-tb-counter relative flex w-[6.5rem] shrink-0 flex-col items-center justify-center', paged && 'ec-tb-counter-live')}>
+    <div className={cn('ec-tb-counter relative flex w-[8.5rem] shrink-0 flex-col items-center justify-center', paged && 'ec-tb-counter-live')}>
       <span className="text-[10px] font-medium tracking-[0.08em] text-slate-500 uppercase">{label || '—'}</span>
       {value !== null ? (
         <span className="t-num flex items-baseline gap-1 leading-none">
-          <span key={value} className="ec-text-swap text-[22px] text-white">
+          <span key={value} className="ec-text-swap text-[30px] text-white">
             {value}
           </span>
-          <span className="text-[13px] font-medium text-slate-500">/ {total}</span>
+          <span className="text-[15px] font-medium text-slate-500">/ {total}</span>
         </span>
       ) : (
         <span className="text-[13px] text-slate-500">Not started</span>

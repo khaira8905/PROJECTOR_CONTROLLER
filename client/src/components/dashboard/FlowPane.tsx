@@ -132,6 +132,8 @@ export function FlowPane(props: FlowPaneProps) {
     const to = flow.findIndex((q) => q.id === over.id);
     if (from >= 0 && to >= 0) onReorder(arrayMove(flow, from, to));
   };
+  // Items before the one on screen are done: they step back so what's ahead stands out.
+  const currentIndex = currentId ? flow.findIndex((q) => q.id === currentId) : -1;
   const totalSeconds = flow.reduce((sum, q) => sum + (q.durationSeconds ?? 0), 0);
 
   return (
@@ -224,7 +226,7 @@ export function FlowPane(props: FlowPaneProps) {
                   key={item.id}
                   item={item}
                   index={index}
-                  state={item.id === currentId ? 'current' : item.id === props.nextId ? 'next' : 'idle'}
+                  state={item.id === currentId ? 'current' : item.id === props.nextId ? 'next' : index < currentIndex ? 'past' : 'idle'}
                   onAir={props.onAir}
                   editing={editing}
                   page={item.id === currentId ? (props.display?.page ?? null) : null}
@@ -249,9 +251,9 @@ export function FlowPane(props: FlowPaneProps) {
   );
 }
 
-type RowState = 'current' | 'next' | 'idle';
+type RowState = 'current' | 'next' | 'past' | 'idle';
 
-const THUMB_WIDTH = { small: 92, medium: 124, large: 172 } as const;
+const THUMB_WIDTH = { small: 108, medium: 148, large: 196 } as const;
 
 const FlowRow = memo(function FlowRow({
   item,
@@ -345,11 +347,11 @@ const FlowRow = memo(function FlowRow({
           onFocus={activation === 'double' ? () => onSelect(item.id) : undefined}
           className={cn(
             'ec-flow-hit flex min-w-0 flex-1 items-center text-left focus-visible:outline-offset-[-2px]',
-            compact ? 'gap-3 py-1.5 pr-2 pl-5 max-sm:pl-3' : 'gap-4 py-2.5 pr-2 pl-5 max-sm:gap-2.5 max-sm:pl-3',
+            compact ? 'gap-3 py-2 pr-2 pl-5 max-sm:pl-3' : 'gap-5 py-3 pr-3 pl-5 max-sm:gap-2.5 max-sm:pl-3',
           )}
           aria-label={`Show ${label}${current ? ' (on screen)' : ''}`}
         >
-          <span className={cn('w-6 shrink-0 text-right font-mono text-[13px] tabular-nums', current ? 'font-semibold text-white' : 'text-slate-500')}>{String(index + 1).padStart(2, '0')}</span>
+          <span className={cn('ec-flow-num w-7 shrink-0 text-right font-mono text-[14px] tabular-nums', current ? 'font-semibold text-white' : 'text-slate-500')}>{String(index + 1).padStart(2, '0')}</span>
           {compact ? (
             <span className="flex w-6 shrink-0 justify-center">
               {item.kind === 'screen' ? <ScreenDot style={item.screen?.style ?? 'custom'} /> : <MediaIcon kind={media?.kind ?? 'pdf'} size={13} className="ring-0" />}
@@ -359,10 +361,10 @@ const FlowRow = memo(function FlowRow({
           )}
           <span className={cn('min-w-0 flex-1', compact && 'flex items-baseline gap-2.5')}>
             <span className="flex min-w-0 items-center gap-2">
-              <span className={cn('truncate font-medium', compact ? 'text-[14px]' : 'text-[15px]', current ? 'text-white' : 'text-slate-200')}>{label}</span>
+              <span className={cn('ec-flow-title truncate', compact ? 'text-[15px]' : 'text-[17px]', current ? 'font-semibold text-white' : 'font-medium text-slate-200')}>{label}</span>
               {item.notes && <StickyNote size={13} className={cn('shrink-0', current ? 'text-amber-400' : 'text-slate-500')} aria-label="Has speaker notes" />}
             </span>
-            <span className={cn('block truncate text-slate-500', compact ? 'shrink-0 text-[12px] max-sm:hidden' : 'mt-0.5 text-[13px]')}>
+            <span className={cn('block truncate text-slate-500', compact ? 'shrink-0 text-[13px] max-sm:hidden' : 'mt-1 text-[14px]')}>
               {media?.missing ? <span className="text-red-400">File missing — upload it again · </span> : null}
               {itemDetail(item)}
             </span>
@@ -409,7 +411,7 @@ const FlowRow = memo(function FlowRow({
 
 /** A word, not a badge: the row's bar and tint already carry the state. */
 function RowStatus({ state, live }: { state: RowState; live: boolean }) {
-  if (state === 'idle') return null;
+  if (state === 'idle' || state === 'past') return null;
   return (
     <span key={`${state}-${live}`} className="ec-row-status ec-text-swap flex shrink-0 items-center gap-1.5" data-live={live || undefined} data-state={state}>
       {state === 'current' && <span className="ec-row-status-dot h-1.5 w-1.5 rounded-full" aria-hidden />}
@@ -427,7 +429,7 @@ function SlideRow({ url, start, end, page, word, live, width, onGo }: { url: str
   const pages = Array.from({ length: Math.max(0, end - start + 1) }, (_, i) => start + i);
   return (
     <div className="ec-rise-in pb-3 pl-[4.25rem]">
-      <div ref={strip} className="scroll-thin flex gap-2 overflow-x-auto pr-4 pb-1.5">
+      <div ref={strip} className="ec-slide-strip scroll-thin flex gap-2 overflow-x-auto pr-4 pb-1.5">
         {pages.map((p) => {
           const active = p === page;
           const next = page !== null && p === page + 1;
@@ -455,7 +457,7 @@ function SlideRow({ url, start, end, page, word, live, width, onGo }: { url: str
 
 /** First slide, the image itself, or a drawn screen card. */
 function FlowThumb({ item }: { item: QueueItem }) {
-  const box = 'ec-flow-thumb relative h-[63px] w-[112px] shrink-0 overflow-hidden rounded-[4px] border border-[var(--line)] max-sm:h-[40px] max-sm:w-[71px]';
+  const box = 'ec-flow-thumb relative h-[81px] w-[144px] shrink-0 overflow-hidden rounded-[var(--radius-media)] border border-[var(--line)] max-sm:h-[45px] max-sm:w-[80px]';
   if (item.kind === 'screen') {
     return (
       <span className={cn(box, 'flex flex-col items-start justify-end bg-[#0f1a2e] p-1.5')}>
@@ -465,7 +467,7 @@ function FlowThumb({ item }: { item: QueueItem }) {
     );
   }
   const m = item.media;
-  if (m?.pdfUrl && !m.missing) return <PdfThumb url={m.pdfUrl} page={item.startPage ?? 1} width={112} className={cn(box, 'bg-[#fff]')} />;
+  if (m?.pdfUrl && !m.missing) return <PdfThumb url={m.pdfUrl} page={item.startPage ?? 1} width={144} className={cn(box, 'bg-[#fff]')} />;
   if (m?.kind === 'image' && !m.missing) return <img src={m.url} alt="" loading="lazy" decoding="async" className={cn(box, 'bg-black object-cover')} />;
   return (
     <span className={cn(box, 'flex items-center justify-center bg-console-850')}>

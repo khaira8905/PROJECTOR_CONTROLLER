@@ -12,6 +12,12 @@ export default function DisplayPage() {
   const { eventId } = useParams();
   const [videoCommand, setVideoCommand] = useState<VideoCommand | null>(null);
   const [activated, setActivated] = useState(false);
+  // The setup hint is for whoever opens the window; it leaves the audience's screen on its own.
+  const [hintGone, setHintGone] = useState(false);
+  useEffect(() => {
+    const t = window.setTimeout(() => setHintGone(true), 8000);
+    return () => window.clearTimeout(t);
+  }, []);
   const [cursorHidden, setCursorHidden] = useState(false);
   const [showOffline, setShowOffline] = useState(false);
   const nonce = useRef(0);
@@ -125,7 +131,7 @@ export default function DisplayPage() {
         </div>
       ) : null}
 
-      {!activated && display && (
+      {!activated && !hintGone && display && (
         <div className="pointer-events-none absolute inset-x-0 bottom-6 flex justify-center">
           <div className="ec-fade-up rounded-full bg-white/10 px-4 py-2 text-sm text-white/70 backdrop-blur" style={{ animationDelay: '1.2s' }}>
             Click anywhere or press <b>F</b> for fullscreen

@@ -680,7 +680,7 @@ body {
   box-shadow: 0 6px 12px -12px rgb(16 24 40 / 0.45);
 }
 .ec-now { min-height: 2.75rem; }
-.ec-now-title { font-size: 20px; line-height: 1.2; }
+.ec-now-title { font-size: 24px; line-height: 1.2; }
 .ec-now-label { transition: color 200ms ease; }
 /* The tally: a vertical bar that says, in colour, what the audience is seeing. */
 .ec-now-tally {
@@ -778,10 +778,11 @@ body {
  * On short screens the supporting parts give way first; the deck, Flow and timer stay. */
 @media (min-width: 1024px) and (max-height: 820px) {
   .ec-deck { padding: 0.65rem 1.25rem 0.75rem; }
-  .ec-now-title { font-size: 18px; }
+  .ec-now-title { font-size: 20px; }
   .ec-transport { margin-top: 0.5rem; }
-  .ec-transport { --tb-h: 3rem; }
-  .ec-control .ec-flow-thumb { width: 88px; height: 50px; }
+  .ec-transport { --tb-h: 3.25rem; }
+  .ec-control .ec-flow-thumb { width: 112px; height: 63px; }
+  .ec-control .ec-flow-title { font-size: 16px; }
   .ec-control .ec-flow-hit { padding-top: 0.4rem; padding-bottom: 0.4rem; }
   .ec-stage { gap: 0.75rem; padding-top: 0.75rem; padding-bottom: 0.75rem; }
 }
@@ -801,7 +802,7 @@ body {
  * One strip, hairline dividers, one filled segment (Next): the primary action is clear
  * from contrast and position, not from size. Segments answer the pointer in --dur-fast;
  * pressing pushes the segment in (inner shadow) — the strip itself stays put. */
-.ec-transport { --tb-h: 3.5rem; }
+.ec-transport { --tb-h: 4rem; }
 .ec-toolbar {
   height: var(--tb-h);
   border: 1px solid var(--line-strong);
@@ -815,8 +816,8 @@ body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0 1rem;
-  font-size: var(--text-control);
+  padding: 0 1.25rem;
+  font-size: 16px;
   font-weight: 500;
   color: var(--ink-200);
   cursor: pointer;
@@ -922,4 +923,126 @@ body {
 @media (prefers-reduced-motion: reduce) {
   /* No lifting or sinking: state is shown by colour and borders only. */
   .ec-btn, .ec-black-btn, .ec-cue-bar { --btn-lift: 0px !important; transform: none !important; }
+}
+
+/* ══ Balanced Control view ══════════════════════════════════════════════════════════
+ * Left: the work (deck, Flow, timer). Right: the display workspace — status, a picture
+ * that takes the free height, the display controls attached under it, then Up next and
+ * Quick Selection. Nothing on the right is a floating card: sections are separated by
+ * spacing and hairlines; only the monitor + its control bar are a physical object. */
+
+.ec-flow-row[data-state='past'] { opacity: 0.55; }
+.ec-flow-row[data-state='past'] .ec-flow-thumb { filter: saturate(0.4); }
+.ec-flow-row[data-state='past']:hover { opacity: 1; }
+.ec-flow-row { transition: background-color 180ms ease, opacity var(--dur-medium) ease; }
+
+.ec-stage { gap: 0; }
+.ec-stage-status { min-height: 1.75rem; font-size: var(--text-base); }
+.ec-stage-status[data-state='live'] .ec-stage-state { color: #e5484d; }
+.ec-stage-status[data-state='black'] .ec-stage-state { color: var(--contrast); }
+.ec-stage-status[data-state='offline'] .ec-stage-state { color: var(--st-400, #f87171); }
+
+/* The picture grows into the free height (the width follows at 16:9, bar included). */
+.ec-preview-area { display: flex; justify-content: center; }
+.ec-preview-group { --bars-h: 3rem; width: 100%; }
+.ec-preview-group:has(.ec-display-bar-sub) { --bars-h: 5.75rem; }
+@media (min-width: 1024px) {
+  .ec-preview-area {
+    flex: 1 1 auto;
+    min-height: 15rem;
+    container-type: size;
+    align-items: center;
+  }
+  .ec-preview-group { width: min(100cqw, (100cqh - var(--bars-h)) * 16 / 9); }
+}
+
+/* Monitor docked onto its control bar: one object, a screen set into a console. */
+.ec-monitor-docked {
+  border-radius: 6px 6px 0 0;
+  box-shadow: 0 0 0 1px var(--monitor-edge), 0 0 0 4px var(--monitor-bezel), 0 0 0 5px var(--line-strong);
+}
+.ec-display-bar {
+  position: relative;
+  height: 3rem;
+  margin: 4px -4px 0;
+  border: 1px solid var(--line-strong);
+  border-top-color: color-mix(in oklab, var(--monitor-bezel) 60%, var(--line-strong));
+  border-radius: 0 0 6px 6px;
+  background: var(--btn-top);
+  box-shadow: 0 1px 0 var(--btn-edge), 0 18px 28px -22px rgb(0 0 0 / 0.55);
+}
+.ec-display-bar-sub { height: 2.75rem; margin-top: 0; border-top: 0; border-radius: 0 0 6px 6px; background: var(--surface-850); }
+.ec-display-bar:has(+ .ec-display-bar-sub) { border-radius: 0; }
+.ec-display-key {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 1rem;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink-300);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) ease, color var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
+}
+.ec-display-key { border-right: 1px solid var(--line); }
+/* Keys after the spacer (Fullscreen…) sit against the right edge: their divider is on the left. */
+.ec-display-bar > .flex-1 ~ .ec-display-key { border-right: 0; border-left: 1px solid var(--line); }
+.ec-display-key svg { flex-shrink: 0; transition: transform var(--dur-fast) var(--ease-standard); }
+.ec-display-key:hover { color: var(--contrast); background: color-mix(in oklab, var(--contrast) 5%, var(--btn-top)); }
+.ec-display-key:hover svg { transform: translateY(-1px); }
+.ec-display-key:active { box-shadow: inset 0 2px 4px rgb(16 24 40 / 0.2); transition-duration: 40ms; }
+.ec-display-key:focus-visible { outline: 2px solid var(--accent-500); outline-offset: -3px; }
+.ec-display-key[aria-pressed='true'] { color: var(--accent-300); background: color-mix(in oklab, var(--accent-500) 10%, var(--btn-top)); box-shadow: inset 0 -2px 0 var(--accent-500); }
+.ec-display-bar > .ec-display-key:first-child { border-bottom-left-radius: 5px; }
+.ec-display-bar > .ec-display-key:last-child { border-bottom-right-radius: 5px; }
+/* The state word on a key: "On". Text, so it never relies on colour alone. */
+.ec-key-on {
+  padding: 1px 5px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  animation: ec-text-swap var(--dur-medium) var(--ease-enter);
+}
+
+/* Black Screen, on the display bar: it is the one key that turns the room dark. */
+.ec-black-key { color: var(--ink-200); }
+.ec-black-key[data-state='armed'] { color: #e5484d; background: color-mix(in oklab, #e5484d 9%, var(--btn-top)); box-shadow: inset 0 -2px 0 #e5484d; animation: ec-armed 380ms ease-in-out; }
+.ec-black-key[data-state='on'],
+.ec-black-key[data-state='on']:hover { color: #fff; background: #05070b; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08); }
+.ec-black-key[data-state='on'] .ec-key-on { border-color: rgb(255 255 255 / 0.6); }
+
+/* Up next and Quick Selection: separated by a hairline and space, not boxed. */
+.ec-upnext { margin-top: var(--space-6); padding-top: var(--space-5); border-top: 1px solid var(--line); }
+.ec-upnext-thumb { width: clamp(150px, 30%, 240px); box-shadow: 0 0 0 1px var(--line-strong), 0 6px 14px -10px rgb(0 0 0 / 0.5); }
+.ec-stage > section[aria-label='Quick selection'] { margin-top: var(--space-6); }
+.ec-quick-btn { height: clamp(3.5rem, 7.2vh, 4.75rem); font-size: var(--text-control); }
+.ec-quick-btn svg { width: 19px; height: 19px; }
+
+@media (min-width: 1024px) and (max-height: 820px) {
+  .ec-upnext { margin-top: var(--space-4); padding-top: var(--space-4); }
+  .ec-stage > section[aria-label='Quick selection'] { margin-top: var(--space-4); }
+  .ec-upnext-thumb { width: clamp(120px, 24%, 170px); }
+}
+@media (min-width: 1024px) and (max-height: 680px) {
+  .ec-preview-area { min-height: 11rem; }
+}
+
+/* The display bar keeps every control on narrow columns: secondary labels go first
+   (icons + tooltips remain), Black screen keeps its words. */
+.ec-display-bar { container-type: inline-size; }
+@container (max-width: 640px) { .ec-dk-hint { display: none; } }
+/* First the edge keys (Fullscreen, PowerPoint) become icons, then Logo/Overlay. */
+@container (max-width: 620px) {
+  .ec-display-bar > .flex-1 ~ .ec-display-key .ec-dk-label { display: none; }
+  .ec-display-key { padding: 0 0.85rem; }
+}
+@container (max-width: 430px) {
+  .ec-display-key:not(.ec-black-key) .ec-dk-label { display: none; }
+}
+@media (min-width: 1024px) and (max-height: 820px) {
+  .ec-slide-strip > button { width: 108px !important; }
 }

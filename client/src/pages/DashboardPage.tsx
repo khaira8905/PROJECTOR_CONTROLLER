@@ -509,7 +509,7 @@ export default function DashboardPage() {
 
           {view === 'control' || presenter ? (
             <main
-              className="ec-view-in ec-control grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1.35fr)_minmax(380px,1fr)] lg:overflow-hidden"
+              className="ec-view-in ec-control grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1.22fr)_minmax(400px,1fr)] lg:overflow-hidden"
               style={{ '--preview-h': 'clamp(150px, 30vh, 480px)' } as CSSProperties}
             >
               {/* Primary column: what's on, the controls, the Flow and the timer under it. */}
@@ -529,8 +529,6 @@ export default function DashboardPage() {
                   onResume={() => void run({ type: 'show-current' })}
                   onGoToPage={(page) => void run({ type: 'page', page })}
                   onEditNotes={setEditingItem}
-                  black={{ enabled: blackPrefs.enabled, confirm: prefs?.confirmBlack ?? true, active: blackOn }}
-                  onBlack={toggleBlack}
                   keys={{ next: bindings.next[0], previous: bindings.previous[0], resume: bindings.resume[0], black: bindings.black[0] }}
                   position={currentIndex >= 0 ? { index: currentIndex, total: flow.length } : null}
                 />
@@ -570,12 +568,12 @@ export default function DashboardPage() {
               </div>
 
               {/* Supporting column: the picture, what's next, quick shortcuts. */}
-              <div className="ec-pane-alt ec-secondary scroll-thin min-h-0 min-w-0 lg:overflow-y-auto">
+              <div className="ec-pane-alt ec-secondary scroll-thin min-h-0 min-w-0 lg:overflow-y-auto lg:overflow-x-hidden">
                 <StagePane
                   display={display}
                   timer={timer}
                   videoCommand={videoCommand}
-                  live={isLive}
+                  displays={presence?.displays ?? 0}
                   showPreview={ui.showPreview}
                   nextItem={nextItem}
                   canNext={flow.length > 0 && joined && !atEnd}
@@ -590,6 +588,12 @@ export default function DashboardPage() {
                   }}
                   canOpenExternally={!!system?.openExternally}
                   mouseControls={ui.mouseControls}
+                  onOpenDisplay={openDisplayWindow}
+                  black={{ enabled: blackPrefs.enabled, confirm: prefs?.confirmBlack ?? true, active: blackOn, hint: bindings.black[0] }}
+                  onBlack={toggleBlack}
+                  onLogo={() => void run(display?.mode === 'logo' ? { type: 'show-current' } : { type: 'logo' })}
+                  overlay={{ available: !!event?.overlay.mediaId, visible: !!event?.overlay.visible, hint: bindings.overlay[0] }}
+                  onOverlay={toggleOverlay}
                 >
                   <QuickSelection
                     preferences={prefs}

@@ -48,7 +48,7 @@ export function TimerStrip({ timer, send, onMore, className }: { timer: TimerSna
                 {STATE_LABEL[state]}
               </span>
             </p>
-            <div className={cn('ec-timer-readout t-num mt-1 text-[30px] leading-none', over && 'ec-overtime')} title={over ? 'Over time' : undefined}>
+            <div className={cn('ec-timer-readout t-num mt-1 text-[36px] leading-none', over && 'ec-overtime')} title={over ? 'Over time' : undefined}>
               {over ? <RollingDigits text={`+${formatClock(overtime)}`} /> : <RollingClock ms={remaining} live={running} />}
             </div>
           </div>
